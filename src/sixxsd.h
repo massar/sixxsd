@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: sixxsd.h,v 1.2 2005-01-29 14:51:35 jeroen Exp $
+ $Date: 2005-01-29 14:51:35 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -134,7 +134,7 @@ struct sixxs_interface
 	// Heartbeat specific
 	// (IFACE_PROTO41_HB + IFACE_AYIYA)
 	time_t			hb_lastbeat;			// Last heartbeat we got
-	char			hb_password[20];		// Heartbeat password
+	char			hb_password[50];		// Heartbeat password
 
 	// AYIYA specific
 	// (IFACE_AYIYA)
