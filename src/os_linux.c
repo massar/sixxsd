@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.3 2005-01-31 18:27:07 jeroen Exp $
- $Date: 2005-01-31 18:27:07 $
+ $Id: os_linux.c,v 1.4 2005-04-05 17:38:30 jeroen Exp $
+ $Date: 2005-04-05 17:38:30 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -318,8 +318,8 @@ bool os_sync_interface_up(struct sixxs_interface *iface)
 		iface->name);
 
 	os_exec(
-		"ip link set mtu 1280 dev %s",
-		iface->name);
+		"ip link set mtu %u dev %s",
+		iface->mtu, iface->name);
 
 	if (	iface->type == IFACE_PROTO41 ||
 		iface->type == IFACE_PROTO41_HB)

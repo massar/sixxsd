@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.4 2005-01-31 18:27:07 jeroen Exp $
- $Date: 2005-01-31 18:27:07 $
+ $Id: sixxsd.h,v 1.5 2005-04-05 17:38:30 jeroen Exp $
+ $Date: 2005-04-05 17:38:30 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -133,6 +133,8 @@ struct sixxs_interface
 
 	bool			sync_seen;			// Was it seen in the last full sync?
 
+	unsigned int		mtu;				// Maximum Transmission Unit
+
 	// Heartbeat specific
 	// (IFACE_PROTO41_HB + IFACE_AYIYA)
 	time_t			hb_lastbeat;			// Last heartbeat we got
@@ -260,7 +262,7 @@ bool int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them);
 bool int_set_port(struct sixxs_interface *iface, unsigned int port);
 bool int_beat(struct sixxs_interface *iface);
 struct sixxs_interface *int_get(unsigned int id);
-bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, char *password);
+bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, int mtu, char *password);
 
 ///////////////////////////////////////////////////////////
 // prefix.c

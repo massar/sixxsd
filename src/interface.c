@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.4 2005-01-31 18:27:07 jeroen Exp $
- $Date: 2005-01-31 18:27:07 $
+ $Id: interface.c,v 1.5 2005-04-05 17:38:30 jeroen Exp $
+ $Date: 2005-04-05 17:38:30 $
 
  SixXSd Interface Management 
 **************************************/
@@ -29,6 +29,18 @@ bool int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them)
 	// Make sure that the kernel thinks the same thing directly
 	int_sync(iface);
 
+	return true;
+}
+
+bool int_set_mtu(struct sixxs_interface *iface, unsigned int mtu)
+{
+	if (mtu < 1280 || mtu > 1480) return false;
+
+	iface->mtu = mtu;
+
+	// Make sure that the kernel thinks the same thing directly
+	int_sync(iface);
+	
 	return true;
 }
 
@@ -67,7 +79,7 @@ struct sixxs_interface *int_get(unsigned int id)
 }
 
 // Reconfigure (add or update) an interface.
-bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, char *password)
+bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, int mtu, char *password)
 {
 	struct sixxs_interface *iface;
 
@@ -102,6 +114,12 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 			int_set_endpoint(iface, ipv4_them);
 		}
 
+		// Changed MTU?
+		if (mtu != iface->mtu)
+		{
+			int_set_mtu(iface, mtu);
+		}
+
 		if (password)
 		{
 			if (strlen(password) > (sizeof(iface->hb_password)-2))
@@ -131,6 +149,7 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		iface->interface_id = id;
 		iface->type = type;
 		iface->state = state;
+		iface->mtu = mtu;
 
 		memcpy(&iface->ipv4_them,	&ipv4_them,	sizeof(iface->ipv4_them));
 		memcpy(&iface->ipv6_them,	ipv6_them,	sizeof(iface->ipv6_them));

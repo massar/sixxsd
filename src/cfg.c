@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.2 2005-01-31 17:06:26 jeroen Exp $
- $Date: 2005-01-31 17:06:26 $
+ $Id: cfg.c,v 1.3 2005-04-05 17:38:30 jeroen Exp $
+ $Date: 2005-04-05 17:38:30 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -138,7 +138,7 @@ bool cfg_cmd_pop_tinc_config(int sock, char *args)
 }
 
 // TUNNEL
-// "tunnel <devicenumber> <ipv6_us> <ipv6_them> <ipv6_prefixlen> <ipv4_us> <ipv4_them|heartbeat|tinc|ayiya> <up|disabled|down> [<heartbeatpassword>]"
+// "tunnel <devicenumber> <ipv6_us> <ipv6_them> <ipv6_prefixlen> <ipv4_us> <ipv4_them|heartbeat|tinc|ayiya> <up|disabled|down> <mtu> [<heartbeatpassword>]"
 // Note: ipv4_us is ignored, should be the same everywhere
 bool cfg_cmd_tunnel(int sock, char *args)
 {
@@ -146,13 +146,13 @@ bool cfg_cmd_tunnel(int sock, char *args)
 	char			buf[1024];
 	struct in6_addr		ipv6_us, ipv6_them;
 	struct in_addr		ipv4_them;
-	int			id, prefixlen;
+	int			id, prefixlen, mtu;
 	enum iface_type		type = IFACE_UNSPEC;
 	enum iface_state	state = IFSTATE_DISABLED;
 	
-	if (fields != 7 && fields != 8)
+	if (fields != 8 && fields != 9)
 	{
-		sock_printf(sock, "-ERR tunnel requires 7 or 8 arguments, got %u : '%s'\n", fields, args);
+		sock_printf(sock, "-ERR tunnel requires 8 or 9 arguments, got %u : '%s'\n", fields, args);
 		return true;
 	}
 
@@ -219,11 +219,15 @@ bool cfg_cmd_tunnel(int sock, char *args)
 		cfg_log(LOG_WARNING, "Unknown interface state '%s'\n", buf);
 		return false;
 	}
-	
-	// Get the password (if it exists)
-	if (fields == 8 && !copyfield(args, 8, buf, sizeof(buf))) return false;
 
-	int_reconfig(id, &ipv6_us, &ipv6_them, prefixlen, ipv4_them, type, state, fields == 8 ? buf : NULL);
+	/* MTU size */
+	if (!copyfield(args, 8, buf, sizeof(buf))) return false;
+	mtu = atoi(buf);
+
+	// Get the password (if it exists)
+	if (fields == 9 && !copyfield(args, 9, buf, sizeof(buf))) return false;
+
+	int_reconfig(id, &ipv6_us, &ipv6_them, prefixlen, ipv4_them, type, state, mtu, fields == 9 ? buf : NULL);
 
 	sock_printf(sock, "+OK Tunnel %u accepted\n", id);
 	return true;
