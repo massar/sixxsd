@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: traffic.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: traffic.c,v 1.2 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd Traffic Handler
 **************************************/
@@ -33,7 +33,7 @@ void traffic_log(int level, char *fmt, ...)
 bool traffic_cmd_getstats(int sock, char *args)
 {
 	struct sixxs_interface	*iface;
-	unsigned int		i,quads;
+	unsigned int		i;
 
 	sock_printf(sock, "+OK Statistics coming up...\n");
 
@@ -88,7 +88,7 @@ struct {
 
 bool traffic_cmd_help(int sock, char *args)
 {
-	int i=0, len;
+	int i=0;
 
 	sock_printf(sock, "+OK Available commands\n");
 	for (i=0; traffic_cmds[i].cmd; i++)
@@ -124,7 +124,7 @@ bool traffic_handlecommand(int sock, char *cmd)
 void *traffic_thread_client(void *arg)
 {
 	int			listenfd = (int)arg;
-	int			sock, i, n, filled = 0;
+	int			sock, n, filled = 0;
 	char			clienthost[NI_MAXHOST];
 	char			clientservice[NI_MAXSERV];
 	struct sockaddr_storage	ci;
@@ -192,7 +192,6 @@ void *traffic_thread_client(void *arg)
 void *traffic_thread(void *arg)
 {
 	int			listenfd;
-	pthread_t		thread;
 	char			host[NI_MAXHOST];
 
 	// Show that we have started

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: ayiya.c,v 1.2 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -233,7 +233,6 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 	struct pseudo_ayh	*s = (struct pseudo_ayh *)header;
 	int			i;
 	unsigned int		j, payloadlen = 0;
-	time_t			time_tee;
 	struct sixxs_interface	*iface = NULL;
 	struct sixxs_prefix	*pfx = NULL;
 	struct sockaddr_in	*ci4 = (struct sockaddr_in *)ci;
@@ -394,8 +393,7 @@ bool ayiya_init(struct sixxs_interface *iface)
 
 void *ayiya_thread(void *arg)
 {
-	int			n, i;
-	char			*myhost;
+	int			n;
 	struct sockaddr_storage	ci;
 	socklen_t		cl;
 	char			buf[2048];

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: hb.c,v 1.2 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -61,7 +61,6 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	int			i;
 	bool			using_sender = 0;
 	time_t			time_tee, datetime;
-	struct tm		tm;
 	char			clienthost[NI_MAXHOST];
 
 	// Clear the buffer
@@ -228,7 +227,6 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 void *hb_thread(void *arg)
 {
 	int			listenfd, n, i;
-	char			*myhost;
 	struct sockaddr_storage	ci;
 	socklen_t		cl;
 	char			buf[2048];

@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: common.c,v 1.2 2005-01-31 17:06:27 jeroen Exp $
+ $Date: 2005-01-31 17:06:27 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -46,7 +46,7 @@ void sock_printf(int sock, char *fmt, ...)
 // used to read from the sock! The internal cache is rbuf.
 int sock_getline(int sock, char *rbuf, int rbuflen, int *filled, char *ubuf, int ubuflen)
 {
-	int		len, i;
+	int i;
 
 	// A closed socket? -> clear the buffer
 	if (sock == -1)

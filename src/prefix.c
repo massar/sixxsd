@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.2 2005-01-29 14:52:31 jeroen Exp $
- $Date: 2005-01-29 14:52:31 $
+ $Id: prefix.c,v 1.3 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd Prefix Management
 **************************************/
@@ -51,7 +51,7 @@ bool pfx_issubnet(struct in6_addr *b_pfx, unsigned int b_len, struct in6_addr *a
 struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 {
 	struct sixxs_prefix	*pfx;
-	unsigned int		i,quads;
+	unsigned int		i;
 
 	// Walk through all the prefixes
 	for (i = 0; i < g_conf->max_prefixes; i++)
@@ -71,7 +71,7 @@ struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 struct sixxs_prefix *pfx_new()
 {
 	struct sixxs_prefix	*pfx;
-	unsigned int		i,quads;
+	unsigned int		i;
 
 	// Walk through all the prefixes
 	for (i = 0; i < g_conf->max_prefixes; i++)

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: cfg.c,v 1.2 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -144,7 +144,6 @@ bool cfg_cmd_tunnel(int sock, char *args)
 {
 	unsigned int		fields = countfields(args);
 	char			buf[1024];
-	struct sixxs_interface	*iface;
 	struct in6_addr		ipv6_us, ipv6_them;
 	struct in_addr		ipv4_them;
 	int			id, prefixlen;
@@ -447,7 +446,7 @@ struct {
 
 bool cfg_cmd_help(int sock, char *args)
 {
-	int i=0, len;
+	int i=0;
 
 	sock_printf(sock, "+OK Available commands\n");
 	for (i=0; cfg_cmds[i].cmd; i++)
@@ -517,7 +516,7 @@ bool cfg_fromfile(char *filename)
 void *cfg_thread_client(void *arg)
 {
 	int			listenfd = (int)arg;
-	int			sock, i, n, filled = 0;
+	int			sock, n, filled = 0;
 	char			clienthost[NI_MAXHOST];
 	char			clientservice[NI_MAXSERV];
 	struct sockaddr_storage	ci;
@@ -585,7 +584,6 @@ void *cfg_thread_client(void *arg)
 void *cfg_thread(void *arg)
 {
 	int			listenfd;
-	pthread_t		thread;
 	char			host[NI_MAXHOST];
 
 	// Show that we have started

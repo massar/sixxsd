@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.3 2005-01-29 14:51:35 jeroen Exp $
- $Date: 2005-01-29 14:51:35 $
+ $Id: sixxsd.c,v 1.4 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd main code
 **************************************/
@@ -84,7 +84,7 @@ void sighup(int i)
 void dumpstats(FILE *f)
 {
 	time_t			time_tee;
-	unsigned int		uptime, uptime_s, uptime_m, uptime_h, uptime_d;
+	unsigned int		uptime_s, uptime_m, uptime_h, uptime_d;
 	char			buf[200];
 
 	// Get the current time
@@ -145,7 +145,6 @@ static struct option const long_options[] = {
 int parse_arguments(int argc, char *argv[])
 {
 	int			i, option_index = 0;
-	struct passwd		*passwd;
 
 	// Handle arguments
 	while ((i = getopt_long(argc, argv, "d", long_options, &option_index)) != EOF)

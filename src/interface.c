@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.2 2005-01-29 14:52:31 jeroen Exp $
- $Date: 2005-01-29 14:52:31 $
+ $Id: interface.c,v 1.3 2005-01-31 17:06:26 jeroen Exp $
+ $Date: 2005-01-31 17:06:26 $
 
  SixXSd Interface Management 
 **************************************/
@@ -57,9 +57,6 @@ bool int_beat(struct sixxs_interface *iface)
 
 struct sixxs_interface *int_get(unsigned int id)
 {
-	struct sixxs_interface	*iface;
-	unsigned int		i;
-	
 	if (id >= g_conf->max_interfaces)
 	{
 		dolog(LOG_WARNING, "int_get() - %u out of range (>=%u)\n", id, g_conf->max_interfaces);
