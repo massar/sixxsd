@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: os_linux.c,v 1.2 2005-01-31 17:03:52 jeroen Exp $
+ $Date: 2005-01-31 17:03:52 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -326,6 +326,49 @@ bool os_sync_interface_up(struct sixxs_interface *iface)
 	{
 		os_exec(
 			"ip tunnel change %s ttl 64",
+			iface->name);
+	}
+
+	if (	iface->type == IFACE_AYIYA)
+	{
+		/* 
+		 * TUN/TAP devices don't have any
+		 * link local addresses and we want multicast and MLD to work
+		 * thus we invent one based on the following:
+		 * ipv6_us = 2001:db8:1234:5678:abcd:1
+		 * ipv6_ll = fe80::1234:5678:abcd:0001
+		 *
+		 * The assumption we make is that AYIYA will be deployed inside
+		 * the same ISP who has a unique /32, the first 32 bits, which
+		 * is why we ignore those. The following 32bits, describing the
+		 * rest of the /64 where the tunnel is in, should thus be unique
+		 * at least inside that ISP.
+		 *
+		 * Thus we ignore the first 32bits, take the following 48 bits
+		 * and then add the last 16bits.
+		 *
+		 * As we are not 100% sure that this LL is unique we clear that bit.
+		 */
+		char ipv6_ll[100];
+		struct in6_addr ll;
+
+		ll.s6_addr16[0] = 0xfe80;
+		ll.s6_addr16[1] = 0x00;
+		ll.s6_addr16[2] = 0x00;
+		ll.s6_addr16[3] = 0x00;
+		ll.s6_addr16[4] = iface->ipv6_us.s6_addr16[2];
+		ll.s6_addr16[5] = iface->ipv6_us.s6_addr16[3];
+		ll.s6_addr16[6] = iface->ipv6_us.s6_addr16[4];
+		ll.s6_addr16[7] = iface->ipv6_us.s6_addr16[7];
+
+		/* Clear the LL Unique Bit */
+		ll.s6_addr16[4] &= 0xfffc;
+
+		inet_ntop(AF_INET6, &ll, ipv6_ll, sizeof(ipv6_ll));
+		os_exec(
+			"ip -6 addr add %s/%u dev %s",
+			ipv6_ll,
+			64,
 			iface->name);
 	}
 
