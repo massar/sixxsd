@@ -3,8 +3,8 @@
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.1 2004-08-30 19:33:45 jeroen Exp $
-# $Date: 2004-08-30 19:33:45 $
+# $Id: Makefile,v 1.2 2005-01-29 14:52:31 jeroen Exp $
+# $Date: 2005-01-29 14:52:31 $
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
@@ -25,7 +25,12 @@ SRCS	= sixxsd.c common/common.c common/md5.c common/sha1.c thread.c interface.c 
 INCS	= sixxsd.h common/common.h common/md5.h common/sha1.h
 OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o
 DEPS    = ../Makefile Makefile
-CFLAGS	= -W -Wall -Wno-unused -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
+ifeq ($(shell echo "${SIXXSD_OPTIONS}" | grep -c "DEBUG"),1)
+CFLAGS  = -g -W -Wall -Wno-unused-parameter -Wpacked -Wpadded #-pedantic
+else
+#CFLAGS	+= -O3 -W -Wall -Wcast-align -Wpacked -Wpadded -pedantic
+endif
+CFLAGS	+= -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
 LDFLAGS	= -lpthread
 CC      = gcc
 RM      = rm

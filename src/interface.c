@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: interface.c,v 1.2 2005-01-29 14:52:31 jeroen Exp $
+ $Date: 2005-01-29 14:52:31 $
 
  SixXSd Interface Management 
 **************************************/
@@ -104,26 +104,29 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		{
 			int_set_endpoint(iface, ipv4_them);
 		}
-		
-		if (strlen(password) > 20)
+
+		if (password)
 		{
-			dolog(LOG_WARNING, "Trying to set a too long password to interface %u\n", id);
-			return false;
-		}
+			if (strlen(password) > (sizeof(iface->hb_password)-2))
+			{
+				dolog(LOG_WARNING, "Trying to set a too long password to interface %u\n", id);
+				return false;
+			}
 
-		// Changed Password?
-		if (	password &&
-			strcmp(password, iface->hb_password) != 0)
-		{
-			SHA_CTX sha1;
+			// Changed Password?
+			if (	password &&
+				strcmp(password, iface->hb_password) != 0)
+			{
+				SHA_CTX sha1;
 
-			memset(iface->hb_password, 0, sizeof(iface->hb_password));
-			memcpy(iface->hb_password, password, strlen(password));
+				memset(iface->hb_password, 0, sizeof(iface->hb_password));
+				memcpy(iface->hb_password, password, strlen(password));
 
-			// Generate a SHA1 of the shared secret
-			SHA1_Init(&sha1);
-			SHA1_Update(&sha1, iface->hb_password, strlen(iface->hb_password));
-			SHA1_Final(iface->ayiya_hash, &sha1);
+				// Generate a SHA1 of the shared secret
+				SHA1_Init(&sha1);
+				SHA1_Update(&sha1, iface->hb_password, strlen(iface->hb_password));
+				SHA1_Final(iface->ayiya_hash, &sha1);
+			}
 		}
 	}
 	else
