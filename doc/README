@@ -1,0 +1,35 @@
+SixXSd
+~~~~~~
+
+SixXSd consists of the following parts:
+
+Protocol Handlers
+~~~~~~~~~~~~~~~~~
+AYIYA		Anything In Anything
+		AYIYA support ;)
+		(port 42666 [TBD])
+
+HB		Heartbeat Handler
+		Handles the Heartbeat protocol for realigning proto-41 tunnels
+		(port 3740)
+
+SixXS Interface (facing noc.sixxs.net)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Cfg		Configuration Handler
+		Handles all the reconfiguration commands
+		(port 42003)
+
+Traffic		Traffic Handler
+		Handles all the traffic commands
+		(port 42002)
+
+Latency		Latency Handler
+		(port 42001)
+
+Other
+~~~~~
+Kernel		Kernel Information Handler
+		- Reconfigures the kernel
+		- Gathers statistics
+		- Takes care that everything is in sync
+
