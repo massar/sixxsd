@@ -50,19 +50,19 @@ enum ayiya_opcode
 struct ayiyahdr
 {
 #if __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t	ayh_idlen:4;		// Identity Length
-	u_int8_t	ayh_idtype:4;		// Identity Type
-	u_int8_t	ayh_siglen:4;		// Signature Length
-	u_int8_t	ayh_hshmeth:4;		// Hashing Method
-	u_int8_t	ayh_autmeth:4;		// Authentication Method
-	u_int8_t	ayh_opcode:4;		// Operation Code
+	u_int32_t	ayh_idlen:4;		// Identity Length
+	u_int32_t	ayh_idtype:4;		// Identity Type
+	u_int32_t	ayh_siglen:4;		// Signature Length
+	u_int32_t	ayh_hshmeth:4;		// Hashing Method
+	u_int32_t	ayh_autmeth:4;		// Authentication Method
+	u_int32_t	ayh_opcode:4;		// Operation Code
 #elif __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t	ayh_idtype:4;		// Identity Type
-	u_int8_t	ayh_idlen:4;		// Identity Length
-	u_int8_t	ayh_hshmeth:4;		// Hashing Method
-	u_int8_t	ayh_siglen:4;		// Signature Length
-	u_int8_t	ayh_opcode:4;		// Operation Code
-	u_int8_t	ayh_autmeth:4;		// Authentication Method
+	u_int32_t	ayh_idtype:4;		// Identity Type
+	u_int32_t	ayh_idlen:4;		// Identity Length
+	u_int32_t	ayh_hshmeth:4;		// Hashing Method
+	u_int32_t	ayh_siglen:4;		// Signature Length
+	u_int32_t	ayh_opcode:4;		// Operation Code
+	u_int32_t	ayh_autmeth:4;		// Authentication Method
 #else
 #error unsupported endianness!
 #endif

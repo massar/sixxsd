@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.1 2004-08-30 19:33:45 jeroen Exp $
- $Date: 2004-08-30 19:33:45 $
+ $Id: sixxsd.c,v 1.2 2004-09-14 17:26:03 jeroen Exp $
+ $Date: 2004-09-14 17:26:03 $
 
  SixXSd main code
 **************************************/
@@ -56,8 +56,8 @@ bool init()
 #endif
 
 	// Defaults
-	g_conf->max_interfaces = 10;
-	g_conf->max_prefixes = 10;
+	g_conf->max_interfaces = 1000;
+	g_conf->max_prefixes = 1000;
 	g_conf->pop_tunneldevice = strdup("sixxs");
 
 	// Initialize our counters

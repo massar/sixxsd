@@ -24,7 +24,8 @@
  */
 
 #include "sha1.h"
-#include "malloc.h"
+#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
