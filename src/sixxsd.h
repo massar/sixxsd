@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.3 2005-01-31 17:05:10 jeroen Exp $
- $Date: 2005-01-31 17:05:10 $
+ $Id: sixxsd.h,v 1.4 2005-01-31 18:27:07 jeroen Exp $
+ $Date: 2005-01-31 18:27:07 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -127,7 +127,9 @@ struct sixxs_interface
 				ipv4_them;
 
 	struct in6_addr		ipv6_us,			// Primary IPv6 endpoints
-				ipv6_them;
+				ipv6_them,
+				ipv6_ll;			// Some tunneltypes don't have LL's
+								// Thus we generate them from the ipv6_us
 
 	bool			sync_seen;			// Was it seen in the last full sync?
 

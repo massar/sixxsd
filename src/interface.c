@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.3 2005-01-31 17:06:26 jeroen Exp $
- $Date: 2005-01-31 17:06:26 $
+ $Id: interface.c,v 1.4 2005-01-31 18:27:07 jeroen Exp $
+ $Date: 2005-01-31 18:27:07 $
 
  SixXSd Interface Management 
 **************************************/
@@ -136,6 +136,33 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		memcpy(&iface->ipv6_them,	ipv6_them,	sizeof(iface->ipv6_them));
 		memcpy(&iface->ipv6_us,		ipv6_us,	sizeof(iface->ipv6_us));
 
+		/*
+		 * TUN/TAP devices don't have any
+		 * link local addresses and we want multicast and MLD to work
+		 * thus we invent one based on the following:
+		 *
+		 * ipv6_us = 2001:0db8:1234:5678:    :    :    :0001
+		 * ipv6_ll = fe80:    :    :    :0db8:1234:5678:0001
+		 *
+		 * Thus we ignore the first 16bits, take the following 48 bits
+		 * and then add the last 16bits.
+		 *
+		 * As we are not 100% sure that this LL is unique we clear that bit.
+		*/
+
+		/* Link Local (fe80::/64) */
+		iface->ipv6_ll.s6_addr16[0] = htons(0xfe80);
+		iface->ipv6_ll.s6_addr16[1] = 0x00;
+		iface->ipv6_ll.s6_addr16[2] = 0x00;
+		iface->ipv6_ll.s6_addr16[3] = 0x00;
+
+		/* Clear the LL Unique Bit */
+		iface->ipv6_ll.s6_addr16[4] = htons(ntohs(iface->ipv6_us.s6_addr16[1]) & 0xfffc);
+		iface->ipv6_ll.s6_addr16[5] = iface->ipv6_us.s6_addr16[2];
+		iface->ipv6_ll.s6_addr16[6] = iface->ipv6_us.s6_addr16[3];
+		iface->ipv6_ll.s6_addr16[7] = iface->ipv6_us.s6_addr16[7];
+
+		/* Configure a password ? */
 		if (password)
 		{
 			SHA_CTX sha1;
