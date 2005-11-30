@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.3 2005-04-05 17:38:30 jeroen Exp $
- $Date: 2005-04-05 17:38:30 $
+ $Id: cfg.c,v 1.4 2005-11-30 16:19:02 jeroen Exp $
+ $Date: 2005-11-30 16:19:02 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -234,7 +234,7 @@ bool cfg_cmd_tunnel(int sock, char *args)
 }
 
 // ROUTE
-// "route <prefix>/<prefixlen> <nexthop> <up|disabled|down>"
+// "route <prefix>/<prefixlen> <nexthop> <up|disabled|down> <static|bgp>"
 bool cfg_cmd_route(int sock, char *args)
 {
 	char			buf[1024];
@@ -243,13 +243,15 @@ bool cfg_cmd_route(int sock, char *args)
 	struct in6_addr		prefix, nexthop;
 	struct sixxs_prefix	*pfx;
 
-	if (fields != 3)
+	if (fields != 4)
 	{
-		sock_printf(sock, "-ERR route requires 3 arguments, got %u : '%s'\n", fields, args);
+		sock_printf(sock, "-ERR route requires 4 arguments, got %u : '%s'\n", fields, args);
 		return true;
 	}
 
-	if (!copyfield(args, 3, buf, sizeof(buf))) return false;
+	/* XXX - Parse Route Type */
+
+	if (!copyfield(args, 4, buf, sizeof(buf))) return false;
 	if (strcmp(buf, "up") == 0) enabled = true;
 	else if (strcmp(buf, "down") == 0) enabled = false;
 	else
