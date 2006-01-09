@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.4 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: prefix.c,v 1.5 2006-01-09 22:43:45 jeroen Exp $
+ $Date: 2006-01-09 22:43:45 $
 
  SixXSd Prefix Management
 **************************************/
@@ -113,7 +113,7 @@ struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 
 void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, struct sixxs_interface *iface)
 {
-	struct sixxs_prefix	*pfx;
+	struct sixxs_prefix	*pfx, *p;
 
 	OS_Mutex_Lock(&g_conf->mutex, "pfx_reconfig");
 	pfx = pfx_getA(prefix, length, true);
@@ -136,11 +136,23 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	pfx->enabled = enabled;
 	pfx->ignore = ignore;
 
-	/* Link the prefix into the interface list */
-	if (!iface->prefixes) pfx->next = NULL;
-	else pfx->next = iface->prefixes;
-	iface->prefixes = pfx;
+	if (iface->prefixes)
+	{
+		for (p = iface->prefixes; p; p = p->next)
+		{
+			if (p == pfx) break;
+		}
+	}
+	else p = NULL;
 
+	if (p != pfx)
+	{
+		/* Link the prefix into the interface list */
+		if (!iface->prefixes) pfx->next = NULL;
+		else pfx->next = iface->prefixes;
+		iface->prefixes = pfx;
+	}
+	
 	OS_Mutex_Release(&pfx->mutex, "pfx_reconfig");
 }
 
