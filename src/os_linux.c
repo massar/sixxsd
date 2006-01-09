@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.5 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: os_linux.c,v 1.6 2006-01-09 22:44:52 jeroen Exp $
+ $Date: 2006-01-09 22:44:52 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -902,7 +902,7 @@ void netlink_update_route(struct nlmsghdr *h)
 int os_netlink_parse_info(struct nlsock *nl);
 int os_netlink_parse_info(struct nlsock *nl)
 {
-	char			buf[4096];
+	char			buf[8192];
 	int			status;
 	unsigned int		status2;
 	int			ret = 0;
@@ -916,6 +916,7 @@ int os_netlink_parse_info(struct nlsock *nl)
 	{
 		iov.iov_base		= buf;
 		iov.iov_len		= sizeof(buf);
+		memset(buf, 0, sizeof(buf));
 
 		msg.msg_name		= &snl;
 		msg.msg_namelen		= sizeof(snl);
@@ -956,7 +957,7 @@ int os_netlink_parse_info(struct nlsock *nl)
 
 		status2 = status;
 
-		for (h = (struct nlmsghdr *)buf; NLMSG_OK(h, status2); h = NLMSG_NEXT(h, status2))
+		for (h = (struct nlmsghdr *)buf; !done && NLMSG_OK(h, status2); h = NLMSG_NEXT(h, status2))
 		{
 			/* Finish of reading. */
 			if (h->nlmsg_type == NLMSG_DONE)
