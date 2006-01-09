@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.3 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: common.c,v 1.4 2006-01-09 22:43:09 jeroen Exp $
+ $Date: 2006-01-09 22:43:09 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -720,7 +720,7 @@ int sock_getline(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *fi
 		DD(ddolog("common", "gl() - Trying to receive...\n");)
 
 		/* Fill the rest of the buffer */
-		i = recv(sock, &rbuf[*filled], rbuflen-*filled-10, 0);
+		i = recv(sock, &rbuf[*filled], rbuflen-*filled-128, 0);
 
 		DD(ddolog("common", "gl() - Received %d, errno: %s (%d)\n", i, strerror(errno), errno);)
 
@@ -744,7 +744,7 @@ int sock_getline(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *fi
 		*filled+=i;
 
 		/* Buffer overflow? */
-		if (*filled >= (rbuflen-10))
+		if (*filled >= (rbuflen-64))
 		{
 			dolog(LOG_ERR, "common", "Buffer almost flowed over without receiving a newline (filled=%u, rbuflen=%u)\n", *filled, rbuflen);
 			return -1;
