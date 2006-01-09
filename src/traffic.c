@@ -1,46 +1,53 @@
 /**************************************
- SixXSd - SixXS POP Daemon
+ SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: traffic.c,v 1.2 2005-01-31 17:06:26 jeroen Exp $
- $Date: 2005-01-31 17:06:26 $
+ $Id: traffic.c,v 1.3 2006-01-09 19:16:24 jeroen Exp $
+ $Date: 2006-01-09 19:16:24 $
 
  SixXSd Traffic Handler
 **************************************/
 
 #include "sixxsd.h"
 
+const char module_traffic[] = "traffic";
+#define module module_traffic
+
 #define TRAFFIC_PORT "42002"
 
-void traffic_log(int level, char *fmt, ...)
+void traffic_log(int level, const char *fmt, ...);
+void traffic_log(int level, const char *fmt, ...)
 {
-	char buf[1024];
+	char	buf[1024];
+	va_list	ap;
 	
-	// Print the host+port this is coming from
-	snprintf(buf, sizeof(buf), "[Traffic:0x%x] : ", (unsigned int)pthread_self());
+	/* Print the host+port this is coming from */
+	snprintf(buf, sizeof(buf), "(0x%x) : ", (unsigned int)OS_GetThisThreadId());
 
-	// Print the log message behind it
-	va_list ap;
+	/* Print the log message behind it */
 	va_start(ap, fmt);
 	vsnprintf(buf+strlen(buf), sizeof(buf)-strlen(buf), fmt, ap);
 	va_end(ap);
 	
-	// Actually Log it
-	dolog(level, buf);
+	/* Actually Log it */
+	mdolog(level, buf);
 }
 
-bool traffic_cmd_getstats(int sock, char *args)
+bool traffic_cmd_getstats(int sock, const char UNUSED *args);
+bool traffic_cmd_getstats(int sock, const char UNUSED *args)
 {
 	struct sixxs_interface	*iface;
 	unsigned int		i;
 
 	sock_printf(sock, "+OK Statistics coming up...\n");
 
-	// Walk through all the interfaces
+	/* Walk through all the interfaces */
 	for (i = 0; i < g_conf->max_interfaces; i++)
 	{
-		iface = g_conf->interfaces + (sizeof(struct sixxs_interface)*i);
+		iface = g_conf->interfaces + i;
+		if (iface->type == IFACE_UNSPEC) continue;
+
 		sock_printf(sock, "%s %lld %lld %lld %lld\n",
 			iface->name,
 			iface->inoct, iface->outoct,
@@ -51,42 +58,44 @@ bool traffic_cmd_getstats(int sock, char *args)
 	return true;
 }
 
-// MISC
-bool traffic_cmd_help(int sock, char *args);
-// Defined after traffic_cmds
+/* MISC */
+bool traffic_cmd_help(int sock, const char UNUSED *args);
+/* Defined after traffic_cmds */
 
-bool traffic_cmd_reply(int sock, char *args)
+bool traffic_cmd_reply(int sock, const char *args);
+bool traffic_cmd_reply(int sock, const char *args)
 {
 	sock_printf(sock, "+OK You mentioned: %s\n", args);
 	return true;
 }
 
-bool traffic_cmd_quit(int sock, char *args)
+bool traffic_cmd_quit(int sock, const char UNUSED *args);
+bool traffic_cmd_quit(int sock, const char UNUSED *args)
 {
 	sock_printf(sock, "+OK Thank you for using this SixXS Service\n");
 	return false;
 }
 
-// Commands as seen above
+/* Commands as seen above */
 struct {
-	char *cmd;
-	bool (*func)(int sock, char *args);
+	const char *cmd;
+	bool (*func)(int sock, const char *args);
 } traffic_cmds[] = 
 {
-	// Tunnel & Route
+	/* Tunnel & Route */
 	{"getstats",		traffic_cmd_getstats},
 	
-	// Ignored commands
+	/* Ignored commands */
 	{"",			NULL},
 
-	// Misc commands
+	/* Misc commands */
 	{"reply",		traffic_cmd_reply},
 	{"help",		traffic_cmd_help},
 	{"quit",		traffic_cmd_quit},
 	{NULL,			NULL},
 };
 
-bool traffic_cmd_help(int sock, char *args)
+bool traffic_cmd_help(int sock, const char UNUSED *args)
 {
 	int i=0;
 
@@ -100,7 +109,8 @@ bool traffic_cmd_help(int sock, char *args)
 	return true;
 }
 
-bool traffic_handlecommand(int sock, char *cmd)
+bool traffic_handlecommand(int sock, const char *cmd);
+bool traffic_handlecommand(int sock, const char *cmd)
 {
 	int i=0, len;
 
@@ -121,10 +131,12 @@ bool traffic_handlecommand(int sock, char *cmd)
 	return true;
 }
 
+void *traffic_thread_client(void *arg);
 void *traffic_thread_client(void *arg)
 {
 	int			listenfd = (int)arg;
-	int			sock, n, filled = 0;
+	int			sock, n;
+	unsigned int		filled = 0;
 	char			clienthost[NI_MAXHOST];
 	char			clientservice[NI_MAXSERV];
 	struct sockaddr_storage	ci;
@@ -136,7 +148,7 @@ void *traffic_thread_client(void *arg)
 	memset(&ci, 0, sizeof(ci));
 	cl = sizeof(ci);
 
-	// Try to accept a client
+	/* Try to accept a client */
 	D(traffic_log(LOG_DEBUG, "Accepting new clients...\n");)
 	sock = accept(listenfd, (struct sockaddr *)&ci, &cl);
 	
@@ -148,12 +160,12 @@ void *traffic_thread_client(void *arg)
 
 	D(traffic_log(LOG_DEBUG, "Accept success (%d) : %s\n", errno, strerror(errno));)
 
-	// Create a new thread for which is going to handle accepts
-	// Recursive thread creation for accepts ;)
-	thread_add("Cfg", traffic_thread_client, (void *)listenfd);
+	/* Create a new thread for which is going to handle accepts */
+	/* Recursive thread creation for accepts ;) */
+	thread_add("Traffic", traffic_thread_client, (void *)listenfd, true);
 
-	// We have accepted a client
-	// Check if it is actually allowed to access us
+	/* We have accepted a client */
+	/* Check if it is actually allowed to access us */
 
 	memset(clienthost, 0, sizeof(clienthost));
 	memset(clientservice, 0, sizeof(clientservice));
@@ -165,7 +177,7 @@ void *traffic_thread_client(void *arg)
 	if (n != 0)
 	{
 		sock_printf(sock, "-ERR I couldn't find out who you are.. go away!\n");
-		// Error on resolve
+		/* Error on resolve */
 		traffic_log(LOG_ERR, "Error %d : %s (family: %d)\n", n, gai_strerror(n), ci.ss_family);
 		close(sock);
 		return NULL;
@@ -176,7 +188,7 @@ void *traffic_thread_client(void *arg)
 	sock_printf(sock, "+OK SixXSd Traffic Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
 
 	while (	!quit &&
-		sock_getline(sock, rbuf, sizeof(rbuf), &filled, buf, sizeof(buf)) > 0)
+		sock_getline(sock, rbuf, (unsigned int)sizeof(rbuf), &filled, buf, (unsigned int)sizeof(buf)) > 0)
 	{
 		traffic_log(LOG_INFO, "Client sent '%s'\n", buf);
 		quit = !traffic_handlecommand(sock, buf);
@@ -184,27 +196,28 @@ void *traffic_thread_client(void *arg)
 	
 	D(traffic_log(LOG_DEBUG, "Client Finished %s:%s\n", clienthost, clientservice);)
 
-	// End this conversation
+	/* End this conversation */
 	close(sock);
 	return NULL;
 }
 
-void *traffic_thread(void *arg)
+void *traffic_thread(void UNUSED *arg);
+void *traffic_thread(void UNUSED *arg)
 {
 	int			listenfd;
 	char			host[NI_MAXHOST];
 
-	// Show that we have started
+	/* Show that we have started */
 	traffic_log(LOG_INFO, "SixXS Traffic Handler\n");
 
 	if (!inet_ntop(AF_INET, &g_conf->pop_ipv4, host, sizeof(host)))
 	{
-		traffic_log(LOG_ERR, "[Traffic] Error, pop_ipv4 not set to a valid IPv4 address\n");
+		traffic_log(LOG_ERR, "Error, pop_ipv4 not set to a valid IPv4 address\n");
 		return NULL;
 	}
 
 	/* Setup listening socket */
-	listenfd = listen_server("Cfg", host, TRAFFIC_PORT, AF_INET, SOCK_STREAM);
+	listenfd = listen_server("traffic", host, TRAFFIC_PORT, AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0);
 	if (listenfd < 0)
 	{
 		traffic_log(LOG_ERR, "listen_server error:: could not create listening socket\n");
@@ -214,3 +227,10 @@ void *traffic_thread(void *arg)
 	traffic_thread_client((void *)listenfd);
 	return NULL;
 }
+
+void traffic_init(void)
+{
+	/* Create a thread for the Statistics Handler */
+	thread_add("Traffic", traffic_thread, NULL, true);
+}
+

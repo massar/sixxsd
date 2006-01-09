@@ -1,15 +1,18 @@
 /**************************************
- SixXSd - SixXS POP Daemon
+ SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.3 2005-01-31 17:06:26 jeroen Exp $
- $Date: 2005-01-31 17:06:26 $
+ $Id: prefix.c,v 1.4 2006-01-09 19:16:24 jeroen Exp $
+ $Date: 2006-01-09 19:16:24 $
 
  SixXSd Prefix Management
 **************************************/
 
 #include "sixxsd.h"
+
+const char module_prefix[] = "prefix";
+#define module module_prefix
 
 /********************************************************************
  Prefixes are known as 'routes' in most systems.
@@ -20,26 +23,43 @@
 /* Maskbit. */
 static u_char maskbit[] = {0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xff};
 
-// Is a_pfx a part/subnet of b_pfx?
-bool pfx_issubnet(struct in6_addr *b_pfx, unsigned int b_len, struct in6_addr *a_pfx, unsigned int a_len)
+/* Is a_pfx a part/subnet of b_pfx? */
+bool pfx_issubnet(struct in6_addr *a_pfx, unsigned int a_len, struct in6_addr *b_pfx, unsigned int b_len)
 {
 	int offset, shift;
 
 	/* Set both prefix's head pointer. */
 	u_char *np = (u_char *)a_pfx;
 	u_char *pp = (u_char *)b_pfx;
-	
-	// When the prefixlength of A is bigger as B's then it won't fit
-	if (a_len > b_len) return false;
 
-	offset = a_len / 8;
-	shift =  a_len % 8;
+	/*
+	 * When the prefixlength of A is bigger as B's then it won't fit
+	 *  a   b
+	 * 128  48 -> fits             >
+	 *  48  48 -> fits             =
+	 *   0  48 -> doesn't fit      <
+	 */
+	if (a_len < b_len) return false;
 
+	/* 
+	 * Only check the bits that matter
+	 *  a   b
+	 * 128 128 -> everything
+	 * 128  48 -> only the first 48 bits
+	 *  48  48 -> only the first 48 bits
+	 *
+	 * Depends on b_len
+	 */
+	offset = b_len / 8;
+	shift =  b_len % 8;
+
+	/* Check the last few none-8-bit-aligned bits first (easy and fast to check) */
 	if (shift && (maskbit[shift] & (np[offset] ^ pp[offset])))
 	{
 		return false;
 	}
 
+	/* Check the rest */
 	while (offset--)
 	{
 		if (np[offset] != pp[offset]) return false;
@@ -48,64 +68,79 @@ bool pfx_issubnet(struct in6_addr *b_pfx, unsigned int b_len, struct in6_addr *a
 	return true;
 }
 
-struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
+struct sixxs_prefix *pfx_getA(struct in6_addr *ipv6_them, unsigned int prefixlen, bool empty);
+struct sixxs_prefix *pfx_getA(struct in6_addr *ipv6_them, unsigned int prefixlen, bool empty)
 {
 	struct sixxs_prefix	*pfx;
 	unsigned int		i;
 
-	// Walk through all the prefixes
+	/* Walk through all the prefixes */
 	for (i = 0; i < g_conf->max_prefixes; i++)
 	{
 		pfx = g_conf->prefixes + i;
-		//dolog(LOG_DEBUG, "pfx_get() %u -> %p\n", i, pfx);
-		if (!pfx->valid) continue;
+		/* mddolog("pfx_get() %u -> %p\n", i, pfx); */
+		if (!pfx->valid)
+		{
+			if (empty)
+			{
+				memset(pfx, 0, sizeof(*pfx));
+				OS_Mutex_Init(&pfx->mutex);
+				OS_Mutex_Lock(&pfx->mutex, "pfx_getA(1)");
+				return pfx;
+			}
+			continue;
+		}
 
 		if (pfx_issubnet(ipv6_them, prefixlen, &pfx->prefix, pfx->length))
 		{
+			OS_Mutex_Lock(&pfx->mutex, "pfx_getA(2)");
 			return pfx;
 		}
 	}
+
 	return NULL;
 }
 
-struct sixxs_prefix *pfx_new()
+struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 {
-	struct sixxs_prefix	*pfx;
-	unsigned int		i;
+	struct sixxs_prefix *pfx;
 
-	// Walk through all the prefixes
-	for (i = 0; i < g_conf->max_prefixes; i++)
-	{
-		pfx = g_conf->prefixes + i;
-		if (!pfx->valid)
-		{
-			memset(pfx, 0, sizeof(*pfx));
-			return pfx;
-		}
-	}
-	return NULL;
+	OS_Mutex_Lock(&g_conf->mutex, "pfx_get()");
+	pfx = pfx_getA(ipv6_them, prefixlen, false);
+	OS_Mutex_Release(&g_conf->mutex, "pfx_get()");
+	return pfx;
 }
 
-void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool is_tunnel, unsigned int interface_id)
+void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, struct sixxs_interface *iface)
 {
 	struct sixxs_prefix	*pfx;
 
-	pfx = pfx_get(prefix, length);
-	if (!pfx) pfx = pfx_new();
+	OS_Mutex_Lock(&g_conf->mutex, "pfx_reconfig");
+	pfx = pfx_getA(prefix, length, true);
+	OS_Mutex_Release(&g_conf->mutex, "pfx_reconfig");
 
 	if (!pfx)
 	{
-		dolog(LOG_ERR, "pfx_reconfig() - Could not get a new prefix\n");
+		mdolog(LOG_ERR, "pfx_reconfig() - Could not get a new prefix\n");
 		return;
 	}
 
-	// Mark the prefix as valid/inuse
+	/* Mark the prefix as valid/inuse */
 	pfx->valid = true;
 
 	memcpy(&pfx->prefix, prefix, sizeof(pfx->prefix));
 	pfx->length = length;
 	if (nexthop) memcpy(&pfx->nexthop, nexthop, sizeof(pfx->nexthop));
 	pfx->is_tunnel = is_tunnel;
-	pfx->interface_id = interface_id;
+	pfx->interface_id = iface->interface_id;
 	pfx->enabled = enabled;
+	pfx->ignore = ignore;
+
+	/* Link the prefix into the interface list */
+	if (!iface->prefixes) pfx->next = NULL;
+	else pfx->next = iface->prefixes;
+	iface->prefixes = pfx;
+
+	OS_Mutex_Release(&pfx->mutex, "pfx_reconfig");
 }
+

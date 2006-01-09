@@ -1,10 +1,10 @@
 # /******************************************
-#  SixXSd - The SixXS POP Daemon
+#  SixXSd - The SixXS PoP Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
 # *******************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.2 2005-01-31 17:05:36 jeroen Exp $
-# $Date: 2005-01-31 17:05:36 $
+# $Id: Makefile,v 1.3 2006-01-09 19:16:17 jeroen Exp $
+# $Date: 2006-01-09 19:16:17 $
 # ******************************************/
 #
 # Toplevel Makefile allowing easy distribution.
@@ -13,25 +13,46 @@
 #
 
 # Make these variables generic
-PROJECT_NAME=sixxsd
-PROJECT_DESC="SixXS POP Daemon"
-PROJECT_VERSION=2005.01.31-cvs
+PROJECT:=sixxsd
+PROJECT_DESC:="SixXS PoP Daemon"
+PROJECT_VERSION:=2006.01.09-cvs
+PROJECT_COPYRIGHT:="(C) Copyright SixXS. 2001-2006 All Rights Reserved"
 
 # Compile Time Options
 # Append one of the following option on wish to
 # include certain features
 #
-# Optimize		: -O3
 # Enable Debugging	: -DDEBUG
-#
-# Linux			: -DARCH_LINUX
-# FreeBSD		: -DARCH_FREEBSD
+# Lock Debugging        : -DDEBUG_LOCKS
 #
 # Make these variables generic
-PROJECT_OPTIONS=-DDEBUG -DARCH_LINUX
+PROJECT_OPTIONS=-DDEBUG
+
+#PROJECT_OPTIONS+=-DDEBUG_LOCKS
+
+######################################################################
+# No settings below here
+######################################################################
+
+# Tag it with debug when it is run with debug set
+ifeq ($(shell echo $(PROJECT_OPTIONS) | grep -c "DEBUG"),1)
+PROJECT_VERSION:=$(PROJECT_VERSION)-debug
+endif
+
+# Get the hostname this is compiled on
+HOSTNAME:=$(shell hostname -f 2>/dev/null)
+ifeq ($(HOSTNAME),)
+HOSTNAME:=$(shell hostname)
+endif
+
+# Pass the buildinfo so we can show that in the executable
+PROJECT_OPTIONS+=-D'BUILDINFO="$(PROJECT) version $(PROJECT_VERSION) ($(shell whoami)@$(HOSTNAME) ($(shell $(CC) -v 2>&1 | grep version)) \#1 $(shell date)"'
+
+# Do not print "Entering directory ..."
+MAKEFLAGS += --no-print-directory
 
 # Export the variables for lower levels
-export PROJECT_NAME
+export PROJECT
 export PROJECT_DESC
 export PROJECT_VERSION
 export PROJECT_OPTIONS
@@ -54,7 +75,7 @@ all:	Makefile ${srcdir}
 	$(MAKE) -C src all
 
 help:
-	@echo "${PROJECT_NAME} - ${PROJECT_DESC}"
+	@echo "${PROJECT} - ${PROJECT_DESC}"
 	@echo
 	@echo "Makefile targets:"
 	@echo "all      : Build everything"
@@ -73,7 +94,7 @@ help:
 
 install: all
 	mkdir -p ${DESTDIR}${sbindir}
-	cp bin/${PROJECT_NAME} ${DESTDIR}${sbindir}
+	cp bin/${PROJECT} ${DESTDIR}${sbindir}
 
 # Clean all the output files etc
 distclean: clean
@@ -86,13 +107,13 @@ dist:	tar bz2 deb debsrc rpm rpmsrc
 
 # tar.gz
 tar:	clean
-	-${RM} ../${PROJECT_NAME}_${PROJECT_VERSION}.tar.gz
-	tar -zclof ../${PROJECT_NAME}_${PROJECT_VERSION}.tar.gz *
+	-${RM} ../${PROJECT}_${PROJECT_VERSION}.tar.gz
+	tar -zclof ../${PROJECT}_${PROJECT_VERSION}.tar.gz *
 
 # tar.bz2
 bz2:	clean
-	-${RM} ../${PROJECT_NAME}_${PROJECT_VERSION}.tar.bz2
-	tar -jclof ../${PROJECT_NAME}_${PROJECT_VERSION}.tar.bz2 *
+	-${RM} ../${PROJECT}_${PROJECT_VERSION}.tar.bz2
+	tar -jclof ../${PROJECT}_${PROJECT_VERSION}.tar.bz2 *
 
 # .deb
 deb:	clean
@@ -110,7 +131,7 @@ debsrc: clean
 
 # Cleanup after debian
 debclean:
-	-rm -rf build-stamp configure-stamp debian/changelog debian/${PROJECT_NAME}/ debian/${PROJECT_NAME}.postinst.debhelper debian/${PROJECT_NAME}.postrm.debhelper debian/${PROJECT_NAME}.prerm.debhelper debian/${PROJECT_NAME}.substvars debian/files
+	-rm -rf build-stamp configure-stamp debian/changelog debian/${PROJECT}/ debian/${PROJECT}.postinst.debhelper debian/${PROJECT}.postrm.debhelper debian/${PROJECT}.prerm.debhelper debian/${PROJECT}.substvars debian/files
 
 # RPM
 rpm:	clean

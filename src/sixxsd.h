@@ -1,10 +1,10 @@
 /**************************************
- SixXSd - SixXS POP Daemon
+ SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.5 2005-04-05 17:38:30 jeroen Exp $
- $Date: 2005-04-05 17:38:30 $
+ $Id: sixxsd.h,v 1.6 2006-01-09 19:16:24 jeroen Exp $
+ $Date: 2006-01-09 19:16:24 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -15,7 +15,7 @@
 #define _XOPEN_SOURCE 600
 #define __FAVOR_BSD 42
 
-// MD5 routines require the correct types
+/* MD5 routines require the correct types */
 #define __USE_BSD 1
 
 #include <sys/types.h>
@@ -51,9 +51,16 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 #include <sys/ioctl.h>
+#include <sys/un.h>
 #include <linux/if_tun.h>
 
-// Determine Endianness
+#include "ayiya.h"
+
+#ifndef UNUSED
+#define UNUSED __attribute__ ((__unused__))
+#endif
+
+/* Determine Endianness */
 #if BYTE_ORDER == LITTLE_ENDIAN
 	/* 1234 machines */
 #elif BYTE_ORDER == BIG_ENDIAN
@@ -69,14 +76,74 @@
 #include "common/md5.h"
 #include "common/sha1.h"
 
-// Booleans
+/* Booleans */
 #define false	0
 #define true	(!false)
-#define bool	int
+#define bool	char
+
+/* OS Thread & Mutex Abstraction */
+#ifndef _WIN32
+
+#define SOCKET			int
+#define closesocket(s)		close(s)
+
+typedef pthread_t		os_thread;
+typedef pthread_t		os_thread_id;
+typedef pthread_mutex_t		os_mutexA;
+#define OS_GetThisThread	pthread_self
+#define OS_GetThisThreadId	pthread_self
+#define OS_Thread_Equal(a,b)	pthread_equal(a,b)
+#define OS_Mutex_InitA(m)	pthread_mutex_init(m, NULL);
+#define OS_Mutex_LockA(m)	pthread_mutex_lock(m)
+#define OS_Mutex_ReleaseA(m)	pthread_mutex_unlock(m)
+#define OS_Mutex_DestroyA(m)	pthread_mutex_destroy(m)
+
+#else /* !_WIN32 */
+
+#define snprintf		_snprintf
+#define vsnprintf		_vsnprintf
+#define strcasecmp		_stricmp
+#define strncasecmp		_strnicmp
+#define gmtime_r(start,teem)	memcpy(teem, gmtime(start), sizeof(struct tm))
+#define gettimeofday(tv,b)	memset(tv, 0, sizeof(*tv)); (tv)->tv_sec = time(NULL);
+
+/* OS Thread & Mutex Abstraction */
+typedef HANDLE			os_thread;
+typedef DWORD			os_thread_id;
+typedef HANDLE			os_mutexA;
+#define OS_GetThisThread	GetCurrentThread
+#define OS_GetThisThreadId	GetCurrentThreadId
+#define OS_Thread_Equal(a,b)	(a == b)
+typedef HANDLE			os_mutex;
+#define OS_Mutex_InitA(m)	*m = CreateMutex(NULL, false, NULL)
+#define OS_Mutex_LockA(m)	WaitForSingleObject(m, INFINITE);
+#define OS_Mutex_ReleaseA(m)	ReleaseMutex(m)
+#define OS_Mutex_DestroyA(m)	CloseHandle(m)
+
+#endif /* !_WIN32 */
+
+#ifdef DEBUG_LOCKS
+struct os_mutex
+{
+	const char	*who;
+	os_mutexA	mutex;
+};
+typedef	struct os_mutex		os_mutex;
+#define OS_Mutex_Init(m)	{ printf("Mutex(%p) - Init\n", (void *)&(m)->mutex); (m)->who = NULL; OS_Mutex_InitA(&(m)->mutex); }
+#define OS_Mutex_Lock(m,n)	{ printf("Mutex(%p, %s) - Get (p=%s)\n", (void *)&(m)->mutex, n, (m)->who ? (m)->who : "nobody"); OS_Mutex_LockA(&(m)->mutex); printf("Mutex(%p, %s) - Ack\n", (void *)&(m)->mutex, n); (m)->who = n; }
+#define OS_Mutex_Release(m,n)	{ printf("Mutex(%p, %s) - Release\n", (void *)&(m)->mutex, n); (m)->who = NULL; OS_Mutex_ReleaseA(&(m)->mutex); }
+#define OS_Mutex_Destroy(m)	{ printf("Mutex(%p) - Destroy\n", (void *)&(m)->mutex); (m)->who = NULL; OS_Mutex_DestroyA(&(m)->mutex); }
+#else
+#define os_mutex		os_mutexA
+#define OS_Mutex_Init(m)	OS_Mutex_InitA(m)
+#define OS_Mutex_Lock(m,n)	OS_Mutex_LockA(m)
+#define OS_Mutex_Release(m,n)	OS_Mutex_ReleaseA(m)
+#define OS_Mutex_Destroy(m)	OS_Mutex_Destroy(m)
+#endif
 
 #include "common/common.h"
 
-// Some changable settings
+/* Some changable settings */
 #define PIDFILE "/var/run/sixxsd.pid"
 
 #ifndef DEBUG
@@ -84,9 +151,6 @@
 #else
 #define SIXXSD_DUMPFILE "/tmp/sixxsd.dump"
 #endif
-
-// Change this to allow multiple global IPv6 addresses
-#define SIXXSD_NUM_ADDRESSES 1
 
 #ifdef DEBUG
 #define D(x) x
@@ -97,198 +161,223 @@
 #define MAXLEN 128
 
 enum iface_type {
-	IFACE_UNSPEC = 0,					// Not in use / invalid
-	IFACE_IGNORE,						// Ignore this interface for syncs
-	IFACE_PROTO41,						// Protocol-41 (SIT/6in4)
-	IFACE_PROTO41_HB,					// Normal proto-41 but with heartbeats
-	IFACE_TINC,						// tinc tunnel
-	IFACE_AYIYA,						// Anything In Anything
+	IFACE_UNSPEC = 0,					/* Not in use / invalid */
+	IFACE_IGNORE,						/* Ignore this interface for syncs */
+	IFACE_PROTO41,						/* Protocol-41 (SIT/6in4) */
+	IFACE_PROTO41_HB,					/* Normal proto-41 but with heartbeats */
+	IFACE_TINC,						/* tinc tunnel */
+	IFACE_AYIYA						/* Anything In Anything */
 };
 
 enum iface_state {
-	IFSTATE_DISABLED = 0,					// Interface is disabled
-	IFSTATE_UP,						// Interface is up
-	IFSTATE_DOWN,						// Interface is down (either admin or user)
+	IFSTATE_DISABLED = 0,					/* Interface is disabled */
+	IFSTATE_UP,						/* Interface is up */
+	IFSTATE_DOWN						/* Interface is down (either admin or user) */
 };
 
-#define CLOCK_OFF	120	// The maximum time in seconds that the
-				// client clock is allowed to be off, thus use ntp synced clocks :)
-
-struct sixxs_interface
-{
-	unsigned int		interface_id;			// Interface ID
-
-	enum iface_type		type;				// Type of this interface (IFACE_*)
-	enum iface_state	state;				// State of this interface (IFSTATE_*)
-
-	char			name[MAXLEN];			// Interface Name
-
-	struct in_addr		ipv4_us,			// IPv4 tunnel endpoints
-				ipv4_them;
-
-	struct in6_addr		ipv6_us,			// Primary IPv6 endpoints
-				ipv6_them,
-				ipv6_ll;			// Some tunneltypes don't have LL's
-								// Thus we generate them from the ipv6_us
-
-	bool			sync_seen;			// Was it seen in the last full sync?
-
-	unsigned int		mtu;				// Maximum Transmission Unit
-
-	// Heartbeat specific
-	// (IFACE_PROTO41_HB + IFACE_AYIYA)
-	time_t			hb_lastbeat;			// Last heartbeat we got
-	char			hb_password[52];		// Heartbeat password
-
-	// AYIYA specific
-	// (IFACE_AYIYA)
-	unsigned int		ayiya_port;			// Port on the side of the client
-	unsigned int		ayiya_protocol;			// Protocol that is in use (PROTO_(UDP|TCP|...)
-	int			ayiya_fd;			// File descriptor for the tun/tap device
-	unsigned char		ayiya_hash[SHA1_DIGEST_LENGTH];	// SHA1 Hash of the shared secret.
-
-	// Statistics
-	uint64_t		inoct,				// Input Octets
-				outoct,				// Output Octets
-				inpkt,				// Input Packets
-				outpkt;				// Output Packets
-};
+/*
+ * The maximum time in seconds that the
+ * client clock is allowed to be off,
+ * thus use ntp synced clocks :)
+ */
+#define CLOCK_OFF	120
 
 struct sixxs_prefix
 {
-	bool			valid;				// Is this structure valid?
-	
-	bool			is_tunnel;			// Prefix is a tunnel
-	unsigned int		interface_id;			// Interface ID over which this prefix runs
+	os_mutex		mutex;				/* Per Prefix mutex */
+	struct sixxs_prefix	*next;				/* Next prefix for this interface */
 
-	struct in6_addr		prefix;				// Prefix
-	unsigned int		length;				// Length of the prefix (/48 etc)
-	struct in6_addr		nexthop;			// The nexthop
+	unsigned int		interface_id;			/* Interface ID over which this prefix runs */
+	unsigned int		length;				/* Length of the prefix (/48 etc) */
 
-	bool			enabled;			// Enabled?
-	bool			sync_seen;			// Was it seen in the last full sync?
-	bool			ignore;				// Ignore this route?
+	struct in6_addr		prefix;				/* Prefix */
+	struct in6_addr		nexthop;			/* The nexthop */
+
+	bool			valid;				/* Is this structure valid? */
+	bool			is_tunnel;			/* Prefix is a tunnel */
+	bool			enabled;			/* Enabled? */
+	bool			synced;				/* Synchronized with kernel? */
+	bool			ignore;				/* Ignore this route? (also used for BGP) */
+	char			__padding[3];
+};
+
+struct sixxs_interface
+{
+	os_mutex		mutex;				/* Per interface mutex */
+	struct sixxs_prefix	*prefixes;			/* Prefixes associated with this interface */
+
+	unsigned int		interface_id;			/* Interface ID */
+
+	unsigned int		kernel_ifindex;			/* Kernel's interface index */
+	unsigned int		kernel_flags;			/* Kernel's flags */
+
+	char			name[MAXLEN];			/* Interface Name */
+	enum iface_type		type;				/* Type of this interface (IFACE_*) */
+	enum iface_state	state;				/* State of this interface (IFSTATE_*) */
+	bool			synced_link;			/* Link up/down? (configured or not) */
+	bool			synced_addr;			/* Address up/down? (configured or not) */
+	bool			synced_local;			/* Local addr route configured or not */
+	bool			synced_remote;			/* Remote addr route configured or not */
+	bool			synced_subnet;			/* Subnet configured or not */
+
+	bool			running;			/* Tunnel process running? */
+
+	struct in_addr		ipv4_them;			/* IPv4 tunnel endpoints */
+
+	struct in6_addr		ipv6_us,			/* Primary IPv6 endpoints */
+				ipv6_them,
+				ipv6_ll;			/* Some tunneltypes don't have LL's */
+								/* Thus we generate them from the ipv6_us */
+	unsigned int		prefixlen;			/* Length of the prefix on the interface */
+
+	unsigned int		mtu;				/* Maximum Transmission Unit */
+	unsigned int		ttl;				/* TTL */
+
+
+	/* Heartbeat & AYIYA specific (IFACE_PROTO41_HB + IFACE_AYIYA) */
+	time_t			hb_lastbeat;			/* Last heartbeat we got */
+	char			password[52];			/* password */
+
+	/* AYIYA specific (IFACE_AYIYA) */
+	unsigned int		ayiya_sport;			/* Server port */
+	unsigned int		ayiya_port;			/* Port on the side of the client */
+	unsigned int		ayiya_protocol;			/* Protocol that is in use (PROTO_(UDP|TCP|...) */
+	int			ayiya_fd;			/* File descriptor for the tun/tap device */
+	unsigned char		ayiya_hash[SHA1_DIGEST_LENGTH];	/* SHA1 Hash of the shared secret. */
+
+	/* Statistics */
+	uint64_t		inoct,				/* Input Octets */
+				outoct,				/* Output Octets */
+				inpkt,				/* Input Packets */
+				outpkt;				/* Output Packets */
 };
 
 struct sixxs_pop_prefix
 {
-	struct sixxs_pop_prefix	*next;				// Next in the chain
-	struct in6_addr		prefix;				// Prefix
-	unsigned int		length;				// Lenght of the prefix (/48 etc)
+	struct sixxs_pop_prefix	*next;				/* Next in the chain */
+	struct in6_addr		prefix;				/* Prefix */
+	unsigned int		length;				/* Lenght of the prefix (/48 etc) */
 };
 
 struct sixxs_pop_ignores
 {
-	struct sixxs_pop_ignores *next;				// Next in the chain
-	char			*name;				// Devicename to ignore
+	struct sixxs_pop_ignores *next;				/* Next in the chain */
+	char			*name;				/* Devicename to ignore */
 };
 
 struct sixxs_thread
 {
-	struct sixxs_thread	*next;				// Next in the chain
-	char			*description;			// Description of this thread
-	pthread_t		thread;				// The thread
+	struct sixxs_thread	*next;				/* Next in the chain */
+	char			*description;			/* Description of this thread */
+	os_thread		thread;				/* The thread */
+	os_thread_id		thread_id;			/* Thread Id */
 
-	// The routine we are going to call with it's argument
+	/* The routine we are going to call with it's argument */
 	void			*(*start_routine)(void *);
 	void			*arg;
 };
 
-// Our configuration structure
+/* Our configuration structure */
 struct conf
 {
-	// Generic
-	bool			daemonize;			// To Daemonize or to not to Daemonize
-	bool			running;			// If we are running or not
+	/* Generic */
+	bool			daemonize;			/* To Daemonize or to not to Daemonize */
+	bool			running;			/* If we are running or not */
+	bool			do_sync;			/* To synchronize or to not to synchronize */
+	char			__padding[1];
+	unsigned int		verbose;			/* Verbosity level */
 
-	// Mutex
-	pthread_mutex_t		mutex;				// Mutex for * but:
+	/* Mutex */
+	os_mutex		mutex;				/* Mutex for almost everything */
+	os_mutex		mutex_thread;			/* Mutex for Threads */
+	os_mutex		mutex_log;			/* Mutex for Logging */
 
-	// POP Configuration
-	char			*pop_name;			// Name of this POP
-	struct in_addr		pop_ipv4;			// IPv4 address of this POP
-	struct in6_addr		pop_ipv6;			// IPv6 address of this POP
-	struct sixxs_pop_prefix	*pop_prefixes;			// Prefixes handled by this POP
+	/* PoP Configuration */
+	char			*pop_name;			/* Name of this PoP */
+	struct in_addr		pop_ipv4;			/* IPv4 address of this PoP */
+	struct in6_addr		pop_ipv6;			/* IPv6 address of this PoP */
+	struct sixxs_pop_prefix	*pop_prefixes;			/* Prefixes handled by this PoP */
 	
-	char			*pop_tunneldevice;		// Interface name prefix
-	char			*pop_ignoredevices;		// Interface names to ignore
-	bool			pop_hb_supported;		// Is heartbeat are supported?
-	unsigned int		pop_hb_sendinterval;		// Heartbeat Send Interval
-	unsigned int		pop_hb_timeout;			// Heartbeat Timeout
-	bool			pop_tinc_supported;		// Is tinc are supported?
-	char			*pop_tinc_device;		// tinc device
-	char			*pop_tinc_config;		// tinc configuration
+	char			*pop_tunneldevice;		/* Interface name prefix */
+	char			*pop_ignoredevices;		/* Interface names to ignore */
+	unsigned int		pop_hb_sendinterval;		/* Heartbeat Send Interval */
+	unsigned int		pop_hb_timeout;			/* Heartbeat Timeout */
+	bool			pop_hb_supported;		/* Is heartbeat are supported? */
+	bool			pop_tinc_supported;		/* Is tinc are supported? */
+	char			__padding2[2];
+	char			*pop_tinc_device;		/* tinc device */
+	char			*pop_tinc_config;		/* tinc configuration */
 
-	struct sixxs_interface	*interfaces;			// All the interfaces in this system
-	struct sixxs_prefix	*prefixes;			// All the prefixes in this system
+	/* Could hash or tree these two for more performance */
+	struct sixxs_interface	*interfaces;			/* All the interfaces in this system */
+	struct sixxs_prefix	*prefixes;			/* All the prefixes in this system */
 
-	unsigned int		max_interfaces;			// Maximum number of prefixes
-	unsigned int		max_prefixes;			// Maximum number of routes
+	unsigned int		max_interfaces;			/* Maximum number of prefixes */
+	unsigned int		max_prefixes;			/* Maximum number of routes */
 
-	// Statistics
-	FILE			*stat_file;			// The file handle of ourdump file
-	char			*stat_filename;			// Name of the file to dump into
+	/* Statistics */
+	FILE			*stat_file;			/* The file handle of ourdump file */
+	char			*stat_filename;			/* Name of the file to dump into */
 	struct
 	{
-		time_t		starttime;			// When did we start
+		time_t		starttime;			/* When did we start */
 	}			stats;
 
-	// Threads
-	struct sixxs_thread	*threads;			// The threads in this system.
+	/* Threads */
+	struct sixxs_thread	*threads;			/* The threads in this system. */
 };
-
-// Global Stuff
-extern struct conf *g_conf;
 
 /*********************************************************
   Functions and variables accessible from multiple files
 *********************************************************/
-///////////////////////////////////////////////////////////
-// sixxsd.c
+/* sixxsd.c */
 extern struct conf *g_conf;
+void sync_complete(void);
 
-/// Synchronisation
-bool sync_complete();
+/* os_*.c */
+bool os_init(void);
+bool os_sync_complete(void);
 
-///////////////////////////////////////////////////////////
-// os_*.c
-extern bool os_init();
-extern bool os_sync_interface(struct sixxs_interface *iface);
+/* Actually only for use by interface.c */
+bool os_sync_interface(struct sixxs_interface *iface);
+bool os_int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them);
+bool os_int_set_state(struct sixxs_interface *iface, enum iface_state state);
+bool os_int_set_mtu(struct sixxs_interface *iface, unsigned int mtu);
+bool os_int_set_ttl(struct sixxs_interface *iface, unsigned int ttl);
 
-///////////////////////////////////////////////////////////
-// interface.c
+/* interface.c */
+bool int_set_state(struct sixxs_interface *iface, enum iface_state state);
 bool int_sync(struct sixxs_interface *iface);
 bool int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them);
 bool int_set_port(struct sixxs_interface *iface, unsigned int port);
 bool int_beat(struct sixxs_interface *iface);
 struct sixxs_interface *int_get(unsigned int id);
-bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, int mtu, char *password);
+struct sixxs_interface *int_get_by_index(unsigned int id);
+bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password);
 
-///////////////////////////////////////////////////////////
-// prefix.c
+/* prefix.c */
 struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen);
-void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool is_tunnel, unsigned int tunnel_id);
+void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, struct sixxs_interface *iface);
+bool pfx_issubnet(struct in6_addr *a_pfx, unsigned int a_len, struct in6_addr *b_pfx, unsigned int b_len);
 
-///////////////////////////////////////////////////////////
-// thread.c
-void thread_add(char *description, void *(*__start_routine) (void *), void *arg);
+/* thread.c */
+void thread_add(const char *description, void *(*__start_routine) (void *), void *arg, bool detach);
+void thread_cleanup(void);
 
-///////////////////////////////////////////////////////////
-// cfg.c
-extern void *cfg_thread(void *arg);
-extern bool cfg_fromfile(char *filename);
+/* cfg.c */
+void cfg_init(void);
+bool cfg_fromfile(const char *filename);
+bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length);
 
-///////////////////////////////////////////////////////////
-// hb.c
-extern void *hb_thread(void *arg);
+/* hb.c */
+void hb_init(void);
 
-///////////////////////////////////////////////////////////
-// ayiya.c
-extern void *ayiya_thread(void *arg);
-bool ayiya_init(struct sixxs_interface *iface);
+/* ayiya.c */
+void ayiya_init(void);
+bool ayiya_start(struct sixxs_interface *iface);
+bool ayiya_stop(struct sixxs_interface *iface);
 
-///////////////////////////////////////////////////////////
-// traffic.c
-extern void *traffic_thread(void *arg);
+/* traffic.c */
+void traffic_init(void);
 
 #endif

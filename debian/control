@@ -8,6 +8,6 @@ Standards-Version: 3.5.2
 Package: sixxsd
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: SixXS POP Daemon
- This is the Daemon ran on the various SixXS POPs.
+Description: SixXS PoP Daemon
+ This is the Daemon ran on the various SixXS PoPs.
  For more information about SixXS check http://www.sixxs.net

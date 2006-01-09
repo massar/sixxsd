@@ -56,6 +56,7 @@ typedef union _BYTE64QUAD16 {
 } BYTE64QUAD16;
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
+void SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]);
 void SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]) {
 	sha1_quadbyte	a, b, c, d, e;
 	BYTE64QUAD16	*block;
@@ -114,7 +115,7 @@ void SHA1_Init(SHA_CTX* context) {
 void SHA1_Update(SHA_CTX *context, sha1_byte *d, unsigned int len) {
 	unsigned int	i, j;
 
-	// Make a temporary storage as Transform destroys it
+	/* Make a temporary storage as Transform destroys it */
 	sha1_byte *data = (sha1_byte *)malloc(len);
 	if (!data) exit(-42);
 	memcpy(data, d, len);
@@ -133,7 +134,7 @@ void SHA1_Update(SHA_CTX *context, sha1_byte *d, unsigned int len) {
 	else i = 0;
 	memcpy(&context->buffer[j], &data[i], len - i);
 
-	// Free the temporary buffer
+	/* Free the temporary buffer */
 	free(data);
 }
 

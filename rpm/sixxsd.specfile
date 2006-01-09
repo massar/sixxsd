@@ -12,7 +12,7 @@ Source:    http://www.sixxs.net/
 BuildRoot: /var/tmp/%{name}-root
 
 %description
-SixXS POP Daemon
+SixXS PoP Daemon
 
 %prep
 %setup -q -n sixxsd

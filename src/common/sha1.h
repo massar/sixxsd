@@ -32,8 +32,9 @@ extern "C" {
 #endif
 
 /* Define this if your machine is LITTLE_ENDIAN, otherwise #undef it: */
-// Is defined in endian.h
-//#define LITTLE_ENDIAN
+/* Is defined in endian.h
+#define LITTLE_ENDIAN
+*/
 
 /* Make sure you define these types for your architecture: */
 typedef unsigned int sha1_quadbyte;	/* 4 byte type */

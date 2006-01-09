@@ -7,7 +7,7 @@
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 NAME=sixxsd
 DAEMON=/usr/sbin/${NAME}
-DESC="SixXSd - SixXS POP Daemon (${NAME})"
+DESC="SixXSd - SixXS PoP Daemon (${NAME})"
 BACKGROUND=true
 
 # Options, per default we let the program

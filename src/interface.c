@@ -1,57 +1,99 @@
 /**************************************
- SixXSd - SixXS POP Daemon
+ SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.5 2005-04-05 17:38:30 jeroen Exp $
- $Date: 2005-04-05 17:38:30 $
+ $Id: interface.c,v 1.6 2006-01-09 19:16:24 jeroen Exp $
+ $Date: 2006-01-09 19:16:24 $
 
  SixXSd Interface Management 
 **************************************/
 
 #include "sixxsd.h"
 
-bool int_sync(struct sixxs_interface *iface)
-{
-	return os_sync_interface(iface);
-}
+const char module_interface[] = "interface";
+#define module module_interface
 
 bool int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them)
 {
-	// Still the same?
+	/* Still the same? */
 	if (memcmp(&iface->ipv4_them, &ipv4_them, sizeof(ipv4_them)) == 0) return true;
 
-	// Change the endpoint
-	iface->ipv4_them = ipv4_them;
+	/* XXX: Verify that the IPv4 address is not used by another (active) interface */
 
-	iface->state = IFSTATE_UP;
+	/* Let the OS handler handle it */
+	return os_int_set_endpoint(iface, ipv4_them);
+}
 
-	// Make sure that the kernel thinks the same thing directly
-	int_sync(iface);
+bool int_set_state(struct sixxs_interface *iface, enum iface_state state)
+{
+        /* Swap DISABLED/DOWN state? */
+	if (	(state == IFSTATE_DISABLED || state == IFSTATE_DOWN) &&
+		(iface->state == IFSTATE_DISABLED || iface->state == IFSTATE_DOWN))
+	{
+		/* Only need to update the state */
+		iface->state = state;
+		return true;
+	}
+
+	return os_int_set_state(iface, state);
+}
+
+bool int_set_type(struct sixxs_interface *iface, enum iface_type type);
+bool int_set_type(struct sixxs_interface *iface, enum iface_type type)
+{
+	/* Don't change when it is already done */
+	if (iface->type == type) return true;
+
+	/* Mark it down (stops stuff) */
+	if (iface->state == IFSTATE_UP)
+	{
+		int_set_state(iface, IFSTATE_DOWN);
+	}
+
+	/* Modify the interface and mark it unsynced */
+	iface->type = type;
+	iface->synced_link		= false;
+	iface->synced_addr		= false;
+	iface->synced_local		= false;
+	iface->synced_remote		= false;
+	iface->synced_subnet		= false;
+
+	/* Mark it up (starts stuff) (unless disabled) */
+	if (iface->state != IFSTATE_DISABLED)
+	{
+		int_set_state(iface, IFSTATE_UP);
+	}
 
 	return true;
 }
 
+bool int_set_mtu(struct sixxs_interface *iface, unsigned int mtu);
 bool int_set_mtu(struct sixxs_interface *iface, unsigned int mtu)
 {
-	if (mtu < 1280 || mtu > 1480) return false;
+	if (iface->mtu == mtu) return true;
 
-	iface->mtu = mtu;
+	/* We only limit the lower MTU here, anything higher can be set */
+	if (mtu < 1280)
+	{
+		mdolog(LOG_ERR, "Ignoring setting of interface %s's MTU to %u which is smaller than IPv6 MTU of 1280\n", iface->name, mtu);
+		return false;
+	}
 
-	// Make sure that the kernel thinks the same thing directly
-	int_sync(iface);
+	/* Make sure that the kernel thinks the same thing directly */
+	os_int_set_mtu(iface, mtu);
 	
 	return true;
 }
 
-// Lame function as we are the AYIYA server so nothing needs
-// to be sent to any other programs anyways ;)
+/* Lame function as we are the AYIYA server so nothing needs
+   to be sent to any other programs anyways ;) */
 bool int_set_port(struct sixxs_interface *iface, unsigned int port)
 {
-	// Still the same?
+	/* Still the same? */
 	if (iface->ayiya_port == port) return true;
 	
-	// Change the port
+	/* Change the port */
 	iface->ayiya_port = port;
 
 	return true;
@@ -61,99 +103,159 @@ bool int_beat(struct sixxs_interface *iface)
 {
 	time_t tee = time(NULL);
 
-	// Update the last heartbeat
+	/* Update the last heartbeat */
 	iface->hb_lastbeat = mktime(gmtime(&tee));
+
+	/* Make it go up? (unless it is disabled) */
+	if (iface->state != IFSTATE_UP && iface->state != IFSTATE_DISABLED)
+	{
+		/* Up up and beyond! */
+		int_set_state(iface, IFSTATE_UP);
+	}
+
+	return true;
+}
+
+bool int_set_password(struct sixxs_interface *iface, char *password);
+bool int_set_password(struct sixxs_interface *iface, char *password)
+{
+	SHA_CTX sha1;
+
+	if (!password)
+	{
+		mdolog(LOG_WARNING, "No password passed to set for interface %s/%u\n", iface->name, iface->interface_id);
+		return false;
+	}
+
+	if (strlen(password) > (sizeof(iface->password)-2))
+	{
+		mdolog(LOG_WARNING, "Trying to set a too long password to interface %s/%u\n", iface->name, iface->interface_id);
+		return false;
+	}
+
+	/* Password still the same? */
+	if (strcmp(password, iface->password) == 0) return true;
+
+	memset(iface->password, 0, sizeof(iface->password));
+	memcpy(iface->password, password, strlen(password));
+
+	/* Generate a SHA1 of the shared secret */
+	SHA1_Init(&sha1);
+	SHA1_Update(&sha1, (unsigned char *)iface->password, strlen(iface->password));
+	SHA1_Final(iface->ayiya_hash, &sha1);
 
 	return true;
 }
 
 struct sixxs_interface *int_get(unsigned int id)
 {
+	struct sixxs_interface *iface;
+
 	if (id >= g_conf->max_interfaces)
 	{
-		dolog(LOG_WARNING, "int_get() - %u out of range (>=%u)\n", id, g_conf->max_interfaces);
+		mdolog(LOG_WARNING, "int_get() - %u out of range (>=%u)\n", id, g_conf->max_interfaces);
 		return NULL;
 	}
 	
-	return g_conf->interfaces + id;
+	OS_Mutex_Lock(&g_conf->mutex, "int_get");
+	iface = g_conf->interfaces + id;
+
+	/* Init the mutex on first hit */
+	if (iface->type == IFACE_UNSPEC)
+	{
+		OS_Mutex_Init(&iface->mutex);
+	}
+
+	OS_Mutex_Lock(&iface->mutex, "int_get");
+	OS_Mutex_Release(&g_conf->mutex, "int_get");
+
+	return iface;
 }
 
-// Reconfigure (add or update) an interface.
-bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, int mtu, char *password)
+struct sixxs_interface *int_get_by_index(unsigned int id)
+{
+	unsigned int		i;
+	struct sixxs_interface	*iface;
+
+	OS_Mutex_Lock(&g_conf->mutex, "int_get_by_index");
+	for (i = 0; i < g_conf->max_interfaces; i++)
+	{
+		iface = g_conf->interfaces + i;
+		if (iface->type == IFACE_UNSPEC) continue;
+		if (iface->kernel_ifindex == id)
+		{
+			OS_Mutex_Lock(&iface->mutex, "int_get_by_index");
+			OS_Mutex_Release(&g_conf->mutex, "int_get_by_index");
+			return iface;
+		}
+	}
+	OS_Mutex_Release(&g_conf->mutex, "int_get_by_index");
+
+	return NULL;
+}
+
+/* Reconfigure (add or update) an interface */
+bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password)
 {
 	struct sixxs_interface *iface;
 
-	// Get the index
+	if (type == IFACE_UNSPEC)
+	{
+		mdolog(LOG_ERR, "Can't configure to become an unspecified interface\n");
+		return false;
+	}
+
+	/* Get the index */
 	iface = int_get(id);
 	if (!iface) return false;
 
-	// Already configured once ?
+	/* Already configured once ? */
 	if (iface->type != IFACE_UNSPEC)
 	{
-		dolog(LOG_INFO, "Reconfiguring interface %u\n", id);
+		mdolog(LOG_INFO, "Reconfiguring interface %u\n", id);
 
-		// Assumptions:
-		// - ipv6_them & ipv6_us & prefixlen don't change
+		/*
+		 * Assumption:
+		 * - ipv6_them & ipv6_us & prefixlen don't change
+		 */
 
-		// Changed Type?
-		if (type != iface->type)
-		{
-			iface->type = type;
-		}
+		/* Changed State? */
+		int_set_state(iface, state);
 
-		// Changed State?
-		if (state != iface->state)
-		{
-			iface->state = state;
-		}
+		/* Changed IPv4 endpoint? */
+		if (type == IFACE_PROTO41) int_set_endpoint(iface, ipv4_them);
 
-		// Changed IPv4 endpoint?
-		if (	type == IFACE_PROTO41 &&
-			memcmp(&ipv4_them, &iface->ipv4_them, sizeof(ipv4_them)) == 0)
-		{
-			int_set_endpoint(iface, ipv4_them);
-		}
+		/* Changed MTU? */
+		int_set_mtu(iface, mtu);
 
-		// Changed MTU?
-		if (mtu != iface->mtu)
-		{
-			int_set_mtu(iface, mtu);
-		}
-
-		if (password)
-		{
-			if (strlen(password) > (sizeof(iface->hb_password)-2))
-			{
-				dolog(LOG_WARNING, "Trying to set a too long password to interface %u\n", id);
-				return false;
-			}
-
-			// Changed Password?
-			if (	password &&
-				strcmp(password, iface->hb_password) != 0)
-			{
-				SHA_CTX sha1;
-
-				memset(iface->hb_password, 0, sizeof(iface->hb_password));
-				memcpy(iface->hb_password, password, strlen(password));
-
-				// Generate a SHA1 of the shared secret
-				SHA1_Init(&sha1);
-				SHA1_Update(&sha1, iface->hb_password, strlen(iface->hb_password));
-				SHA1_Final(iface->ayiya_hash, &sha1);
-			}
-		}
+		/* Changed password? */
+		if (password) int_set_password(iface, password);
 	}
 	else
 	{
-		iface->interface_id = id;
-		iface->type = type;
-		iface->state = state;
-		iface->mtu = mtu;
+		/* New interface thus assume not synced yet */
+		iface->synced_link	= false;
+		iface->synced_addr	= false;
+		iface->synced_local	= false;
+		iface->synced_remote	= false;
+		iface->synced_subnet	= false;
+
+		/* State is down */
+		iface->state		= IFSTATE_DOWN;
+
+		/* Fill it in */
+		iface->interface_id	= id;
+		iface->type		= type;
+		iface->mtu		= mtu;
+		iface->ttl		= 64;
+		iface->ayiya_sport	= atoi(AYIYA_PORT);
+		iface->ayiya_port	= atoi(AYIYA_PORT);
 
 		memcpy(&iface->ipv4_them,	&ipv4_them,	sizeof(iface->ipv4_them));
 		memcpy(&iface->ipv6_them,	ipv6_them,	sizeof(iface->ipv6_them));
 		memcpy(&iface->ipv6_us,		ipv6_us,	sizeof(iface->ipv6_us));
+
+		iface->prefixlen = prefixlen;
 
 		/*
 		 * TUN/TAP devices don't have any
@@ -176,29 +278,19 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		iface->ipv6_ll.s6_addr16[3] = 0x00;
 
 		/* Clear the LL Unique Bit */
-		iface->ipv6_ll.s6_addr16[4] = htons(ntohs(iface->ipv6_us.s6_addr16[1]) & 0xfffc);
+		iface->ipv6_ll.s6_addr16[4] = ntohs(iface->ipv6_us.s6_addr16[1]) & 0xfffc;
+		iface->ipv6_ll.s6_addr16[4] = htons(iface->ipv6_us.s6_addr16[4]);
 		iface->ipv6_ll.s6_addr16[5] = iface->ipv6_us.s6_addr16[2];
 		iface->ipv6_ll.s6_addr16[6] = iface->ipv6_us.s6_addr16[3];
 		iface->ipv6_ll.s6_addr16[7] = iface->ipv6_us.s6_addr16[7];
 
 		/* Configure a password ? */
-		if (password)
-		{
-			SHA_CTX sha1;
+		if (password) int_set_password(iface, password);
 
-			memset(iface->hb_password, 0, sizeof(iface->hb_password));
-			memcpy(&iface->hb_password, password, strlen(password));
-
-			// Generate a SHA1 of the shared secret
-			SHA1_Init(&sha1);
-			SHA1_Update(&sha1, iface->hb_password, strlen(iface->hb_password));
-			SHA1_Final(iface->ayiya_hash, &sha1);
-		}
-
-		// Construct the devicename
+		/* Construct the devicename */
 		snprintf(iface->name, sizeof(iface->name), "%s%u", g_conf->pop_tunneldevice, id);
 
-		dolog(LOG_INFO, "Initializing new interface %u: %s, type=%s, state=%s\n",
+		mdolog(LOG_INFO, "Initializing new interface %u: %s, type=%s, state=%s\n",
 			id,
 			iface->name,
 			(type == IFACE_UNSPEC		? "invalid" :
@@ -213,18 +305,18 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 			state == IFSTATE_DOWN		? "down" : "?")
 			);
 
-		// Start up the device
-		if (iface->type == IFACE_AYIYA)
-		{
-			ayiya_init(iface);
-		}
-		
-		// Local address
-		pfx_reconfig(ipv6_us, 128, NULL, true, true, id);
+		/* Local address */
+		pfx_reconfig(ipv6_us,	128, NULL,	true, false, true, iface);
 
-		// Remote address
-		pfx_reconfig(ipv6_them, 128, ipv6_us, true, true, id);
+		/* Remote address */
+		pfx_reconfig(ipv6_them, 128, ipv6_us,	true, false, true, iface);
+
+		/* Reconfigure the complete interface */
+		int_set_state(iface, state);
 	}
+
+	OS_Mutex_Release(&iface->mutex, "int_reconfig");
 
 	return true;
 }
+

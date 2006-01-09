@@ -1,10 +1,10 @@
 # /**************************************
-#  SixXSd - SixXS POP Daemon
+#  SixXSd - SixXS PoP Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.2 2005-01-29 14:52:31 jeroen Exp $
-# $Date: 2005-01-29 14:52:31 $
+# $Id: Makefile,v 1.3 2006-01-09 19:16:24 jeroen Exp $
+# $Date: 2006-01-09 19:16:24 $
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
@@ -24,36 +24,63 @@ BINS	= ../bin/sixxsd
 SRCS	= sixxsd.c common/common.c common/md5.c common/sha1.c thread.c interface.c prefix.c cfg.c hb.c ayiya.c traffic.c
 INCS	= sixxsd.h common/common.h common/md5.h common/sha1.h
 OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o
-DEPS    = ../Makefile Makefile
-ifeq ($(shell echo "${SIXXSD_OPTIONS}" | grep -c "DEBUG"),1)
-CFLAGS  = -g -W -Wall -Wno-unused-parameter -Wpacked -Wpadded #-pedantic
-else
-#CFLAGS	+= -O3 -W -Wall -Wcast-align -Wpacked -Wpadded -pedantic
-endif
+DEPS    := ../Makefile Makefile
 CFLAGS	+= -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
 LDFLAGS	= -lpthread
 CC      = gcc
 RM      = rm
 
-# Did the user want ARCH_LINUX support?
-ifeq ($(shell echo "${SIXXSD_OPTIONS}" | grep -c "ARCH_LINUX"),1)
+COMPILE = @echo "* Compiling to $@"; $(CC) -c $(CFLAGS)
+LINK    = @echo "* Linking $@"; $(CC) $(CFLAGS)
+RM      = @echo "* Removing $@"; rm
+
+# Our very *bliep* set of options to make sure that these things can't cause any issues
+CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-variadic-macros -Wpacked -Wpadded -pedantic -pthread -D_REENTRANT
+
+# Linux
+ifeq ($(shell uname | grep -c "Linux"),1)
+CFLAGS += -D_LINUX
 SRCS += os_linux.c
 OBJS += os_linux.o
 endif
 
-# Did the user want ARCH_FREEBSD support?
-ifeq ($(shell echo "${SIXXSD_OPTIONS}" | grep -c "ARCH_FREEBSD"),1)
+# Darwin
+ifeq ($(shell uname | grep -c "Darwin"),1)
+CFLAGS += -D_DARWIN
 SRCS += os_freebsd.c
 OBJS += os_freebsd.o
+endif
+
+# AIX
+ifeq ($(shell uname | grep -c "AIX"),1)
+CFLAGS += -DAIX
+#error No AIX configuration method (yet)
+endif
+
+# Add symbols for debugmode, but optimize fully otherwise
+ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "DEBUG"),1)
+CFLAGS += -g
+else
+ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "PROFILE"),0)
+CFLAGS += -O3
+endif
+endif
+
+ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "PROFILE"),1)
+CFLAGS += -pg -g
+# -fprofile-arcs
 endif
 
 all: ${BINS}
 
 ../bin/sixxsd: $(OBJS) $(INCS) $(DEPS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
-ifeq ($(shell echo "${SIXXSD_OPTIONS}" | grep -c "DEBUG"),0)
+	$(LINK) -o $@ $(OBJS) $(LDFLAGS)
+ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "DEBUG"),0)
 	strip $@;
 endif
+
+$(OBJS): %.o: %.c $(DEPS) ${INCS}
+	$(COMPILE) $< -o $@
 
 clean:
 	$(RM) -f $(OBJS) $(BINS)
