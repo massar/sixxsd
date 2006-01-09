@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.5 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: cfg.c,v 1.6 2006-01-09 22:44:34 jeroen Exp $
+ $Date: 2006-01-09 22:44:34 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -848,7 +848,7 @@ void *cfg_thread_client(void *arg)
 	char			clientservice[NI_MAXSERV];
 	struct sockaddr_storage	ci;
 	socklen_t		cl;
-	char			buf[1024], rbuf[1024];
+	char			buf[1024], rbuf[8192];
 	bool			quit = false;
 
 	memset(buf, 0, sizeof(buf));
