@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.6 2006-01-09 22:44:52 jeroen Exp $
- $Date: 2006-01-09 22:44:52 $
+ $Id: os_linux.c,v 1.7 2006-01-14 19:58:22 jeroen Exp $
+ $Date: 2006-01-14 19:58:22 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -760,6 +760,16 @@ void netlink_update_route(struct nlmsghdr *h)
 	memset(tb, 0, sizeof tb);
 	netlink_parse_rtattr(tb, RTA_MAX, RTM_RTA(rtm), len);
 
+	/*
+	 * Ignore cloned and redirected routes
+	 * cloning happens a lot when pinging for instance...
+	 */
+	if (	rtm->rtm_flags & RTM_F_CLONED ||
+		rtm->rtm_flags & RTPROT_REDIRECT)
+	{
+		return;
+	}
+
 	if (tb[RTA_OIF]) idx = *(int *)RTA_DATA(tb[RTA_OIF]);
 	else idx = 0;
 
@@ -1008,10 +1018,12 @@ int os_netlink_parse_info(struct nlsock *nl)
 			}
 
 			/* OK we got netlink message. */
+			/*
 			mddolog("netlink_parse_info(%s) type %s(%u), seq=%u, pid=%d\n",
 				nl->name,
 				lookup(nlmsg_str, h->nlmsg_type), h->nlmsg_type,
 				h->nlmsg_seq, h->nlmsg_pid);
+			*/
 
 			if (h->nlmsg_type == RTM_NEWLINK || h->nlmsg_type == RTM_DELLINK)
 			{
@@ -1248,15 +1260,25 @@ bool os_init()
 	/* Don't init twice */
 	if (os_initialized) return true;
 
+	/* We are done */
+	os_initialized = true;
+
 	/* Set sysconf stuff making sure this is set ;) */
 	os_exec("sysctl -q -w net.ipv6.conf.default.forwarding=1");
 	os_exec("sysctl -q -w net.ipv6.conf.all.forwarding=1");
-	/* XXX - some PoPs might need RA to configure themselves :(
+
+	/* XXX - Some PoPs might use RA to configure themselves :( */
+	/*
 	os_exec("sysctl -q -w net.ipv6.conf.default.accept_ra=0");
 	os_exec("sysctl -q -w net.ipv6.conf.all.accept_ra=0");
 	*/
 
-	os_initialized = true;
+	/* Buffersize adjustments */
+	os_exec("sysctl -q -w net.core.rmem_default=65536");
+	os_exec("sysctl -q -w net.core.wmem_default=65536");
+	os_exec("sysctl -q -w net.core.rmem_max=8388608");
+	os_exec("sysctl -q -w net.core.wmem_max=8388608");
+	os_exec("sysctl -q -w net.ipv6.route.max_size=131072");
 
 	/* Our interrests */
 	groups = RTMGRP_LINK |
