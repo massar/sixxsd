@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.3 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: ayiya.c,v 1.4 2006-01-14 19:58:44 jeroen Exp $
+ $Date: 2006-01-14 19:58:44 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -468,7 +468,11 @@ bool ayiya_start(struct sixxs_interface *iface)
 	if (iface->ayiya_fd == -1)
 	{
 		mdolog(LOG_ERR, "Couldn't open device %s (%d): %s\n", "/dev/net/tun", errno, strerror(errno));
-		return false;
+		/*
+		 * Abort as we can't function properly
+		 * on Linux do 'cd /dev/; ./MAKEDEV tun' + modprobe tun
+		 */
+		exit(-1);
 	}
 	
 	memset(&ifr, 0, sizeof(ifr));
