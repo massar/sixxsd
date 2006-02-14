@@ -3,8 +3,8 @@
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.3 2006-01-09 19:16:24 jeroen Exp $
-# $Date: 2006-01-09 19:16:24 $
+# $Id: Makefile,v 1.4 2006-02-14 15:41:36 jeroen Exp $
+# $Date: 2006-02-14 15:41:36 $
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
@@ -21,12 +21,12 @@ SIXXSD_VERSION = ${PROJECT_VERSION}
 SIXXSD_OPTIONS = ${PROJECT_OPTIONS}
 
 BINS	= ../bin/sixxsd
-SRCS	= sixxsd.c common/common.c common/md5.c common/sha1.c thread.c interface.c prefix.c cfg.c hb.c ayiya.c traffic.c
+SRCS	= sixxsd.c common/common.c common/md5.c common/sha1.c thread.c interface.c prefix.c cfg.c hb.c ayiya.c traffic.c latency.c
 INCS	= sixxsd.h common/common.h common/md5.h common/sha1.h
-OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o
+OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o latency.o
 DEPS    := ../Makefile Makefile
 CFLAGS	+= -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
-LDFLAGS	= -lpthread
+LDFLAGS	= -lpthread -lrrd
 CC      = gcc
 RM      = rm
 
@@ -44,9 +44,16 @@ SRCS += os_linux.c
 OBJS += os_linux.o
 endif
 
+# FreeBSD
+ifeq ($(shell uname | grep -c "FreeBSD"),1)
+CFLAGS += -D_FREEBSD -D_BSD
+SRCS += os_freebsd.c
+OBJS += os_freebsd.o
+endif
+
 # Darwin
 ifeq ($(shell uname | grep -c "Darwin"),1)
-CFLAGS += -D_DARWIN
+CFLAGS += -D_DARWIN -D_BSD
 SRCS += os_freebsd.c
 OBJS += os_freebsd.o
 endif

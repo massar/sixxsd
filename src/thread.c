@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: thread.c,v 1.3 2006-01-09 22:44:09 jeroen Exp $
- $Date: 2006-01-09 22:44:09 $
+ $Id: thread.c,v 1.4 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd Thread Management 
 **************************************/
@@ -126,7 +126,6 @@ void thread_add(const char *description, void *(*start_routine)(void *), void *a
 	/* Detach the thread */
 	if (detach) pthread_detach(t->thread);
 #endif
-
 }
 
 void thread_cleanup(void)

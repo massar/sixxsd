@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.6 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: interface.c,v 1.7 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd Interface Management 
 **************************************/
@@ -33,6 +33,14 @@ bool int_set_state(struct sixxs_interface *iface, enum iface_state state)
 	{
 		/* Only need to update the state */
 		iface->state = state;
+		return true;
+	}
+
+	/* Don't turn down Heartbeat or AYIYA interfaces */
+	if (	(iface->type == IFACE_PROTO41_HB || iface->type == IFACE_AYIYA) &&
+		iface->state == IFSTATE_UP &&
+		state == IFSTATE_DOWN)
+	{
 		return true;
 	}
 
@@ -166,8 +174,9 @@ struct sixxs_interface *int_get(unsigned int id)
 		OS_Mutex_Init(&iface->mutex);
 	}
 
-	OS_Mutex_Lock(&iface->mutex, "int_get");
+	/* XXX: Watch this one */
 	OS_Mutex_Release(&g_conf->mutex, "int_get");
+	OS_Mutex_Lock(&iface->mutex, "int_get");
 
 	return iface;
 }

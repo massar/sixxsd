@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: traffic.c,v 1.3 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: traffic.c,v 1.4 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd Traffic Handler
 **************************************/
@@ -14,223 +14,329 @@
 const char module_traffic[] = "traffic";
 #define module module_traffic
 
-#define TRAFFIC_PORT "42002"
+#ifdef _BSD
+#include <sysctl.h>
+#endif
 
-void traffic_log(int level, const char *fmt, ...);
-void traffic_log(int level, const char *fmt, ...)
+void traffic_create_interface(const char *interface);
+void traffic_create_interface(const char *interface)
 {
-	char	buf[1024];
-	va_list	ap;
-	
-	/* Print the host+port this is coming from */
-	snprintf(buf, sizeof(buf), "(0x%x) : ", (unsigned int)OS_GetThisThreadId());
+	char	*args[21], filename[2048];
 
-	/* Print the log message behind it */
-	va_start(ap, fmt);
-	vsnprintf(buf+strlen(buf), sizeof(buf)-strlen(buf), fmt, ap);
-	va_end(ap);
-	
-	/* Actually Log it */
-	mdolog(level, buf);
-}
+	args[ 0] = (char *)"create";
+	args[ 1] = (char *)filename;
+	args[ 2] = (char *)"-s";
+	args[ 3] = (char *)"300";
+	args[ 4] = (char *)"DS:inoct:COUNTER:600:0:U";
+	args[ 5] = (char *)"DS:inpkt:COUNTER:600:0:U";
+	args[ 6] = (char *)"DS:outoct:COUNTER:600:0:U";
+	args[ 7] = (char *)"DS:outpkt:COUNTER:600:0:U";
+	args[ 8] = (char *)"RRA:MIN:0.5:1:600";
+	args[ 9] = (char *)"RRA:MIN:0.5:6:700";
+	args[10] = (char *)"RRA:MIN:0.5:24:775";
+	args[11] = (char *)"RRA:MIN:0.5:288:797";
+	args[12] = (char *)"RRA:AVERAGE:0.5:1:600";
+	args[13] = (char *)"RRA:AVERAGE:0.5:6:700";
+	args[14] = (char *)"RRA:AVERAGE:0.5:24:775";
+	args[15] = (char *)"RRA:AVERAGE:0.5:288:797";
+	args[16] = (char *)"RRA:MAX:0.5:1:600";
+	args[17] = (char *)"RRA:MAX:0.5:6:700";
+	args[18] = (char *)"RRA:MAX:0.5:24:775";
+	args[19] = (char *)"RRA:MAX:0.5:288:797";
+       	args[20] = NULL;
 
-bool traffic_cmd_getstats(int sock, const char UNUSED *args);
-bool traffic_cmd_getstats(int sock, const char UNUSED *args)
-{
-	struct sixxs_interface	*iface;
-	unsigned int		i;
+	snprintf(filename, sizeof(filename),
+		"%s/rrd/%s/traffic/%s.rrd",
+		g_conf->homedir, g_conf->pop_name, interface);
 
-	sock_printf(sock, "+OK Statistics coming up...\n");
+	mddolog("Creating RRD for %s\n", filename);
 
-	/* Walk through all the interfaces */
-	for (i = 0; i < g_conf->max_interfaces; i++)
+	rrd_clear_error();
+	rrd_create((sizeof(args)/sizeof(char *))-1, args);
+	if (rrd_test_error())
 	{
-		iface = g_conf->interfaces + i;
-		if (iface->type == IFACE_UNSPEC) continue;
-
-		sock_printf(sock, "%s %lld %lld %lld %lld\n",
-			iface->name,
-			iface->inoct, iface->outoct,
-			iface->inpkt, iface->outpkt);
-	}
-
-	sock_printf(sock, "+OK End of statistics\n");
-	return true;
-}
-
-/* MISC */
-bool traffic_cmd_help(int sock, const char UNUSED *args);
-/* Defined after traffic_cmds */
-
-bool traffic_cmd_reply(int sock, const char *args);
-bool traffic_cmd_reply(int sock, const char *args)
-{
-	sock_printf(sock, "+OK You mentioned: %s\n", args);
-	return true;
-}
-
-bool traffic_cmd_quit(int sock, const char UNUSED *args);
-bool traffic_cmd_quit(int sock, const char UNUSED *args)
-{
-	sock_printf(sock, "+OK Thank you for using this SixXS Service\n");
-	return false;
-}
-
-/* Commands as seen above */
-struct {
-	const char *cmd;
-	bool (*func)(int sock, const char *args);
-} traffic_cmds[] = 
-{
-	/* Tunnel & Route */
-	{"getstats",		traffic_cmd_getstats},
-	
-	/* Ignored commands */
-	{"",			NULL},
-
-	/* Misc commands */
-	{"reply",		traffic_cmd_reply},
-	{"help",		traffic_cmd_help},
-	{"quit",		traffic_cmd_quit},
-	{NULL,			NULL},
-};
-
-bool traffic_cmd_help(int sock, const char UNUSED *args)
-{
-	int i=0;
-
-	sock_printf(sock, "+OK Available commands\n");
-	for (i=0; traffic_cmds[i].cmd; i++)
-	{
-		if (traffic_cmds[i].func == NULL) continue;
-		sock_printf(sock, "%s\n", traffic_cmds[i].cmd);
-	}
-	sock_printf(sock, "+OK\n");
-	return true;
-}
-
-bool traffic_handlecommand(int sock, const char *cmd);
-bool traffic_handlecommand(int sock, const char *cmd)
-{
-	int i=0, len;
-
-	for (i=0; traffic_cmds[i].cmd; i++)
-	{
-		len = strlen(traffic_cmds[i].cmd);
-		if (strncasecmp(traffic_cmds[i].cmd, cmd, len) != 0 ||
-			 (cmd[len] != ' ' && cmd[len] != '\0')) continue;
-
-		if (traffic_cmds[i].func == NULL)
+		unsigned int i;
+		mdolog(LOG_ERR, "RRD Creation error: %s\n", rrd_get_error());
+		for (i=0; i<(sizeof(args)/sizeof(char *)); i++)
 		{
-			sock_printf(sock, "+OK Ignoring...\n");
-			return true;
+			mdolog(LOG_ERR, "arg[%u] \"%s\"\n", i, args[i]);
 		}
-		else return traffic_cmds[i].func(sock, &cmd[len+1]);
 	}
-	sock_printf(sock, "-ERR Command unknown '%s'\n", cmd);
-	return true;
 }
 
-void *traffic_thread_client(void *arg);
-void *traffic_thread_client(void *arg)
+void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt);
+void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt)
 {
-	int			listenfd = (int)arg;
-	int			sock, n;
-	unsigned int		filled = 0;
-	char			clienthost[NI_MAXHOST];
-	char			clientservice[NI_MAXSERV];
-	struct sockaddr_storage	ci;
-	socklen_t		cl;
-	char			buf[1024], rbuf[1024];
-	bool			quit = false;
+	char			*args[4], filename[2048], values[2048];
+	struct stat		stats;
+	unsigned int		i = strlen(g_conf->pop_tunneldevice);
+	struct sixxs_interface	*iface = NULL;
 
-	memset(buf, 0, sizeof(buf));
-	memset(&ci, 0, sizeof(ci));
-	cl = sizeof(ci);
-
-	/* Try to accept a client */
-	D(traffic_log(LOG_DEBUG, "Accepting new clients...\n");)
-	sock = accept(listenfd, (struct sockaddr *)&ci, &cl);
-	
-	if (sock == -1)
+	/* It's a tunneldevice? */
+	if (strncasecmp(interface, g_conf->pop_tunneldevice, i) == 0)
 	{
-		traffic_log(LOG_ERR, "Accept failed (%d) : %s\n", errno, strerror(errno));
-		return NULL;
+		/* Update the in-mem interface */
+		i = atoi(&interface[i]);
+		iface = int_get(i);
+		if (iface)
+		{
+			iface->inoct	= inoct;
+			iface->outoct	= outoct;
+			iface->inpkt	= inpkt;
+			iface->outpkt	= outpkt;
+
+			OS_Mutex_Release(&iface->mutex, "traffic_update_interface");
+		}
 	}
 
-	D(traffic_log(LOG_DEBUG, "Accept success (%d) : %s\n", errno, strerror(errno));)
+	args[0] = (char *)"update";
+	args[1] = filename;
+	args[2] = values;
+	args[3] = NULL;
 
-	/* Create a new thread for which is going to handle accepts */
-	/* Recursive thread creation for accepts ;) */
-	thread_add("Traffic", traffic_thread_client, (void *)listenfd, true);
+	snprintf(filename, sizeof(filename),
+		"%s/rrd/%s/traffic/%s.rrd",
+		g_conf->homedir, g_conf->pop_name, interface);
 
-	/* We have accepted a client */
-	/* Check if it is actually allowed to access us */
-
-	memset(clienthost, 0, sizeof(clienthost));
-	memset(clientservice, 0, sizeof(clientservice));
-
-	n = getnameinfo((struct sockaddr *)&ci, cl,
-		clienthost, sizeof(clienthost),
-		clientservice, sizeof(clientservice),
-		NI_NUMERICHOST);
-	if (n != 0)
+	/* Does the RRD exist? */
+	if (stat(filename, &stats) != 0)
 	{
-		sock_printf(sock, "-ERR I couldn't find out who you are.. go away!\n");
-		/* Error on resolve */
-		traffic_log(LOG_ERR, "Error %d : %s (family: %d)\n", n, gai_strerror(n), ci.ss_family);
-		close(sock);
-		return NULL;
+		mddolog("File '%s' not found, checking for dir\n", filename);
+
+		/* Does the RRD dir exist? */
+		snprintf(filename, sizeof(filename),
+			"%s/rrd",
+			g_conf->homedir);
+
+		if (stat(filename, &stats) != 0)
+		{
+			mddolog("Dir not found, creating dir '%s'...\n", filename);
+			/* Create the directory */
+			if (mkdir(filename, 0755) != 0) return;
+		}
+
+		/* Does the PoP dir exist? */
+		snprintf(filename, sizeof(filename),
+			"%s/rrd/%s",
+			g_conf->homedir, g_conf->pop_name);
+
+		if (stat(filename, &stats) != 0)
+		{
+			mddolog("Dir not found, creating dir '%s'...\n", filename);
+			/* Create the directory */
+			if (mkdir(filename, 0755) != 0) return;
+
+			/* Create traffic stats dir */
+			snprintf(filename, sizeof(filename),
+				"%s/rrd/%s/traffic",
+				g_conf->homedir, g_conf->pop_name);
+			if (mkdir(filename, 0755) != 0) return;
+		}
+
+		/* Try again */
+		snprintf(filename, sizeof(filename),
+			"%s/rrd/%s/traffic/%s.rrd",
+			g_conf->homedir, g_conf->pop_name, interface);
+			
+		traffic_create_interface(interface);
 	}
 
-	D(traffic_log(LOG_DEBUG, "Accepted %s:%s\n", clienthost, clientservice);)
+	snprintf(values, sizeof(values),
+		"N:%llu:%llu:%llu:%llu",
+		inoct, inpkt, outoct, outpkt);
 
-	sock_printf(sock, "+OK SixXSd Traffic Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
+	/* mddolog("Updating RRD %s with %s\n", filename, values); */
 
-	while (	!quit &&
-		sock_getline(sock, rbuf, (unsigned int)sizeof(rbuf), &filled, buf, (unsigned int)sizeof(buf)) > 0)
+	rrd_clear_error();
+
+	/*
+	 * Stolen from DAPd:
+	 * "kludge" to fix the "API" for rrdtool
+	 */
+	optind = 0;
+	opterr = 0;
+
+	rrd_update((sizeof(args)/sizeof(char *))-1, args);
+	if (!rrd_test_error()) return;
+
+	/* Log and try again */
+	mdolog(LOG_ERR, "RRD Update error: %s\n", rrd_get_error());
+	for (i=0; i<(sizeof(args)/sizeof(char *)); i++)
 	{
-		traffic_log(LOG_INFO, "Client sent '%s'\n", buf);
-		quit = !traffic_handlecommand(sock, buf);
+		mdolog(LOG_ERR, "arg[%u]: \"%s\"\n", i, args[i]);
 	}
-	
-	D(traffic_log(LOG_DEBUG, "Client Finished %s:%s\n", clienthost, clientservice);)
-
-	/* End this conversation */
-	close(sock);
-	return NULL;
 }
+
+#ifdef _BSD
+void traffic_collect(void);
+void traffic_collect(void)
+{
+	caddr_t			ref, buf, end;
+	size_t			bufsiz;
+	struct if_msghdr	*ifm;
+	struct sockaddr_dl	*sdl;
+	struct if_data		*ifd;
+
+	int mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST, 0 };
+
+	if (sysctl(mib, sizeof(mib)/sizeof(int), NULL, &bufsiz, NULL, 0) < 0)
+	{
+		mdolog(LOG_ERR, "sysctl() failed: couldn't determine buffersize...\n");
+		return;
+	}
+
+	ref = buf = malloc(bufsiz);
+	if (!ref)
+	{
+		mdolog(LOG_ERR, "malloc failed...\n");
+		return;
+	}
+
+	if (sysctl(mib, sizeof(mib)/sizeof(int), buf, &bufsiz, NULL, 0) < 0)
+	{
+		free(ref);
+		mdolog(LOG_ERR, "sysctl() error...\n");
+		return;
+	}
+
+	for (end = buf + bufsiz; buf < end; buf += ifm->ifm_msglen)
+	{
+		ifm = (struct if_msghdr *)buf;
+		if (ifm->ifm_type != RTM_IFINFO) continue;
+
+		sdl = (struct sockaddr_dl *)(ifm + 1);
+		ifd = (struct if_data *)&ifm->ifm_data;
+
+		traffic_update_interface(
+			sdl->sdl_data, 
+			ifd->ifi_ibytes, ifd->ifi_obytes,
+			ifd->ifi_ipackets, ifd->ifi_opackets);
+	}
+
+	free(ref);
+	return;
+}
+#endif
+
+#ifdef _LINUX
+void traffic_collect(void);
+void traffic_collect(void)
+{
+	FILE		*f;
+	uint64_t	inoct, inpkt, outoct, outpkt;
+	char		dev[64];
+	char		line[1024];
+
+	f = fopen ("/proc/net/dev", "r");
+	if (!f)
+	{
+		mdolog(LOG_ERR, "Failed to open /proc/net/dev\n");
+		return;
+	}
+
+	while (fgets(line, 1024, f))
+	{
+		char	*p;
+		int	i;
+
+		/* Skip lines without devices */
+		if (!strstr(line, ":")) continue;
+		p = line;
+
+		/* Skip leading spaces */
+		while (*p && isspace(*p)) p++;
+
+		/* Parse the device name */
+		i=0;
+		while (*p && *p != ':') dev[i++] = *p++;
+		dev[i] = '\0';
+		p++;
+
+		/* Skip whitespace */
+		while (*p && isspace (*p)) p++;
+
+		/* Parse the Input Octets */
+		inoct = atoll(p);
+
+		/* Skip the digits of the input octets */
+		while (*p && isdigit (*p)) p++;
+		while (*p && isspace (*p)) p++;
+
+		/* Parse the Input Packets */
+		inpkt = atoll(p);
+
+		/* Skip the for us unused fields */
+		for (i=0; i<7; i++)
+		{
+			while (*p && isdigit (*p)) p++;
+			while (*p && isspace (*p)) p++;
+		}
+
+		/* Parse the Output Octets */
+		outoct = atoll(p);
+
+		/* Skip the output octets */
+		while (*p && isdigit (*p)) p++;
+		while (*p && isspace (*p)) p++;
+
+		/* Parse the Output Packets */
+		outpkt = atoll(p);
+
+		traffic_update_interface(dev,
+			inoct, outoct,
+			inpkt, outpkt);
+        }
+        fclose(f);
+
+        return;
+}
+
+#endif
 
 void *traffic_thread(void UNUSED *arg);
 void *traffic_thread(void UNUSED *arg)
 {
-	int			listenfd;
-	char			host[NI_MAXHOST];
+	time_t		tee;
+	struct tm	teem;
 
 	/* Show that we have started */
-	traffic_log(LOG_INFO, "SixXS Traffic Handler\n");
+	mdolog(LOG_INFO, "Traffic Handler\n");
 
-	if (!inet_ntop(AF_INET, &g_conf->pop_ipv4, host, sizeof(host)))
+	while (g_conf && g_conf->running)
 	{
-		traffic_log(LOG_ERR, "Error, pop_ipv4 not set to a valid IPv4 address\n");
-		return NULL;
+		if (!g_conf->pop_name)
+		{
+			mdolog(LOG_WARNING, "PoP Name not configured yet, skipping collection\n");
+		}
+		else
+		{
+			/* Collect The Traffic(tm) */
+			traffic_collect();
+		}
+
+		/* Get the current time */
+		tee = time(NULL);
+		gmtime_r(&tee, &teem);
+
+		/* Sleep for the remaining time */
+		/* and thus run every 5 mins */
+		sleep(((5-(teem.tm_min % 5))*60) - teem.tm_sec);
+
+		/*
+		 * Examples of the above sleeper:
+		 * 00:20:15 -> ((5-(20%5=0)=5)*60) - 15 = 5*60 - 15 = 285 = 04:45
+		 * 00:20:00 -> ((5-(20%5=0)=5)*60) -  0 = 5*60 -  0 = 300 = 05:00
+		 * 00:19:45 -> ((5-(19%5=4)=1)*60) - 45 = 1*60 - 45 =  15 = 00:15
+		 * 00:17:15 -> ((5-(17%5=2)=3)*60) - 15 = 3*60 - 15 = 165 = 02:45
+		 */
 	}
 
-	/* Setup listening socket */
-	listenfd = listen_server("traffic", host, TRAFFIC_PORT, AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0);
-	if (listenfd < 0)
-	{
-		traffic_log(LOG_ERR, "listen_server error:: could not create listening socket\n");
-		return NULL;
-	}
-
-	traffic_thread_client((void *)listenfd);
 	return NULL;
 }
 
 void traffic_init(void)
 {
-	/* Create a thread for the Statistics Handler */
+	/* Create a thread for the Traffic Statistics Handler */
 	thread_add("Traffic", traffic_thread, NULL, true);
 }
 

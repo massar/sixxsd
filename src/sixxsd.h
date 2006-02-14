@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.6 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: sixxsd.h,v 1.7 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -41,6 +41,10 @@
 #include <getopt.h>
 #include <pthread.h>
 
+#ifdef _BSD
+#include <sysctl.h>
+#endif
+
 #include <net/if.h>
 #include <netinet/if_ether.h>
 #include <netpacket/packet.h>
@@ -53,6 +57,8 @@
 #include <sys/ioctl.h>
 #include <sys/un.h>
 #include <linux/if_tun.h>
+
+#include <rrd.h>
 
 #include "ayiya.h"
 
@@ -233,6 +239,11 @@ struct sixxs_interface
 	unsigned int		mtu;				/* Maximum Transmission Unit */
 	unsigned int		ttl;				/* TTL */
 
+	/* Statistics ICMPv6-wise on the remote endpoint */
+	time_t			prevdead;			/* Previous time we thought it was dead */
+	time_t			lastalive;			/* When it was lastalive */
+	float			latency;			/* Latency */
+	float			loss;				/* Packetloss */
 
 	/* Heartbeat & AYIYA specific (IFACE_PROTO41_HB + IFACE_AYIYA) */
 	time_t			hb_lastbeat;			/* Last heartbeat we got */
@@ -308,12 +319,16 @@ struct conf
 	char			*pop_tinc_device;		/* tinc device */
 	char			*pop_tinc_config;		/* tinc configuration */
 
+	char			*homedir;			/* Homedir */
+
 	/* Could hash or tree these two for more performance */
 	struct sixxs_interface	*interfaces;			/* All the interfaces in this system */
 	struct sixxs_prefix	*prefixes;			/* All the prefixes in this system */
 
 	unsigned int		max_interfaces;			/* Maximum number of prefixes */
 	unsigned int		max_prefixes;			/* Maximum number of routes */
+
+	unsigned int		loopback_ifindex;		/* Ifindex of the loopback device */
 
 	/* Statistics */
 	FILE			*stat_file;			/* The file handle of ourdump file */
@@ -379,5 +394,8 @@ bool ayiya_stop(struct sixxs_interface *iface);
 
 /* traffic.c */
 void traffic_init(void);
+
+/* latency.c */
+void latency_init(void);
 
 #endif

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.6 2006-01-09 22:44:34 jeroen Exp $
- $Date: 2006-01-09 22:44:34 $
+ $Id: cfg.c,v 1.7 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -15,6 +15,15 @@ const char module_cfg[] = "cfg";
 #define module module_cfg
 
 #define CFG_PORT "42003"
+
+/* Client */
+struct cfg_client
+{
+	char		clienthost[NI_MAXHOST];
+	char		clientservice[NI_MAXSERV];
+	char		__pad[3];
+	SOCKET		socket;				/* Remote */
+};
 
 void cfg_log(int level, const char *fmt, ...);
 void cfg_log(int level, const char *fmt, ...)
@@ -214,7 +223,7 @@ bool cfg_cmd_pop_hb_timeout(int sock, const char *args);
 bool cfg_cmd_pop_hb_timeout(int sock, const char *args)
 {
 	g_conf->pop_hb_timeout = atoi(args);
-	sock_printf(sock, "+OK PoP Heartbeat Timeout now %d\n",  g_conf->pop_hb_timeout);
+	sock_printf(sock, "+OK PoP Heartbeat Timeout now %u\n",  g_conf->pop_hb_timeout);
 	return true;
 }
 
@@ -500,7 +509,11 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 	struct sixxs_interface	*iface = NULL;
 	struct sixxs_prefix	*pfx = NULL;
 	char			buf1[1024], buf2[1024];
-	bool			all = false;
+	bool			all = false, ok = false;
+	struct tm		teem;
+	time_t			now = time(NULL);
+
+	now = mktime(gmtime_r(&now, &teem));
 
 	if (args[0] == '\0' || strcasecmp(args, "all") == 0) all = true;
 
@@ -508,6 +521,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 
 	if (all || strcasecmp(args, "threads") == 0)
 	{
+		ok = true;
 		sock_printf(sock, "Threads:\n");
 		for (t = g_conf->threads; t; t = t->next)
 		{
@@ -518,8 +532,120 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		sock_printf(sock, "\n");
 	}
 
+	if (!all && strncasecmp(args, "interface ", 10) == 0)
+	{
+		ok = true;
+		i = atoi(&args[10]);
+		iface = int_get(i);
+		if (iface)
+		{
+			sock_printf(sock, "Interface %u\n", iface->interface_id);
+			sock_printf(sock, "\n");
+			sock_printf(sock, "Name                  : %s\n", iface->name);
+			sock_printf(sock, "Kernel Interface Index: %u\n", iface->kernel_ifindex);
+			sock_printf(sock, "Kernel Interface Flags: 0x%x\n", iface->kernel_flags);
+			sock_printf(sock, "\n");
+
+			memset(buf1, 0, sizeof(buf1));
+			inet_ntop(AF_INET6, &iface->ipv6_us, buf1, sizeof(buf1));
+			sock_printf(sock, "IPv6 Us               : %s/%u\n", buf1, iface->prefixlen);
+
+			memset(buf1, 0, sizeof(buf1));
+			inet_ntop(AF_INET6, &iface->ipv6_them, buf1, sizeof(buf1));
+			sock_printf(sock, "IPv6 Them             : %s/%u\n", buf1, iface->prefixlen);
+
+			memset(buf1, 0, sizeof(buf1));
+			inet_ntop(AF_INET, &iface->ipv4_them, buf1, sizeof(buf1));
+		
+			switch (iface->type)
+			{
+			case IFACE_IGNORE:
+				sock_printf(sock, "Type                  : ignore\n");
+				break;
+			case IFACE_PROTO41:
+				sock_printf(sock, "Type                  : proto-41\n");
+				sock_printf(sock, "Endpoint              : %s\n", buf1);
+				break;
+			case IFACE_PROTO41_HB:
+				sock_printf(sock, "Type                  : proto-41_hb\n");
+				sock_printf(sock, "Endpoint              : %s\n", buf1);
+				sock_printf(sock, "Password              : %s\n", iface->password);
+				gmtime_r(&iface->hb_lastbeat, &teem);
+				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+				sock_printf(sock, "Last Beat             : %s (%u seconds ago)\n", buf1,
+										(now - iface->hb_lastbeat));
+				break;
+			case IFACE_AYIYA:
+				sock_printf(sock, "Type                  : ayiya\n");
+				sock_printf(sock, "Endpoint              : %s\n", buf1);
+				sock_printf(sock, "Client Port           : %u\n", iface->ayiya_port);
+				sock_printf(sock, "Server Port           : %u\n", iface->ayiya_sport);
+				sock_printf(sock, "Protocol              : %s\n",
+					iface->ayiya_protocol == 0		? "unused" :
+					iface->ayiya_protocol == IPPROTO_UDP	? "udp" :
+					iface->ayiya_protocol == IPPROTO_TCP	? "tcp"
+										: "unknown");
+				sock_printf(sock, "Password              : %s\n", iface->password);
+				gmtime_r(&iface->hb_lastbeat, &teem);
+				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+				sock_printf(sock, "Last Beat             : %s (%u seconds ago)\n", buf1,
+										(now - iface->hb_lastbeat));
+				break;
+			case IFACE_TINC:
+				sock_printf(sock, "Type                  : tinc\n");
+				break;
+			default:
+				sock_printf(sock, "unknown - WARNING!!!\n");
+			}
+
+			if (iface->lastalive != 0)
+			{
+				gmtime_r(&iface->lastalive, &teem);
+				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+				sock_printf(sock, "Last Alive            : %s (%u seconds ago)\n", buf1, (now - iface->lastalive));
+			}
+			else sock_printf(sock, "Last Alive            : never\n");
+
+			if (iface->prevdead != 0)
+			{
+				gmtime_r(&iface->prevdead, &teem);
+				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+				sock_printf(sock, "Previously Dead       : %s (%u seconds ago)\n", buf1, (now - iface->prevdead));
+			}
+			else sock_printf(sock, "Previously Dead       : never\n");
+
+			sock_printf(sock, "\n");
+			sock_printf(sock, "State                 : %s\n",
+				iface->state == IFSTATE_DISABLED	? "disabled" :
+				iface->state == IFSTATE_UP		? "up" :
+				iface->state == IFSTATE_DOWN		? "down"
+									: "!unknown!");
+			sock_printf(sock, "Synced                : %s %s %s %s %s\n",
+				iface->synced_link	? "LINK"	: "link",
+				iface->synced_addr	? "ADDRESS"	: "address",
+				iface->synced_local	? "LOCAL"	: "local",
+				iface->synced_remote	? "REMOTE"	: "remote",
+				iface->synced_subnet	? "SUBNET"	: "subnet",
+				buf2);
+
+			sock_printf(sock, "\n");
+			sock_printf(sock, "Latency               : %.2f\n", iface->latency);
+			sock_printf(sock, "Loss                  : %2.2f\n", iface->loss);
+			sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
+			sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
+			sock_printf(sock, "Packets (in)          : %llu\n", iface->inpkt);
+			sock_printf(sock, "Packets (out)         : %llu\n", iface->outpkt);
+			OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
+		}
+		else
+		{
+			sock_printf(sock, "No interface %u\n");
+		}
+	}
+
 	if (all || strcasecmp(args, "interfaces") == 0)
 	{
+		ok = true;
 		sock_printf(sock, "Interfaces:\n");
 		/* Walk through all the interfaces */
 		OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
@@ -546,10 +672,11 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				snprintf(buf2, sizeof(buf2), "tinc");
 				break;
 			case IFACE_AYIYA:
-				snprintf(buf2, sizeof(buf2), "ayiya %s %s %u %s",
+				snprintf(buf2, sizeof(buf2), "ayiya %s %s %u %u %s",
 					buf1,
 					iface->password,
 					iface->ayiya_port,
+					iface->ayiya_sport,
 					iface->ayiya_protocol == 0		? "unused" :
 					iface->ayiya_protocol == IPPROTO_UDP	? "udp" :
 					iface->ayiya_protocol == IPPROTO_TCP	? "tcp"
@@ -580,6 +707,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 
 	if (all || strcasecmp(args, "routes") == 0)
 	{
+		ok = true;
 		sock_printf(sock, "Routes:\n");
 		/* Walk through all the routes */
 		OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
@@ -608,6 +736,8 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
 		sock_printf(sock, "\n");
 	}
+
+	if (!ok) sock_printf(sock, "No such status: %s\n", args);
 
 	sock_printf(sock, "+OK Status complete\n");
 	return true;
@@ -721,6 +851,48 @@ bool cfg_cmd_beat(int sock, const char UNUSED *args)
 	return true;
 }
 
+bool cfg_cmd_getstats(int sock, const char UNUSED *args);
+bool cfg_cmd_getstats(int sock, const char UNUSED *args)
+{
+	struct sixxs_interface	*iface;
+	unsigned int	i;
+
+	sock_printf(sock, "+OK Statistics coming up...\n");
+
+	OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_getstats");
+
+	/* Walk through all the interfaces */
+	for (i = 0; i < g_conf->max_interfaces; i++)
+	{
+		iface = g_conf->interfaces + i;
+		if (iface->type == IFACE_UNSPEC) continue;
+
+		sock_printf(sock, "%s %lld %lld %lld %lld\n",
+			iface->name,
+			iface->inoct, iface->outoct,
+			iface->inpkt, iface->outpkt);
+	}
+
+	OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_getstats");
+
+	sock_printf(sock, "+OK End of statistics\n");
+	return true;
+}
+
+bool cfg_cmd_ping4(int sock, const char UNUSED *args);
+bool cfg_cmd_ping4(int sock, const char UNUSED *args)
+{
+	sock_printf(sock, "+OK Not Implemented yet (ping4)\n");
+	return true;
+}
+
+bool cfg_cmd_ping6(int sock, const char UNUSED *args);
+bool cfg_cmd_ping6(int sock, const char UNUSED *args)
+{
+	sock_printf(sock, "+OK Not Implemented yet (ping6)\n");
+	return true;
+}
+
 /* Commands as seen above */
 struct {
 	const char	*cmd;
@@ -743,17 +915,15 @@ struct {
 	{"pop_tinc_device",	cfg_cmd_pop_tinc_device,	"<devicename>"},
 	{"pop_tinc_config",	cfg_cmd_pop_tinc_config,	"<configfilename>"},
 	{"pop",			cfg_cmd_pop,			"OK|ERR"},
-
-	/* Tunnel & Route */
 	{"tunnel",		cfg_cmd_tunnel,			"<opts>"},
 	{"route",		cfg_cmd_route,			"<opts>"},
-	
-	/* Ignored commands */
-	{"config",		NULL,				"OK|ERR"},
-	{"commit",		NULL,				""},
-	{"",			NULL,				NULL},
-	{"#",			NULL,				"<comment>"},
-	{"handle",		NULL,				"<handle>"},
+
+	/* Traffic */
+	{"getstats",		cfg_cmd_getstats,		"[<device>]"},
+
+	/* Ping */
+	{"ping4",		cfg_cmd_ping4,			"<ip4>"},
+	{"ping6",		cfg_cmd_ping6,			"<ip6>"},
 
 	/* Management */
 	{"status",		cfg_cmd_status,			"all|threads|interfaces|routes"},
@@ -765,6 +935,14 @@ struct {
 	{"reply",		cfg_cmd_reply,			"<opts>"},
 	{"help",		cfg_cmd_help,			""},
 	{"quit",		cfg_cmd_quit,			"<byestring>"},
+
+	/* Ignored commands */
+	{"config",		NULL,				"OK|ERR"},
+	{"commit",		NULL,				""},
+	{"",			NULL,				NULL},
+	{"#",			NULL,				"<comment>"},
+	{"handle",		NULL,				"<handle>"},
+
 	{NULL,			NULL,				NULL},
 };
 
@@ -841,97 +1019,130 @@ bool cfg_fromfile(const char *filename)
 void *cfg_thread_client(void *arg);
 void *cfg_thread_client(void *arg)
 {
-	int			listenfd = (int)arg;
-	int			sock, n;
+	struct cfg_client	*lc = (struct cfg_client *)arg;
 	unsigned int		filled = 0;
-	char			clienthost[NI_MAXHOST];
-	char			clientservice[NI_MAXSERV];
-	struct sockaddr_storage	ci;
-	socklen_t		cl;
 	char			buf[1024], rbuf[8192];
 	bool			quit = false;
 
 	memset(buf, 0, sizeof(buf));
-	memset(&ci, 0, sizeof(ci));
-	cl = sizeof(ci);
 
-	/* Try to accept a client */
-	D(cfg_log(LOG_DEBUG, "Accepting new clients...\n");)
-	sock = accept(listenfd, (struct sockaddr *)&ci, &cl);
-	
-	if (sock == -1)
-	{
-		cfg_log(LOG_ERR, "Accept failed (%d) : %s\n", errno, strerror(errno));
-		return NULL;
-	}
-
-	D(cfg_log(LOG_DEBUG, "Accept success (%d) : %s\n", errno, strerror(errno));)
-
-	/* Create a new thread for which is going to handle accepts */
-	/* Recursive thread creation for accepts ;) */
-	thread_add("Cfg", cfg_thread_client, (void *)listenfd, true);
-
-	/* We have accepted a client */
-	/* Check if it is actually allowed to access us */
-
-	memset(clienthost, 0, sizeof(clienthost));
-	memset(clientservice, 0, sizeof(clientservice));
-
-	n = getnameinfo((struct sockaddr *)&ci, cl,
-		clienthost, sizeof(clienthost),
-		clientservice, sizeof(clientservice),
-		NI_NUMERICHOST);
-	if (n != 0)
-	{
-		sock_printf(sock, "-ERR I couldn't find out who you are.. go away!\n");
-		/* Error on resolve */
-		cfg_log(LOG_ERR, "Error %d : %s (family: %d)\n", n, gai_strerror(n), ci.ss_family);
-		close(sock);
-		return NULL;
-	}
-
-	D(cfg_log(LOG_DEBUG, "Accepted %s:%s\n", clienthost, clientservice);)
-
-	sock_printf(sock, "+OK SixXSd Configuration Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
+	sock_printf(lc->socket, "+OK SixXS PoP Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
 
 	while (	!quit && g_conf && g_conf->running &&
-		sock_getline(sock, rbuf, (unsigned int)sizeof(rbuf), &filled, buf, (unsigned int)sizeof(buf)) > 0)
+		sock_getline(lc->socket, rbuf, (unsigned int)sizeof(rbuf), &filled, buf, (unsigned int)sizeof(buf)) > 0)
 	{
 		cfg_log(LOG_INFO, "Client sent '%s'\n", buf);
-		quit = !cfg_handlecommand(sock, buf);
+		quit = !cfg_handlecommand(lc->socket, buf);
 	}
 	
-	D(cfg_log(LOG_DEBUG, "Client Finished %s:%s\n", clienthost, clientservice);)
+	D(cfg_log(LOG_DEBUG, "Client Finished %s:%s\n", lc->clienthost, lc->clientservice);)
 
 	/* End this conversation */
-	close(sock);
+	close(lc->socket);
+
+	free(lc);
 	return NULL;
 }
+
+/* const char url[] = "any://any:42003 any://any:42001 any://any:43002"; */
+const char url[] = "any://any:42003";
 
 void *cfg_thread(void UNUSED *arg);
 void *cfg_thread(void UNUSED *arg)
 {
-	int			listenfd;
-	char			host[NI_MAXHOST];
+	struct cfg_client	*lc;
+	struct socketpool	pool;
+	struct socketnode	*sn, *sn2;
+	fd_set			fd_read;
+	struct timeval		timeout;
+	int			i = 0;
+	struct sockaddr_storage	sa;
+	socklen_t		sa_len;
 
 	/* Show that we have started */
 	cfg_log(LOG_INFO, "SixXS Configuration Handler\n");
 
-	if (!inet_ntop(AF_INET, &g_conf->pop_ipv4, host, sizeof(host)))
+	/* Setup listening socket(s) */
+	socketpool_init(&pool);
+	if (use_uri(module, url, CFG_PORT, &pool, 42) == 0)
 	{
-		cfg_log(LOG_ERR, "Error, pop_ipv4 not set to a valid IPv4 address\n");
+		mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", strerror(errno), errno);
 		return NULL;
 	}
 
-	/* Setup listening socket */
-	listenfd = listen_server(module, host, CFG_PORT, AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0);
-	if (listenfd < 0)
+	/* Make all the sockets nonblocking */
+	List_For (&pool.sockets, sn, sn2, struct socketnode *)
 	{
-		cfg_log(LOG_ERR, "listen_server error:: could not create listening socket\n");
-		return NULL;
+		socket_setnonblock(sn->socket);
 	}
 
-	cfg_thread_client((void *)listenfd);
+	while (g_conf && g_conf->running)
+	{
+		/* What we want to know */
+		memcpy(&fd_read, &pool.fds, sizeof(fd_read));
+
+		/* Timeout */
+		memset(&timeout, 0, sizeof(timeout));
+		timeout.tv_sec = 5;
+
+		i = select(pool.hi+1, &fd_read, NULL, NULL, &timeout);
+
+		if (i < 0)
+		{
+			if (errno == EINTR) continue;
+			mdolog(LOG_ERR, "Select failed: %s (%d)\n", strerror(errno), errno);
+			break;
+		}
+
+		List_For (&pool.sockets, sn, sn2, struct socketnode *)
+		{
+			if (!FD_ISSET(sn->socket, &fd_read)) continue;
+
+			lc = malloc(sizeof(*lc));
+			if (!lc)
+			{
+				mdolog(LOG_ERR, "Out of memory during cfg_thread(): %s (%d)\n", strerror(errno), errno);
+				break;
+			}
+
+			sa_len = sizeof(sa);
+			memset(lc, 0, sizeof(*lc));
+			memset(&sa, 0, sa_len);
+
+			/* Incoming connection */
+			lc->socket = accept(sn->socket, (struct sockaddr *)&sa, &sa_len);
+			if (lc->socket == -1)
+			{
+				mdolog(LOG_WARNING, "Accept failed: %s (%d)\n", strerror(errno), errno);
+			}
+			else
+			{
+				i = getnameinfo((struct sockaddr *)&sa, sa_len,
+					lc->clienthost, sizeof(lc->clienthost),
+					lc->clientservice, sizeof(lc->clientservice),
+					NI_NUMERICHOST);
+				if (i != 0)
+				{
+					sock_printf(lc->socket, "-ERR I couldn't find out who you are.. go away!\n");
+					/* Error on resolve */
+					cfg_log(LOG_ERR, "Error %d : %s (family: %d)\n", i, gai_strerror(i), sa.ss_family);
+					close(lc->socket);
+				}
+
+				D(cfg_log(LOG_DEBUG, "Accepted %s:%s\n", lc->clienthost, lc->clientservice);)
+
+				thread_add("CfgClient", cfg_thread_client, lc, true);
+				lc = NULL;
+			}
+
+			/* Free the client memory when not launched */
+			if (lc) lc = NULL;
+		}
+	}
+
+	/* Exit */
+	socketpool_exit(&pool);
+
 	return NULL;
 }
 

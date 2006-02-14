@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.7 2006-01-14 19:58:22 jeroen Exp $
- $Date: 2006-01-14 19:58:22 $
+ $Id: os_linux.c,v 1.8 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -516,7 +516,15 @@ void netlink_update_link(struct nlmsghdr *h)
 
 	if (strncmp(g_conf->pop_tunneldevice, name, strlen(g_conf->pop_tunneldevice)) != 0)
 	{
-		mddolog("Ignoring non-tunneldevice %s\n", name);
+		if (strcmp("lo", name) == 0)
+		{
+			mddolog("Found loopback device as index %u\n", ifi->ifi_index);
+			g_conf->loopback_ifindex = ifi->ifi_index;
+		}
+		else
+		{
+			mddolog("Ignoring non-tunneldevice %s\n", name);
+		}
 		return;
 	}
 
@@ -816,7 +824,7 @@ void netlink_update_route(struct nlmsghdr *h)
 
 	/* Route should go over either the interface or the loopback */
 	/* XXX: Only local routes should go over loopback! */
-	if (iface->kernel_ifindex != idx && idx != 1)
+	if (iface->kernel_ifindex != idx && g_conf->loopback_ifindex != idx)
 	{
 		mddolog("Route %s/%u goes over wrong interface %u instead of %u\n",
 			dst, rtm->rtm_dst_len, idx, iface->kernel_ifindex);
@@ -1069,8 +1077,7 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 	struct sockaddr_nl	snl;
 	int			sock;
 	unsigned int		namelen;
-	uint32_t		nl_rcvbufsize = (2*1024*1024);
-	uint32_t		oldsize, oldlen, newsize, newlen;
+	uint32_t		oldsize, oldlen, newsize = (2*1024*1024), newlen;
 
 	memset(nl, 0, sizeof(*nl));
 	nl->name = name;
@@ -1103,7 +1110,7 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 
 	if (oldsize < newsize)
 	{
-		ret = setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &nl_rcvbufsize, sizeof(nl_rcvbufsize));
+		ret = setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &newsize, sizeof(newsize));
 		if (ret < 0)
 		{
 			mdolog(LOG_ERR, "Can't get %s receive buffer size: %s", nl->name, strerror(errno));

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.4 2006-01-14 19:58:44 jeroen Exp $
- $Date: 2006-01-14 19:58:44 $
+ $Id: ayiya.c,v 1.5 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -256,8 +256,8 @@ int ayiya_checktime(time_t epochtime)
  * clientlen  = length of the client information structure
  * protocol   = the protocol in which AYIYA was carried
 */
-void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_storage *ci, socklen_t cl, unsigned int UNUSED protocol, unsigned int sport);
-void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_storage *ci, socklen_t cl, unsigned int UNUSED protocol, unsigned int sport)
+void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_storage *ci, socklen_t cl, unsigned int protocol, unsigned int sport);
+void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_storage *ci, socklen_t cl, unsigned int protocol, unsigned int sport)
 {
 	SHA_CTX			sha1;
 	sha1_byte		their_hash[SHA1_DIGEST_LENGTH],
@@ -376,6 +376,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 	}
 
 	if (sport != iface->ayiya_sport) iface->ayiya_sport = sport;
+	if (protocol != iface->ayiya_protocol) iface->ayiya_protocol = protocol;
 
 	int_beat(iface);
 

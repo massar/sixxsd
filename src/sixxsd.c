@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.5 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: sixxsd.c,v 1.6 2006-02-14 15:41:36 jeroen Exp $
+ $Date: 2006-02-14 15:41:36 $
 
  SixXSd main code
 **************************************/
@@ -66,9 +66,10 @@ void cleandeadtunnels(void)
 	struct sixxs_interface	*iface;
 	unsigned int		i, t;
 	time_t			time_tee;
+	struct tm		teem;
 
 	time_tee = time(NULL);
-	time_tee = mktime(gmtime(&time_tee));
+	time_tee = mktime(gmtime_r(&time_tee, &teem));
 
 	for (i = 0; g_conf && g_conf->running && i < g_conf->max_interfaces; i++)
 	{
@@ -88,7 +89,7 @@ void cleandeadtunnels(void)
 		else t = time_tee - iface->hb_lastbeat;
 
 		/* Didn't see it? */
-		if (t > g_conf->pop_hb_timeout)
+		if (t > (g_conf->pop_hb_timeout*2))
 		{
 			/* Down you go */
 			mddolog("Marking %s down due to heartbeat timeout (%u/%u)\n",
@@ -159,6 +160,8 @@ bool init(void)
 	g_conf->max_interfaces		= 4000;
 	g_conf->max_prefixes		= 4000;
 	g_conf->pop_tunneldevice	= strdup("sixxs");
+
+	g_conf->homedir			= strdup("/home/sixxs");
 
 	/* Initialize our counters */
 	g_conf->stats.starttime		= time(NULL);
@@ -438,6 +441,7 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	ayiya_init();
 	hb_init();
 	traffic_init();
+	latency_init();
 
 	/* Idle loop */
 	while (g_conf->running)
