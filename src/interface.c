@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.7 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: interface.c,v 1.8 2006-02-15 22:35:36 jeroen Exp $
+ $Date: 2006-02-15 22:35:36 $
 
  SixXSd Interface Management 
 **************************************/
@@ -33,14 +33,6 @@ bool int_set_state(struct sixxs_interface *iface, enum iface_state state)
 	{
 		/* Only need to update the state */
 		iface->state = state;
-		return true;
-	}
-
-	/* Don't turn down Heartbeat or AYIYA interfaces */
-	if (	(iface->type == IFACE_PROTO41_HB || iface->type == IFACE_AYIYA) &&
-		iface->state == IFSTATE_UP &&
-		state == IFSTATE_DOWN)
-	{
 		return true;
 	}
 
@@ -228,8 +220,15 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		 * - ipv6_them & ipv6_us & prefixlen don't change
 		 */
 
+		/* Changed Type? */
+		int_set_type(iface, type);
+
 		/* Changed State? */
-		int_set_state(iface, state);
+		/* Don't turn down Heartbeat or AYIYA interfaces */
+		if (!(iface->type == IFACE_PROTO41_HB && iface->type == IFACE_AYIYA && state == IFSTATE_DOWN))
+		{
+			int_set_state(iface, state);
+		}
 
 		/* Changed IPv4 endpoint? */
 		if (type == IFACE_PROTO41) int_set_endpoint(iface, ipv4_them);
