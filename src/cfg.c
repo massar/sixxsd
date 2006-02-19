@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.7 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: cfg.c,v 1.8 2006-02-19 17:32:29 jeroen Exp $
+ $Date: 2006-02-19 17:32:29 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -632,7 +632,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 			sock_printf(sock, "Latency               : %.2f\n", iface->latency);
 			sock_printf(sock, "Loss                  : %2.2f\n", iface->loss);
 			sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
-			sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
+			sock_printf(sock, "Octets (out)          : %llu\n", iface->outoct);
 			sock_printf(sock, "Packets (in)          : %llu\n", iface->inpkt);
 			sock_printf(sock, "Packets (out)         : %llu\n", iface->outpkt);
 			OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
