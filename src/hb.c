@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.3 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: hb.c,v 1.4 2006-02-20 12:28:36 jeroen Exp $
+ $Date: 2006-02-20 12:28:36 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -35,7 +35,7 @@ void hb_log(int level, struct sockaddr_storage *ci, socklen_t cl, const char *fm
 	getnameinfo((struct sockaddr *)ci, cl,
 		clienthost, sizeof(clienthost),
 		clientservice, sizeof(clientservice),
-		NI_NUMERICHOST);
+		NI_NUMERICHOST|NI_NUMERICSERV);
 	
 	/* Print the host+port this is coming from */
 	snprintf(buf, sizeof(buf), "[%s]:%s : ", clienthost, clientservice);
@@ -125,7 +125,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 
 	getnameinfo((struct sockaddr *)ci, cl,
 		clienthost, sizeof(clienthost),
-		NULL, 0, NI_NUMERICHOST);
+		NULL, 0, NI_NUMERICHOST|NI_NUMERICSERV);
 
 	/* Does the packet specify that we should check the sender address? */
 	if (strcmp(ipv4_them, sender) != 0)

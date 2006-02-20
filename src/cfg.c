@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.8 2006-02-19 17:32:29 jeroen Exp $
- $Date: 2006-02-19 17:32:29 $
+ $Id: cfg.c,v 1.9 2006-02-20 12:28:35 jeroen Exp $
+ $Date: 2006-02-20 12:28:35 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -509,13 +509,14 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 	struct sixxs_interface	*iface = NULL;
 	struct sixxs_prefix	*pfx = NULL;
 	char			buf1[1024], buf2[1024];
-	bool			all = false, ok = false;
+	bool			all = false, inactive = false, ok = false;
 	struct tm		teem;
 	time_t			now = time(NULL);
 
 	now = mktime(gmtime_r(&now, &teem));
 
-	if (args[0] == '\0' || strcasecmp(args, "all") == 0) all = true;
+	if (args[0] == '\0') all = true;
+	else if (strcasecmp(args, "all") == 0) all = inactive = true;
 
 	sock_printf(sock, "+OK Status coming up...\n");
 
@@ -652,7 +653,11 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		for (i = 0; i < g_conf->max_interfaces; i++)
 		{
 			iface = g_conf->interfaces + i;
-			if (iface->type == IFACE_UNSPEC) continue;
+			if (	iface->type == IFACE_UNSPEC ||
+				(iface->state == IFSTATE_DISABLED && !inactive))
+			{
+				continue;
+			}
 
 			memset(buf1, 0, sizeof(buf1));
 			inet_ntop(AF_INET, &iface->ipv4_them, buf1, sizeof(buf1));
@@ -1120,7 +1125,7 @@ void *cfg_thread(void UNUSED *arg)
 				i = getnameinfo((struct sockaddr *)&sa, sa_len,
 					lc->clienthost, sizeof(lc->clienthost),
 					lc->clientservice, sizeof(lc->clientservice),
-					NI_NUMERICHOST);
+					NI_NUMERICHOST|NI_NUMERICSERV);
 				if (i != 0)
 				{
 					sock_printf(lc->socket, "-ERR I couldn't find out who you are.. go away!\n");
