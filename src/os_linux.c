@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.8 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: os_linux.c,v 1.9 2006-02-20 12:28:16 jeroen Exp $
+ $Date: 2006-02-20 12:28:16 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -824,7 +824,7 @@ void netlink_update_route(struct nlmsghdr *h)
 
 	/* Route should go over either the interface or the loopback */
 	/* XXX: Only local routes should go over loopback! */
-	if (iface->kernel_ifindex != idx && g_conf->loopback_ifindex != idx)
+	if (iface->kernel_ifindex != 0 && iface->kernel_ifindex != idx && g_conf->loopback_ifindex != idx)
 	{
 		mddolog("Route %s/%u goes over wrong interface %u instead of %u\n",
 			dst, rtm->rtm_dst_len, idx, iface->kernel_ifindex);
