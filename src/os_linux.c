@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.9 2006-02-20 12:28:16 jeroen Exp $
- $Date: 2006-02-20 12:28:16 $
+ $Id: os_linux.c,v 1.10 2006-02-21 14:30:47 jeroen Exp $
+ $Date: 2006-02-21 14:30:47 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -252,6 +252,21 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 		iface->synced_remote = false;
 	}
 
+	return true;
+}
+
+bool os_sync_routes(struct sixxs_interface *iface)
+{
+	if (!g_conf->do_sync) return true;
+
+	if (iface->state == IFSTATE_DISABLED || iface->state == IFSTATE_DOWN)
+	{
+		os_sync_route_down(iface);
+	}
+	else /* IFSTATE_UP */
+	{
+		os_sync_route_up(iface);
+	}
 	return true;
 }
 

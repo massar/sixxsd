@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.5 2006-01-09 22:43:45 jeroen Exp $
- $Date: 2006-01-09 22:43:45 $
+ $Id: prefix.c,v 1.6 2006-02-21 14:30:47 jeroen Exp $
+ $Date: 2006-02-21 14:30:47 $
 
  SixXSd Prefix Management
 **************************************/
@@ -154,5 +154,8 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	}
 	
 	OS_Mutex_Release(&pfx->mutex, "pfx_reconfig");
+
+	/* Sync the route */
+	os_sync_routes(iface);
 }
 
