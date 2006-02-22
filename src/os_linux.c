@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.10 2006-02-21 14:30:47 jeroen Exp $
- $Date: 2006-02-21 14:30:47 $
+ $Id: os_linux.c,v 1.11 2006-02-22 13:58:48 jeroen Exp $
+ $Date: 2006-02-22 13:58:48 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -190,8 +190,6 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 			/* we only route /128 tunnels */
 			128,
 			iface->name);
-
-		iface->synced_remote = true;
 
 		/* Sync subnets over this tunnel */
 		for (pfx = iface->prefixes; pfx; pfx = pfx->next)
