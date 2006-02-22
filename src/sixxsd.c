@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.6 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: sixxsd.c,v 1.7 2006-02-22 13:58:28 jeroen Exp $
+ $Date: 2006-02-22 13:58:28 $
 
  SixXSd main code
 **************************************/
@@ -20,7 +20,7 @@ struct conf *g_conf = NULL;
 /********************************************************************
   SixXSd Sync Management
 ********************************************************************/
-void sync_complete(void)
+void sync_complete()
 {
 	struct sixxs_interface	*iface;
 	struct sixxs_prefix	*pfx;
@@ -351,6 +351,8 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[]);
 int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 #endif
 {
+	unsigned int loops = 0;
+
 	if (	!init() ||
 		!parse_arguments(argc,argv)) return -1;
 
@@ -448,6 +450,10 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	{
 		cleandeadtunnels();
 		sleep(10);
+		loops++;
+		loops%=360;
+
+		if (loops == 0) sync_complete();
 	}
 
 	/* Show the message in the log */
