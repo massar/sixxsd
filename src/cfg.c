@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.10 2006-02-22 13:55:42 jeroen Exp $
- $Date: 2006-02-22 13:55:42 $
+ $Id: cfg.c,v 1.11 2006-02-22 14:33:45 jeroen Exp $
+ $Date: 2006-02-22 14:33:45 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -1063,26 +1063,37 @@ void *cfg_thread(void UNUSED *arg)
 	int			i = 0;
 	struct sockaddr_storage	sa;
 	socklen_t		sa_len;
+	bool			needpool = true;
 
 	/* Show that we have started */
 	cfg_log(LOG_INFO, "SixXS Configuration Handler\n");
 
-	/* Setup listening socket(s) */
-	socketpool_init(&pool);
-	if (use_uri(module, url, CFG_PORT, &pool, 42) == 0)
-	{
-		mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", strerror(errno), errno);
-		return NULL;
-	}
-
-	/* Make all the sockets nonblocking */
-	List_For (&pool.sockets, sn, sn2, struct socketnode *)
-	{
-		socket_setnonblock(sn->socket);
-	}
-
 	while (g_conf && g_conf->running)
 	{
+		if (needpool)
+		{
+			/* Setup listening socket(s) */
+			socketpool_init(&pool);
+			if (use_uri(module, url, CFG_PORT, &pool, 42) == 0)
+			{
+				mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", strerror(errno), errno);
+
+				/* Try again after 5 seconds */
+				sleep(5);
+				continue;
+			}
+			else
+			{
+				/* Make all the sockets nonblocking */
+				List_For (&pool.sockets, sn, sn2, struct socketnode *)
+				{
+					socket_setnonblock(sn->socket);
+				}
+
+				needpool = false;
+			}
+		}
+
 		/* What we want to know */
 		memcpy(&fd_read, &pool.fds, sizeof(fd_read));
 
@@ -1096,7 +1107,9 @@ void *cfg_thread(void UNUSED *arg)
 		{
 			if (errno == EINTR) continue;
 			mdolog(LOG_ERR, "Select failed: %s (%d)\n", strerror(errno), errno);
-			break;
+			socketpool_exit(&pool);
+			needpool = true;
+			continue;
 		}
 
 		List_For (&pool.sockets, sn, sn2, struct socketnode *)
