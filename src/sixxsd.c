@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.7 2006-02-22 13:58:28 jeroen Exp $
- $Date: 2006-02-22 13:58:28 $
+ $Id: sixxsd.c,v 1.8 2006-02-22 16:05:12 jeroen Exp $
+ $Date: 2006-02-22 16:05:12 $
 
  SixXSd main code
 **************************************/
@@ -46,7 +46,10 @@ void sync_complete()
 			iface->synced_remote ? "R" : "r",
 			iface->synced_subnet ? "S" : "s");
 
-		int_set_state(iface, iface->state);
+		if (!((iface->type == IFACE_PROTO41_HB || iface->type == IFACE_AYIYA) && iface->state == IFSTATE_DOWN))
+		{
+			int_set_state(iface, iface->state);
+		}
 	}
 
 	for (i = 0; g_conf && g_conf->running && i < g_conf->max_prefixes; i++)
