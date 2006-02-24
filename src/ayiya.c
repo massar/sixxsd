@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.5 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: ayiya.c,v 1.6 2006-02-24 10:32:00 jeroen Exp $
+ $Date: 2006-02-24 10:32:00 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -134,7 +134,10 @@ void *ayiya_process_outgoing(void *arg)
 		if (lenin <= 0)
 		{
 			mdolog(LOG_ERR, "[outgoing] Error reading from %s (%d): %s\n", iface->name, errno, strerror(errno));
-			continue;
+
+			/* Force it down */
+			os_int_set_state(iface, IFSTATE_DOWN);
+			break;
 		}
 
 		if (lenin < 2)
