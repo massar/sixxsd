@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.6 2006-02-24 10:32:00 jeroen Exp $
- $Date: 2006-02-24 10:32:00 $
+ $Id: ayiya.c,v 1.7 2006-02-24 13:08:03 jeroen Exp $
+ $Date: 2006-02-24 13:08:03 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -487,8 +487,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 
 	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr))
 	{
-		mdolog(LOG_ERR, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror(errno));
-		return false;
+		mdolog(LOG_WARNING, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror(errno));
 	}
 
 	iface->running = true;
