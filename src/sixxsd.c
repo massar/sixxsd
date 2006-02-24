@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.9 2006-02-24 09:14:49 jeroen Exp $
- $Date: 2006-02-24 09:14:49 $
+ $Id: sixxsd.c,v 1.10 2006-02-24 10:22:14 jeroen Exp $
+ $Date: 2006-02-24 10:22:14 $
 
  SixXSd main code
 **************************************/
@@ -37,6 +37,13 @@ void sync_complete()
 	{
 		iface = g_conf->interfaces + i;
 		if (iface->type == IFACE_UNSPEC) continue;
+
+		/* Only check inconsistent interfaces */
+		if (	(iface->synced_link && iface->synced_addr && iface->synced_local && iface->synced_remote) ||
+			(!iface->synced_link && !iface->synced_addr && !iface->synced_local && !iface->synced_remote))
+		{
+			continue;
+		}
 
 		mddolog("Interface %s/%u (%s%s%s%s%s)\n",
 			iface->name, iface->interface_id,
