@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.12 2006-02-24 09:14:49 jeroen Exp $
- $Date: 2006-02-24 09:14:49 $
+ $Id: os_linux.c,v 1.13 2006-02-24 10:22:00 jeroen Exp $
+ $Date: 2006-02-24 10:22:00 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -570,7 +570,18 @@ void netlink_update_link(struct nlmsghdr *h)
 			/* XXX - Ignore certain devices! */
 
 			/* Removing SIT tunnels is easy, do it directly */
-			if (ifi->ifi_type == ARPHRD_SIT) os_exec("ip tunnel del %s", name);
+			if (ifi->ifi_type == ARPHRD_SIT)
+			{
+				/* When the link is gone the rest is desynced too */
+				iface->synced_link = false;
+				iface->synced_addr = false;
+				iface->synced_local = false;
+				iface->synced_remote = false;
+				iface->synced_subnet = false;
+
+				/* Remove the interface */
+				os_exec("ip tunnel del %s", name);
+			}
 		}
 		if (iface) OS_Mutex_Release(&iface->mutex, "netlink_update_link");
 		return;
@@ -601,8 +612,6 @@ void netlink_update_link(struct nlmsghdr *h)
 		(	iface->type == IFACE_AYIYA &&
 			ifi->ifi_type == ARPHRD_TUNTAP))
 	{
-		iface->synced_link = true;
-
 		/* Check tunnel parameters */
 		if (iface->type == IFACE_PROTO41 || iface->type == IFACE_PROTO41_HB)
 		{
@@ -650,8 +659,14 @@ void netlink_update_link(struct nlmsghdr *h)
 			os_int_set_mtu(iface, iface->mtu);
 		}
 
-		/* Add interface address */
-		os_sync_address_up(iface);
+		/* When the link was not synced yet try to give it an address */
+		if (!iface->synced_link)
+		{
+			iface->synced_link = true;
+
+			/* Add interface address */
+			os_sync_address_up(iface);
+		}
 	}
 	else
 	{
@@ -923,6 +938,9 @@ void netlink_update_route(struct nlmsghdr *h)
 
 			/* Mark this one as synced */
 			subnet->synced = true;
+
+			/* Most interfaces only have one subnet thus just mark it up */
+			iface->synced_subnet = true;
 
 			mddolog("SUBNET %s/%u on %s\n", dst, rtm->rtm_dst_len, iface->name);
 			break;
