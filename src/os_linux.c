@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.13 2006-02-24 10:22:00 jeroen Exp $
- $Date: 2006-02-24 10:22:00 $
+ $Id: os_linux.c,v 1.14 2006-02-24 10:34:26 jeroen Exp $
+ $Date: 2006-02-24 10:34:26 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -70,7 +70,7 @@ bool os_sync_link_up(struct sixxs_interface *iface)
 	}
 	else if (iface->type == IFACE_AYIYA)
 	{
-		ayiya_start(iface);
+		if (!ayiya_start(iface)) return false;
 	}
 
 	/* Mark the interface up + set MTU */
