@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.11 2006-02-22 13:58:48 jeroen Exp $
- $Date: 2006-02-22 13:58:48 $
+ $Id: os_linux.c,v 1.12 2006-02-24 09:14:49 jeroen Exp $
+ $Date: 2006-02-24 09:14:49 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -92,8 +92,6 @@ bool os_sync_link_up(struct sixxs_interface *iface)
 			iface->name);
 	}
 
-	iface->synced_link = true;
-
 	return true;
 }
 
@@ -143,9 +141,6 @@ bool os_sync_address_up(struct sixxs_interface *iface)
 			/* we only route /128 tunnels */
 			128,
 			iface->name);
-
-		iface->synced_addr = true;
-		iface->synced_local = true;
 	}
 
 	return true;
@@ -174,11 +169,10 @@ bool os_sync_address_down(struct sixxs_interface *iface)
 	return true;
 }
 
-bool os_sync_route_up(struct sixxs_interface *iface);
-bool os_sync_route_up(struct sixxs_interface *iface)
+bool os_sync_remote_up(struct sixxs_interface *iface);
+bool os_sync_remote_up(struct sixxs_interface *iface)
 {
-	char			them[100], subnet[100];
-	struct sixxs_prefix	*pfx;
+	char them[100];
 
 	/* Only when syncing */
 	if (g_conf->do_sync && !iface->synced_remote)
@@ -190,6 +184,21 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 			/* we only route /128 tunnels */
 			128,
 			iface->name);
+	}
+
+	return true;
+}
+
+bool os_sync_route_up(struct sixxs_interface *iface);
+bool os_sync_route_up(struct sixxs_interface *iface)
+{
+	char			them[100], subnet[100];
+	struct sixxs_prefix	*pfx;
+
+	/* Only when syncing */
+	if (g_conf->do_sync && !iface->synced_subnet)
+	{
+		inet_ntop(AF_INET6, &iface->ipv6_them, them, sizeof(them));
 
 		/* Sync subnets over this tunnel */
 		for (pfx = iface->prefixes; pfx; pfx = pfx->next)
@@ -223,7 +232,7 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 	{
 		if (pfx->is_tunnel) continue;
 
-		mddolog("os_sync_route_down(1)\n");
+		mddolog("os_sync_route_down\n");
 		inet_ntop(AF_INET6, &pfx->prefix, subnet, sizeof(subnet));
 		os_exec(
 			"ip -6 ro del %s/%u via %s dev %s",
@@ -233,13 +242,20 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 			iface->name);
 	}
 	iface->synced_subnet = false;
+	return true;
+}
+
+bool os_sync_remote_down(struct sixxs_interface *iface);
+bool os_sync_remote_down(struct sixxs_interface *iface)
+{
+	char them[100];
 
 	/* Only when syncing and this was synced */
 	if (g_conf->do_sync && iface->synced_remote)
 	{
 		inet_ntop(AF_INET6, &iface->ipv6_them, them, sizeof(them));
 
-		mddolog("os_sync_route_down(2)\n");
+		mddolog("os_sync_remote_down\n");
 		os_exec(
 			"ip -6 ro del %s/%u dev %s",
 			them,
@@ -249,7 +265,6 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 
 		iface->synced_remote = false;
 	}
-
 	return true;
 }
 
@@ -280,6 +295,7 @@ bool os_int_set_state(struct sixxs_interface *iface, enum iface_state state)
 	{
 		/* Take her DOWN */
 		os_sync_route_down(iface);
+		os_sync_remote_down(iface);
 		os_sync_address_down(iface);
 		os_sync_link_down(iface);
 	}
@@ -287,8 +303,6 @@ bool os_int_set_state(struct sixxs_interface *iface, enum iface_state state)
 	{
 		/* UP she goes */
 		os_sync_link_up(iface);
-		os_sync_address_up(iface);
-		os_sync_route_up(iface);
 	}
 
 	return true;
@@ -544,12 +558,14 @@ void netlink_update_link(struct nlmsghdr *h)
 	/* Shortcut to get the interface */
 	i = atoi(&name[strlen(g_conf->pop_tunneldevice)]);
 	iface = int_get(i);
+
 	if (!iface || iface->type == IFACE_UNSPEC || iface->state == IFSTATE_DOWN)
 	{
 		if (h->nlmsg_type == RTM_NEWLINK && (ifi->ifi_flags & IFF_UP))
 		{
+			
 			/* XXX - Remove interfaces we don't want to know about */
-			mddolog("Unknown interface %u/%s, remove it!\n", i, name);
+			mddolog("%s interface %u/%s, remove it!\n", !iface || iface->type == IFACE_UNSPEC ? "Unknown" : "Down-marked", i, name);
 
 			/* XXX - Ignore certain devices! */
 
@@ -565,6 +581,19 @@ void netlink_update_link(struct nlmsghdr *h)
 	kernel_mtu = *(int *)RTA_DATA(tb[IFLA_MTU]);
 
 	mddolog("Found LINK %s, type %u (%s), mtu %u, %s\n", name, ifi->ifi_type, lookup(ifi_types, ifi->ifi_type), kernel_mtu, iface->kernel_flags && IFF_UP ? "UP" : "DOWN");
+
+	/* Going down */
+	if (!(iface->kernel_flags && IFF_UP))
+	{
+		/* When the link is gone the rest is desynced too */
+		iface->synced_link = false;
+		iface->synced_addr = false;
+		iface->synced_local = false;
+		iface->synced_remote = false;
+		iface->synced_subnet = false;
+		OS_Mutex_Release(&iface->mutex, "netlink_update_link");
+		return;
+	}
 
 	/* Protocol-41 = SIT, AYIYA = tun/tap */
 	if (	(	(iface->type == IFACE_PROTO41 || iface->type == IFACE_PROTO41_HB) &&
@@ -621,11 +650,18 @@ void netlink_update_link(struct nlmsghdr *h)
 			os_int_set_mtu(iface, iface->mtu);
 		}
 
+		/* Add interface address */
+		os_sync_address_up(iface);
 	}
 	else
 	{
 		mddolog("Link type %u of %s doesn't match expected link type\n", ifi->ifi_type, name);
+		/* When the link is gone the rest is desynced too */
 		iface->synced_link = false;
+		iface->synced_addr = false;
+		iface->synced_local = false;
+		iface->synced_remote = false;
+		iface->synced_subnet = false;
 
 		/* XXX Try to delete the old one */
 	}
@@ -734,6 +770,9 @@ void netlink_update_address(struct nlmsghdr *h)
 		{
 			/* Valid address added? -> neat we are synced! */
 			iface->synced_addr = true;
+
+			/* Make the route to the remote side */
+			os_sync_remote_up(iface);
 		}
 		else
 		{
@@ -813,7 +852,7 @@ void netlink_update_route(struct nlmsghdr *h)
 	if (!pfx)
 	{
 		mddolog("Unknown prefix %s/%u, removing it\n", dst, rtm->rtm_dst_len);
-		os_exec("ip -6 ro del %s/%u");
+		os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
 		return;
 	}
 
@@ -847,16 +886,6 @@ void netlink_update_route(struct nlmsghdr *h)
 	/* Which prefix is it? (local/remote/subnet) */
 	if (memcmp(dest, &iface->ipv6_us, sizeof(iface->ipv6_us)) == 0)
 	{
-#if 0
-		/* Allow device route or route over ipv6_us */
-		if (gate && memcmp(gate, &iface->ipv6_us, sizeof(iface->ipv6_us)) != 0)
-		{
-			/* Gate is set -> wrong */
-			mddolog("Gateway for %s/%u on %s is wrongly set to %s\n",
-				dst, rtm->rtm_dst_len, iface->name, gw);
-			resync = true;
-		}
-#endif
 		if (!resync && !rem)
 		{
 			mddolog("Local Route is synced for %s\n", iface->name);
@@ -865,20 +894,13 @@ void netlink_update_route(struct nlmsghdr *h)
 	}
 	else if (memcmp(dest, &iface->ipv6_them, sizeof(iface->ipv6_them)) == 0)
 	{
-#if 0
-		/* Allow device route or route over ipv6_us */
-		if (gate && memcmp(gate, &iface->ipv6_us, sizeof(iface->ipv6_us)) != 0)
-		{
-			/* No gate? || Gate != ipv6_us */
-			mddolog("Gateway for %s/%u on %s is wrongly set to %s\n",
-				dst, rtm->rtm_dst_len, iface->name, gw);
-			resync = true;
-		}
-#endif
 		if (!resync && !rem)
 		{
 			mddolog("Remote Route is synced for %s\n", iface->name);
 			iface->synced_remote = true;
+
+			/* Sync the subnets */
+			os_sync_route_up(iface);
 		}
 	}
 	else

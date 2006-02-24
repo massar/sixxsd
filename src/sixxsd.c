@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.8 2006-02-22 16:05:12 jeroen Exp $
- $Date: 2006-02-22 16:05:12 $
+ $Id: sixxsd.c,v 1.9 2006-02-24 09:14:49 jeroen Exp $
+ $Date: 2006-02-24 09:14:49 $
 
  SixXSd main code
 **************************************/
@@ -426,20 +426,17 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	/* Read the former configuration file, bootstrapping this server */
 	cfg_fromfile("/home/sixxs/sixxsd.conf");
 
-	/* Start doing syncs now we have at least an initial configuration file */
-	g_conf->do_sync = true;
-
 	/* Start OS update handling */
 	os_init();
 
 	/* Configuration will now match the OS state */
 	sync_complete();
 
-#ifdef DEBUG
-	mddolog("SYNC CHECK\n");
+	/* Start doing syncs now we have at least an initial configuration file */
+	g_conf->do_sync = true;
+
+	/* Fill in the missing bits */
 	sync_complete();
-	mddolog("SYNC CHECK - end\n");
-#endif
 
 	/* Allow reconfiguration etc */
 	cfg_init();

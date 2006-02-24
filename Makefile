@@ -3,8 +3,8 @@
 #  by Jeroen Massar <jeroen@sixxs.net>
 # *******************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.6 2006-02-22 13:58:56 jeroen Exp $
-# $Date: 2006-02-22 13:58:56 $
+# $Id: Makefile,v 1.7 2006-02-24 09:14:48 jeroen Exp $
+# $Date: 2006-02-24 09:14:48 $
 # ******************************************/
 #
 # Toplevel Makefile allowing easy distribution.
@@ -15,7 +15,7 @@
 # Make these variables generic
 PROJECT:=sixxsd
 PROJECT_DESC:="SixXS PoP Daemon"
-PROJECT_VERSION:=2006.02.22-cvs
+PROJECT_VERSION:=2006.02.24-cvs
 PROJECT_COPYRIGHT:="(C) Copyright SixXS. 2001-2006 All Rights Reserved"
 
 # Compile Time Options
