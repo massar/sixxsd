@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.14 2006-02-24 10:34:26 jeroen Exp $
- $Date: 2006-02-24 10:34:26 $
+ $Id: os_linux.c,v 1.15 2006-02-24 13:07:43 jeroen Exp $
+ $Date: 2006-02-24 13:07:43 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -213,7 +213,6 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 				them,
 				iface->name);
 		}
-		iface->synced_subnet = true;
 	}
 
 	return true;
