@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.11 2006-02-22 14:33:45 jeroen Exp $
- $Date: 2006-02-22 14:33:45 $
+ $Id: cfg.c,v 1.12 2006-03-01 09:31:04 jeroen Exp $
+ $Date: 2006-03-01 09:31:04 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -119,7 +119,8 @@ bool cfg_stringtoprefix(const char *string, struct in6_addr *prefix, unsigned in
 bool cfg_pop_prefix_add(int sock, const char *args);
 bool cfg_pop_prefix_add(int sock, const char *args)
 {
-	struct sixxs_pop_prefix *pp;
+	struct sixxs_pop_prefix	*pp, *pn;
+	bool			found = false;
 
 	pp = malloc(sizeof(*pp));
 	if (!pp)
@@ -140,13 +141,26 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 	OS_Mutex_Lock(&g_conf->mutex, "cfg_pop_prefix_add");
 
 	/* Add it to the list of prefixes */
-	if (g_conf->pop_prefixes) pp->next = g_conf->pop_prefixes;
-	else pp->next = NULL;
-	g_conf->pop_prefixes = pp;
+	for (pn = g_conf->pop_prefixes; pn; pn = pn->next)
+	{
+		if (	pp->length == pn->length &&
+			memcmp(&pp->prefix, &pn->prefix, 16) == 0)
+		{
+			found = true;
+			break;
+		}
+	}
 
-	sock_printf(sock, "+OK Accepted PoP Prefix %s\n", args);
+	if (!found)
+	{
+		/* Prepend it to the list */
+		pp->next = g_conf->pop_prefixes;
+		g_conf->pop_prefixes = pp;
+	}
 
 	OS_Mutex_Release(&g_conf->mutex, "cfg_pop_prefix_add");
+
+	sock_printf(sock, "+OK Accepted PoP Prefix %s (%s)\n", args, found ? "new" : "old");
 
 	return true;
 }
