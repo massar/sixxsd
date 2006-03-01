@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.15 2006-02-24 13:07:43 jeroen Exp $
- $Date: 2006-02-24 13:07:43 $
+ $Id: os_linux.c,v 1.16 2006-03-01 09:30:46 jeroen Exp $
+ $Date: 2006-03-01 09:30:46 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -229,7 +229,7 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 	/* Sync subnets over this tunnel */
 	for (pfx = iface->prefixes; pfx; pfx = pfx->next)
 	{
-		if (pfx->is_tunnel) continue;
+		if (pfx->is_tunnel || !pfx->synced) continue;
 
 		mddolog("os_sync_route_down\n");
 		inet_ntop(AF_INET6, &pfx->prefix, subnet, sizeof(subnet));
