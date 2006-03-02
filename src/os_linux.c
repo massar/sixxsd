@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.22 2006-03-02 13:19:45 jeroen Exp $
- $Date: 2006-03-02 13:19:45 $
+ $Id: os_linux.c,v 1.23 2006-03-02 13:52:43 jeroen Exp $
+ $Date: 2006-03-02 13:52:43 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -590,10 +590,10 @@ void netlink_update_link(struct nlmsghdr *h)
 	iface->kernel_flags = ifi->ifi_flags & 0xffffffff;
 	kernel_mtu = *(int *)RTA_DATA(tb[IFLA_MTU]);
 
-	mddolog("Found LINK %s, type %u (%s), mtu %u, %s\n", name, ifi->ifi_type, lookup(ifi_types, ifi->ifi_type), kernel_mtu, iface->kernel_flags && IFF_UP ? "UP" : "DOWN");
+	mddolog("Found LINK %s, type %u (%s), mtu %u, %s\n", name, ifi->ifi_type, lookup(ifi_types, ifi->ifi_type), kernel_mtu, iface->kernel_flags & IFF_UP ? "UP" : "DOWN");
 
 	/* Going down */
-	if (!(iface->kernel_flags && IFF_UP))
+	if (!(iface->kernel_flags & IFF_UP))
 	{
 		/* When the link is gone the rest is desynced too */
 		iface->synced_link = false;
