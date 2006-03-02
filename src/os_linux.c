@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.21 2006-03-02 12:13:02 jeroen Exp $
- $Date: 2006-03-02 12:13:02 $
+ $Id: os_linux.c,v 1.22 2006-03-02 13:19:45 jeroen Exp $
+ $Date: 2006-03-02 13:19:45 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -862,12 +862,18 @@ void netlink_update_route(struct nlmsghdr *h)
 	{
 		if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
 		{
-			mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
+			if (h->nlmsg_type == RTM_NEWROUTE)
+			{
+				mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
+			}
 		}
 		else
 		{
-			mddolog("Unknown prefix %s/%u, removing it\n", dst, rtm->rtm_dst_len);
-			os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
+			if (h->nlmsg_type == RTM_NEWROUTE)
+			{
+				mddolog("Unknown prefix %s/%u, removing it\n", dst, rtm->rtm_dst_len);
+				os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
+			}
 		}
 		return;
 	}
