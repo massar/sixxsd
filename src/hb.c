@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.5 2006-03-02 10:23:46 jeroen Exp $
- $Date: 2006-03-02 10:23:46 $
+ $Id: hb.c,v 1.6 2006-03-02 11:58:51 jeroen Exp $
+ $Date: 2006-03-02 11:58:51 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -241,6 +241,8 @@ void *hb_thread(void UNUSED *arg)
 	struct sockaddr_storage	ci;
 	socklen_t		cl;
 	char			buf[2048];
+	fd_set			readset;
+	struct timeval		timeout;
 
 	/* Show that we have started */
 	mdolog(LOG_INFO, "Heartbeat Handler\n");
@@ -261,12 +263,36 @@ void *hb_thread(void UNUSED *arg)
 
 	while (g_conf->running)
 	{
+		/* Timeout after 5 seconds non-activity to check if we are still running */
+		FD_ZERO(&readset);
+		FD_SET(listenfd, &readset);
+		memset(&timeout, 0, sizeof(timeout));
+		timeout.tv_sec = 5;
+		n = select(listenfd+1, &readset, NULL, NULL, &timeout);
+
+		/* Nothing happened for 5 seconds */
+		if (n == 0) continue;
+
+		/* Handle errors */
+		if (n < 0)
+		{
+			mdolog(LOG_ERR, "Couldn't select from Heartbeat socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			break;
+		}
+
 		cl = sizeof(ci);
 		memset(buf, 0, sizeof(buf));
 		/* sizeof(buf) - 1 so we can always use the final byte as terminator :) */
 		n = recvfrom(listenfd, buf, sizeof(buf)-1, 0, (struct sockaddr *)&ci, &cl);
 
-		if (n < 0) continue;
+		if (n == 0) continue;
+
+		/* Handle errors */
+		if (n < 0)
+		{
+			mdolog(LOG_ERR, "Couldn't select from Heartbeat socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			break;
+		}
 
 		/* Check if characters in buffer are valid */
 		for (i=0;i<n;i++)
