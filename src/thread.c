@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: thread.c,v 1.4 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: thread.c,v 1.5 2006-03-02 13:53:33 jeroen Exp $
+ $Date: 2006-03-02 13:53:33 $
 
  SixXSd Thread Management 
 **************************************/
@@ -144,7 +144,7 @@ void thread_cleanup(void)
 		OS_Mutex_Release(&g_conf->mutex_thread, "thread_cleanup");
 
 		loops++;
-		if (loops > 2) break;
+		if (loops > 3) break;
 	}
 }
 
