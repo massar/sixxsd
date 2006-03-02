@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.23 2006-03-02 13:52:43 jeroen Exp $
- $Date: 2006-03-02 13:52:43 $
+ $Id: os_linux.c,v 1.24 2006-03-02 16:38:08 jeroen Exp $
+ $Date: 2006-03-02 16:38:08 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -898,11 +898,12 @@ void netlink_update_route(struct nlmsghdr *h)
 		return;
 	}
 
-	mddolog("IPv6 Route: %s/%u gate %s device %s (%u:%s)\n", dst, rtm->rtm_dst_len, gate ? gw : "::", iface->name, rtm->rtm_type, lookup(rtn_types, rtm->rtm_type));
+	mddolog("%s IPv6 Route: %s/%u gate %s device %s (%u:%s)\n", h->nlmsg_type == RTM_DELROUTE ? "Delete" : "Add", dst, rtm->rtm_dst_len, gate ? gw : "::", iface->name, rtm->rtm_type, lookup(rtn_types, rtm->rtm_type));
 
 	if (h->nlmsg_type == RTM_DELROUTE)
 	{
-		/* Don't care about Route Deletion */
+		/* Prefix is removed */
+		pfx->synced = false;
 		OS_Mutex_Release(&iface->mutex, "netlink_update_route");
 		return;
 	}
