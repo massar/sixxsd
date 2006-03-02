@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.12 2006-03-01 09:31:04 jeroen Exp $
- $Date: 2006-03-01 09:31:04 $
+ $Id: cfg.c,v 1.13 2006-03-02 10:53:51 jeroen Exp $
+ $Date: 2006-03-02 10:53:51 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -507,6 +507,13 @@ bool cfg_cmd_route(int sock, const char *args)
 bool cfg_cmd_help(int sock, const char *args);
 /* Defined after cfg_cmds */
 
+bool cfg_cmd_version(int sock, const char UNUSED *args);
+bool cfg_cmd_version(int sock, const char UNUSED *args)
+{
+	sock_printf(sock, "+OK SixXSd (SixXS PoP Daemon) %s by Jeroen Massar <jeroen@sixxs.net>\n", SIXXSD_VERSION);
+	return true;
+}
+
 bool cfg_cmd_reply(int sock, const char *args);
 bool cfg_cmd_reply(int sock, const char *args)
 {
@@ -519,11 +526,11 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 {
 	struct sixxs_thread 	*t = NULL;
 	os_thread		thread = OS_GetThisThread();
-	unsigned int		i;
+	unsigned int		i, c, a;
 	struct sixxs_interface	*iface = NULL;
 	struct sixxs_prefix	*pfx = NULL;
 	char			buf1[1024], buf2[1024];
-	bool			all = false, inactive = false, ok = false;
+	bool			all = false, inactive = false, ok = false, count = true;
 	struct tm		teem;
 	time_t			now = time(NULL);
 
@@ -531,20 +538,28 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 
 	if (args[0] == '\0') all = true;
 	else if (strcasecmp(args, "all") == 0) all = inactive = true;
+	else if (strcasecmp(args, "count") == 0) all = count = true;
 
 	sock_printf(sock, "+OK Status coming up...\n");
 
 	if (all || strcasecmp(args, "threads") == 0)
 	{
 		ok = true;
-		sock_printf(sock, "Threads:\n");
+		if (!count) sock_printf(sock, "Threads:\n");
+		else c = 0;
 		for (t = g_conf->threads; t; t = t->next)
 		{
+			if (count)
+			{
+				c++;
+				continue;
+			}
 			sock_printf(sock, "Thread 0x%x : %s%s\n",
 				(void *)t->thread, t->description,
 				OS_Thread_Equal(t->thread, thread) ? " (this)" : "");
 		}
-		sock_printf(sock, "\n");
+		if (!count) sock_printf(sock, "\n");
+		else sock_printf(sock, "Threads: %u\n", c);
 	}
 
 	if (!all && strncasecmp(args, "interface ", 10) == 0)
@@ -661,13 +676,20 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 	if (all || strcasecmp(args, "interfaces") == 0)
 	{
 		ok = true;
-		sock_printf(sock, "Interfaces:\n");
+		if (!count) sock_printf(sock, "Interfaces:\n");
+		c = a = 0;
+
 		/* Walk through all the interfaces */
 		OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
 		for (i = 0; i < g_conf->max_interfaces; i++)
 		{
 			iface = g_conf->interfaces + i;
-			if (	iface->type == IFACE_UNSPEC ||
+
+			if (iface->type != IFACE_UNSPEC) c++;
+			if (iface->state == IFSTATE_UP) a++;
+
+			if (	count ||
+				iface->type == IFACE_UNSPEC ||
 				(iface->state == IFSTATE_DISABLED && !inactive))
 			{
 				continue;
@@ -721,19 +743,26 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				buf2);
 		}
 		OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
-		sock_printf(sock, "\n");
+		if (!count) sock_printf(sock, "\n");
+		else sock_printf(sock, "Interfaces: total: %u, active: %u\n", c, a);
 	}
 
 	if (all || strcasecmp(args, "routes") == 0)
 	{
 		ok = true;
-		sock_printf(sock, "Routes:\n");
+		if (!count) sock_printf(sock, "Routes:\n");
+		c = a = 0;
+
 		/* Walk through all the routes */
 		OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
 		for (i = 0; i < g_conf->max_prefixes; i++)
 		{
 			pfx = g_conf->prefixes + i;
 			if (!pfx->valid || pfx->length == 128) continue;
+
+			c++;
+			if (pfx->synced) a++;
+			if (count) continue;
 
 			memset(buf1, 0, sizeof(buf1));
 			inet_ntop(AF_INET6, &pfx->prefix, buf1, sizeof(buf1));
@@ -753,7 +782,8 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 			OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
 		}
 		OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
-		sock_printf(sock, "\n");
+		if (!count) sock_printf(sock, "\n");
+		else sock_printf(sock, "Routes: total: %u, active: %u\n", c, a);
 	}
 
 	if (!ok) sock_printf(sock, "No such status: %s\n", args);
@@ -951,6 +981,7 @@ struct {
 	{"down",		cfg_cmd_down,			"<interface id>"},
 
 	/* Misc commands */
+	{"version",		cfg_cmd_version,		""},
 	{"reply",		cfg_cmd_reply,			"<opts>"},
 	{"help",		cfg_cmd_help,			""},
 	{"quit",		cfg_cmd_quit,			"<byestring>"},
