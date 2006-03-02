@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.10 2006-02-24 10:22:14 jeroen Exp $
- $Date: 2006-02-24 10:22:14 $
+ $Id: sixxsd.c,v 1.11 2006-03-02 13:21:01 jeroen Exp $
+ $Date: 2006-03-02 13:21:01 $
 
  SixXSd main code
 **************************************/
@@ -385,6 +385,15 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	}
 	memset(g_conf->interfaces, 0, g_conf->max_interfaces * sizeof(struct sixxs_interface));
 	memset(g_conf->prefixes, 0, g_conf->max_prefixes * sizeof(struct sixxs_prefix));
+
+	/* Initialize the NULL interface */
+	strncpy(g_conf->interfaces[0].name, "null0", 5);
+	g_conf->interfaces[0].type = IFACE_NULL;
+	g_conf->interfaces[0].state = IFSTATE_UP;
+	g_conf->interfaces[0].synced_link = true;
+	g_conf->interfaces[0].synced_addr = true;
+	g_conf->interfaces[0].synced_local = true;
+	g_conf->interfaces[0].synced_remote = true;
 	
 	/* Daemonize */
 	if (g_conf->daemonize)

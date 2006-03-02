@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.9 2006-03-02 11:53:04 jeroen Exp $
- $Date: 2006-03-02 11:53:04 $
+ $Id: sixxsd.h,v 1.10 2006-03-02 13:21:01 jeroen Exp $
+ $Date: 2006-03-02 13:21:01 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -169,6 +169,7 @@ typedef	struct os_mutex		os_mutex;
 enum iface_type {
 	IFACE_UNSPEC = 0,					/* Not in use / invalid */
 	IFACE_IGNORE,						/* Ignore this interface for syncs */
+	IFACE_NULL,						/* NULL interface */
 	IFACE_PROTO41,						/* Protocol-41 (SIT/6in4) */
 	IFACE_PROTO41_HB,					/* Normal proto-41 but with heartbeats */
 	IFACE_TINC,						/* tinc tunnel */

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.16 2006-03-02 12:13:02 jeroen Exp $
- $Date: 2006-03-02 12:13:02 $
+ $Id: cfg.c,v 1.17 2006-03-02 13:21:01 jeroen Exp $
+ $Date: 2006-03-02 13:21:01 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -162,8 +162,18 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 
 	if (!found)
 	{
+		/* Get the NULL interface */
+		struct sixxs_interface *iface = int_get(0);
+		if (!iface)
+		{
+			sock_printf(sock, "-ERR Couldn't find the NULL interface for route %s\n", 0, args);
+			return false;
+		}
+
 		/* Add it to the prefix list */
-		pfx_reconfig(&pp->prefix, pp->length, NULL, true, false, false, true, NULL);
+		pfx_reconfig(&pp->prefix, pp->length, NULL, true, false, false, true, iface);
+
+		OS_Mutex_Release(&iface->mutex, "cfg_pop_prefix_add");
 	}
 
 	sock_printf(sock, "+OK Accepted PoP Prefix %s (%s)\n", args, found ? "old" : "new");
@@ -582,21 +592,27 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 			sock_printf(sock, "Kernel Interface Flags: 0x%x\n", iface->kernel_flags);
 			sock_printf(sock, "\n");
 
-			memset(buf1, 0, sizeof(buf1));
-			inet_ntop(AF_INET6, &iface->ipv6_us, buf1, sizeof(buf1));
-			sock_printf(sock, "IPv6 Us               : %s/%u\n", buf1, iface->prefixlen);
+			if (iface->type != IFACE_IGNORE && iface->type != IFACE_NULL)
+			{
+				memset(buf1, 0, sizeof(buf1));
+				inet_ntop(AF_INET6, &iface->ipv6_us, buf1, sizeof(buf1));
+				sock_printf(sock, "IPv6 Us               : %s/%u\n", buf1, iface->prefixlen);
 
-			memset(buf1, 0, sizeof(buf1));
-			inet_ntop(AF_INET6, &iface->ipv6_them, buf1, sizeof(buf1));
-			sock_printf(sock, "IPv6 Them             : %s/%u\n", buf1, iface->prefixlen);
+				memset(buf1, 0, sizeof(buf1));
+				inet_ntop(AF_INET6, &iface->ipv6_them, buf1, sizeof(buf1));
+				sock_printf(sock, "IPv6 Them             : %s/%u\n", buf1, iface->prefixlen);
 
-			memset(buf1, 0, sizeof(buf1));
-			inet_ntop(AF_INET, &iface->ipv4_them, buf1, sizeof(buf1));
-		
+				memset(buf1, 0, sizeof(buf1));
+				inet_ntop(AF_INET, &iface->ipv4_them, buf1, sizeof(buf1));
+			}
+
 			switch (iface->type)
 			{
 			case IFACE_IGNORE:
 				sock_printf(sock, "Type                  : ignore\n");
+				break;
+			case IFACE_NULL:
+				sock_printf(sock, "Type                  : null\n");
 				break;
 			case IFACE_PROTO41:
 				sock_printf(sock, "Type                  : proto-41\n");
@@ -634,43 +650,47 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				sock_printf(sock, "unknown - WARNING!!!\n");
 			}
 
-			if (iface->lastalive != 0)
-			{
-				gmtime_r(&iface->lastalive, &teem);
-				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
-				sock_printf(sock, "Last Alive            : %s (%u seconds ago)\n", buf1, (now - iface->lastalive));
-			}
-			else sock_printf(sock, "Last Alive            : never\n");
 
-			if (iface->prevdead != 0)
+			if (iface->type != IFACE_IGNORE && iface->type != IFACE_NULL)
 			{
-				gmtime_r(&iface->prevdead, &teem);
-				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
-				sock_printf(sock, "Previously Dead       : %s (%u seconds ago)\n", buf1, (now - iface->prevdead));
-			}
-			else sock_printf(sock, "Previously Dead       : never\n");
+				if (iface->lastalive != 0)
+				{
+					gmtime_r(&iface->lastalive, &teem);
+					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+					sock_printf(sock, "Last Alive            : %s (%u seconds ago)\n", buf1, (now - iface->lastalive));
+				}
+				else sock_printf(sock, "Last Alive            : never\n");
 
-			sock_printf(sock, "\n");
-			sock_printf(sock, "State                 : %s\n",
-				iface->state == IFSTATE_DISABLED	? "disabled" :
-				iface->state == IFSTATE_UP		? "up" :
-				iface->state == IFSTATE_DOWN		? "down"
+				if (iface->prevdead != 0)
+				{
+					gmtime_r(&iface->prevdead, &teem);
+					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+					sock_printf(sock, "Previously Dead       : %s (%u seconds ago)\n", buf1, (now - iface->prevdead));
+				}
+				else sock_printf(sock, "Previously Dead       : never\n");
+
+				sock_printf(sock, "\n");
+				sock_printf(sock, "State                 : %s\n",
+					iface->state == IFSTATE_DISABLED	? "disabled" :
+					iface->state == IFSTATE_UP		? "up" :
+					iface->state == IFSTATE_DOWN		? "down"
 									: "!unknown!");
-			sock_printf(sock, "Synced                : %s %s %s %s %s\n",
-				iface->synced_link	? "LINK"	: "link",
-				iface->synced_addr	? "ADDRESS"	: "address",
-				iface->synced_local	? "LOCAL"	: "local",
-				iface->synced_remote	? "REMOTE"	: "remote",
-				iface->synced_subnet	? "SUBNET"	: "subnet",
-				buf2);
+				sock_printf(sock, "Synced                : %s %s %s %s %s\n",
+					iface->synced_link	? "LINK"	: "link",
+					iface->synced_addr	? "ADDRESS"	: "address",
+					iface->synced_local	? "LOCAL"	: "local",
+					iface->synced_remote	? "REMOTE"	: "remote",
+					iface->synced_subnet	? "SUBNET"	: "subnet",
+					buf2);
 
-			sock_printf(sock, "\n");
-			sock_printf(sock, "Latency               : %.2f\n", iface->latency);
-			sock_printf(sock, "Loss                  : %2.2f\n", iface->loss);
-			sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
-			sock_printf(sock, "Octets (out)          : %llu\n", iface->outoct);
-			sock_printf(sock, "Packets (in)          : %llu\n", iface->inpkt);
-			sock_printf(sock, "Packets (out)         : %llu\n", iface->outpkt);
+				sock_printf(sock, "\n");
+				sock_printf(sock, "Latency               : %.2f\n", iface->latency);
+				sock_printf(sock, "Loss                  : %2.2f\n", iface->loss);
+				sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
+				sock_printf(sock, "Octets (out)          : %llu\n", iface->outoct);
+				sock_printf(sock, "Packets (in)          : %llu\n", iface->inpkt);
+				sock_printf(sock, "Packets (out)         : %llu\n", iface->outpkt);
+			}
 			OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
 		}
 		else
@@ -709,6 +729,9 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 			case IFACE_IGNORE:
 				snprintf(buf2, sizeof(buf2), "ignore");
 				break;
+			case IFACE_NULL:
+				snprintf(buf2, sizeof(buf2), "null");
+				break;
 			case IFACE_PROTO41:
 				snprintf(buf2, sizeof(buf2), "proto41 %s", buf1);
 				break;
@@ -731,6 +754,12 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				break;
 			default:
 				snprintf(buf2, sizeof(buf2), "unknown - WARNING!");
+			}
+
+			if (iface->type == IFACE_IGNORE || iface->type == IFACE_NULL)
+			{
+				sock_printf(sock, "%s %u %s\n", iface->name, i, buf2);
+				continue;
 			}
 
 			sock_printf(sock, "%s %u %s %lld %lld %lld %lld %s%s%s%s%s %s\n",
