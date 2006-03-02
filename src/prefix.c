@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.8 2006-03-02 13:21:01 jeroen Exp $
- $Date: 2006-03-02 13:21:01 $
+ $Id: prefix.c,v 1.9 2006-03-02 13:26:05 jeroen Exp $
+ $Date: 2006-03-02 13:26:05 $
 
  SixXSd Prefix Management
 **************************************/
@@ -86,6 +86,7 @@ struct sixxs_prefix *pfx_getA(struct in6_addr *ipv6_them, unsigned int prefixlen
 				memset(pfx, 0, sizeof(*pfx));
 				OS_Mutex_Init(&pfx->mutex);
 				OS_Mutex_Lock(&pfx->mutex, "pfx_getA(1)");
+				pfx->valid = false;
 				return pfx;
 			}
 			break;
@@ -114,6 +115,7 @@ struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, bool is_popprefix, struct sixxs_interface *iface)
 {
 	struct sixxs_prefix	*pfx, *p;
+	bool			isnew;
 
 	OS_Mutex_Lock(&g_conf->mutex, "pfx_reconfig");
 	pfx = pfx_getA(prefix, length, true);
@@ -124,6 +126,9 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 		mdolog(LOG_ERR, "pfx_reconfig() - Could not get a new prefix\n");
 		return;
 	}
+
+	/* New one? */
+	isnew = pfx->valid;
 
 	/* Mark the prefix as valid/inuse */
 	pfx->valid = true;
@@ -155,6 +160,13 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	}
 	
 	OS_Mutex_Release(&pfx->mutex, "pfx_reconfig");
+
+	if (isnew)
+	{
+		char buf[100];
+		inet_ntop(AF_INET6, &pfx->prefix, buf, sizeof(buf));
+		mddolog("Added Prefix %s/%u\n", buf, length);
+	}
 
 	/* Sync the route */
 	os_sync_routes(iface);
