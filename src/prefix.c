@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.10 2006-03-02 13:29:13 jeroen Exp $
- $Date: 2006-03-02 13:29:13 $
+ $Id: prefix.c,v 1.11 2006-03-02 13:46:54 jeroen Exp $
+ $Date: 2006-03-02 13:46:54 $
 
  SixXSd Prefix Management
 **************************************/
@@ -92,7 +92,8 @@ struct sixxs_prefix *pfx_getA(struct in6_addr *ipv6_them, unsigned int prefixlen
 			break;
 		}
 
-		if (pfx_issubnet(ipv6_them, prefixlen, &pfx->prefix, pfx->length))
+		if (	prefixlen == pfx->length &&
+			memcmp(ipv6_them, &pfx->prefix, 16) == 0)
 		{
 			OS_Mutex_Lock(&pfx->mutex, "pfx_getA(2)");
 			return pfx;
