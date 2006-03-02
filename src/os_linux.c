@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.18 2006-03-02 10:59:36 jeroen Exp $
- $Date: 2006-03-02 10:59:36 $
+ $Id: os_linux.c,v 1.19 2006-03-02 11:19:29 jeroen Exp $
+ $Date: 2006-03-02 11:19:29 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -835,11 +835,12 @@ void netlink_update_route(struct nlmsghdr *h)
 	netlink_parse_rtattr(tb, RTA_MAX, RTM_RTA(rtm), len);
 
 	/*
-	 * Ignore cloned and redirected routes
+	 * Ignore cloned, redirected and non-IPv6 routes
 	 * cloning happens a lot when pinging for instance...
 	 */
 	if (	rtm->rtm_flags & RTM_F_CLONED ||
-		rtm->rtm_flags & RTPROT_REDIRECT)
+		rtm->rtm_flags & RTPROT_REDIRECT ||
+		rtm->rtm_family != AF_INET6)
 	{
 		return;
 	}
@@ -858,7 +859,7 @@ void netlink_update_route(struct nlmsghdr *h)
 
 	if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
 	{
-		if (rtm->rtm_family == AF_INET6) mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
+		mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
 		return;
 	}
 
