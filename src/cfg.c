@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.14 2006-03-02 11:53:04 jeroen Exp $
- $Date: 2006-03-02 11:53:04 $
+ $Id: cfg.c,v 1.15 2006-03-02 12:00:40 jeroen Exp $
+ $Date: 2006-03-02 12:00:40 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -536,7 +536,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 	struct sixxs_interface	*iface = NULL;
 	struct sixxs_prefix	*pfx = NULL;
 	char			buf1[1024], buf2[1024];
-	bool			all = false, inactive = false, ok = false, count = true;
+	bool			all = false, inactive = false, ok = false, count = false;
 	struct tm		teem;
 	time_t			now = time(NULL);
 
