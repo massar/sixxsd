@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.8 2006-03-02 10:43:32 jeroen Exp $
- $Date: 2006-03-02 10:43:32 $
+ $Id: ayiya.c,v 1.9 2006-03-02 11:54:13 jeroen Exp $
+ $Date: 2006-03-02 11:54:13 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -104,8 +104,10 @@ void *ayiya_process_outgoing(void *arg)
 	sha1_byte		hash[SHA1_DIGEST_LENGTH];
 	struct sockaddr_in	target;
 	int			lenin, lenout;
-	unsigned int		i, sleep_backoff = 2;
+	unsigned int		i;
 	struct in_addr		in_any;
+	fd_set			readset;
+	struct timeval		timeout;
 
 	struct pseudo_ayh	s;
 
@@ -128,22 +130,28 @@ void *ayiya_process_outgoing(void *arg)
 	/* Our IPv6 side of this tunnel */
 	memcpy(&s.identity, &iface->ipv6_us, sizeof(s.identity));
 
-	while (iface->running)
+	while (iface->running && iface->ayiya_fd != -1)
 	{
-		lenin = read(iface->ayiya_fd, s.payload, sizeof(s.payload));
+		/* Timeout after 5 seconds non-activity to check if we are still running */
+		FD_ZERO(&readset);
+		FD_SET(iface->ayiya_fd, &readset);
+		memset(&timeout, 0, sizeof(timeout));
+		timeout.tv_sec = 5;
+		lenin = select(iface->ayiya_fd+1, &readset, NULL, NULL, &timeout);
+
+		/* Nothing happened for 5 seconds */
+		if (lenin == 0) continue;
+
+		/* There is supposed to be something, so read it */
+		if (lenin > 0) lenin = read(iface->ayiya_fd, s.payload, sizeof(s.payload));
+		/* Check for errors */
 		if (lenin <= 0)
 		{
 			mdolog(LOG_ERR, "[outgoing] Error reading from %s (%d): %s\n", iface->name, errno, strerror(errno));
 
-			if (sleep_backoff > 1000)
-			{
-				int_set_state(iface, IFSTATE_DOWN);
-				break;
-			}
-
-			sleep(sleep_backoff);
-			sleep_backoff*=2;
-			continue;
+			/* Turn it off */
+			int_set_state(iface, IFSTATE_DOWN);
+			break;
 		}
 
 		if (lenin < 2)
@@ -157,7 +165,6 @@ void *ayiya_process_outgoing(void *arg)
 			mdolog(LOG_ERR, "[outgoing] Long packet of %d vs %u\n", lenin, sizeof(s.payload));
 			continue;
 		}
-		sleep_backoff = 2;
 
 		/* Move around the bytes */
 		memmove(&s.payload, &s.payload[4], lenin-4);
@@ -425,6 +432,8 @@ void *ayiya_thread(void *arg)
 	char			buf[2048];
 	struct ayiya_socket	*as = (struct ayiya_socket *)arg;
 	SOCKET			s;
+	fd_set			readset;
+	struct timeval		timeout;
 
 	/* Show that we have started */
 	mdolog(LOG_INFO, "Anything in Anything Handler (%s)\n", as->title);
@@ -451,11 +460,30 @@ void *ayiya_thread(void *arg)
 
 	while (g_conf->running)
 	{
+		/* Timeout after 5 seconds non-activity to check if we are still running */
+		FD_ZERO(&readset);
+		FD_SET(s, &readset);
+		memset(&timeout, 0, sizeof(timeout));
+		timeout.tv_sec = 5;
+		n = select(s+1, &readset, NULL, NULL, &timeout);
+		/* Timeout after 5 seconds */
+		if (n == 0) continue;
+		if (n < 0)
+		{
+			mdolog(LOG_ERR, "Select failed on Incoming AYIYA socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			break;
+		}
+
 		cl = sizeof(ci);
 		memset(buf, 0, sizeof(buf));
 		n = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&ci, &cl);
 
-		if (n < 0) continue;
+		/* Handle failures */
+		if (n < 0)
+		{
+			mdolog(LOG_ERR, "Read failed on Incoming AYIYA socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			break;
+		}
 
 		if (n < (int)sizeof(struct ayiyahdr))
 		{
@@ -477,6 +505,8 @@ bool ayiya_start(struct sixxs_interface *iface)
 
 	if (iface->running) return true;
 
+	mddolog("Starting AYIYA interface %s\n", iface->name);
+
 	/* Create a new tap device */
 	iface->ayiya_fd = open("/dev/net/tun", O_RDWR);
 	if (iface->ayiya_fd < 0)
@@ -497,7 +527,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 
 	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr) != 0)
 	{
-		mdolog(LOG_WARNING, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror(errno));
+		mdolog(LOG_ERR, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror(errno));
 		close(iface->ayiya_fd);
 		iface->ayiya_fd = 0;
 		return false;
@@ -515,6 +545,8 @@ bool ayiya_start(struct sixxs_interface *iface)
 bool ayiya_stop(struct sixxs_interface *iface)
 {
 	if (!iface->running) return true;
+
+	mddolog("Stopping AYIYA interface %s\n", iface->name);
 
 	iface->running = false;
 
