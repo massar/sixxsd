@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.18 2006-03-02 13:46:38 jeroen Exp $
- $Date: 2006-03-02 13:46:38 $
+ $Id: cfg.c,v 1.19 2006-03-02 17:00:48 jeroen Exp $
+ $Date: 2006-03-02 17:00:48 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -21,7 +21,8 @@ struct cfg_client
 {
 	char		clienthost[NI_MAXHOST];
 	char		clientservice[NI_MAXSERV];
-	char		__pad[3];
+	uint8_t		family;
+	char		__pad[2];
 	SOCKET		socket;				/* Remote */
 };
 
@@ -1120,7 +1121,7 @@ void *cfg_thread_client(void *arg)
 		quit = !cfg_handlecommand(lc->socket, buf);
 	}
 	
-	D(cfg_log(LOG_DEBUG, "Client Finished %s:%s\n", lc->clienthost, lc->clientservice);)
+	D(cfg_log(LOG_DEBUG, "Client Finished %s%s%s:%s\n", lc->family == AF_INET6 ? "[" : "", lc->clienthost, lc->family == AF_INET6 ? "]" : "", lc->clientservice);)
 
 	/* End this conversation */
 	close(lc->socket);
@@ -1219,6 +1220,7 @@ void *cfg_thread(void UNUSED *arg)
 			}
 			else
 			{
+				lc->family = sa.ss_family;
 				i = getnameinfo((struct sockaddr *)&sa, sa_len,
 					lc->clienthost, sizeof(lc->clienthost),
 					lc->clientservice, sizeof(lc->clientservice),
