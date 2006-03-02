@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.17 2006-03-02 13:21:01 jeroen Exp $
- $Date: 2006-03-02 13:21:01 $
+ $Id: cfg.c,v 1.18 2006-03-02 13:46:38 jeroen Exp $
+ $Date: 2006-03-02 13:46:38 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -814,7 +814,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				buf2,
 				iface ? iface->name : "",
 				pfx->synced ? "R" : "r");
-			OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
+			if (iface) OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
 		}
 		OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
 		if (!count) sock_printf(sock, "\n");
