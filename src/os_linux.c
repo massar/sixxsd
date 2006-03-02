@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.17 2006-03-02 10:23:46 jeroen Exp $
- $Date: 2006-03-02 10:23:46 $
+ $Id: os_linux.c,v 1.18 2006-03-02 10:59:36 jeroen Exp $
+ $Date: 2006-03-02 10:59:36 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -858,7 +858,7 @@ void netlink_update_route(struct nlmsghdr *h)
 
 	if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
 	{
-		mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
+		if (rtm->rtm_family == AF_INET6) mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
 		return;
 	}
 
