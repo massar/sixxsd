@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.10 2006-02-24 09:14:49 jeroen Exp $
- $Date: 2006-02-24 09:14:49 $
+ $Id: interface.c,v 1.11 2006-03-02 11:53:27 jeroen Exp $
+ $Date: 2006-03-02 11:53:27 $
 
  SixXSd Interface Management 
 **************************************/
@@ -315,10 +315,10 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 			);
 
 		/* Local address */
-		pfx_reconfig(ipv6_us,	128, NULL,	true, false, true, iface);
+		pfx_reconfig(ipv6_us,	128, NULL,	true, false, true, false, iface);
 
 		/* Remote address */
-		pfx_reconfig(ipv6_them, 128, ipv6_us,	true, false, true, iface);
+		pfx_reconfig(ipv6_them, 128, ipv6_us,	true, false, true, false, iface);
 
 		/* Reconfigure the complete interface */
 		int_set_state(iface, state);
