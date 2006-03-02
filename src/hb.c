@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.4 2006-02-20 12:28:36 jeroen Exp $
- $Date: 2006-02-20 12:28:36 $
+ $Id: hb.c,v 1.5 2006-03-02 10:23:46 jeroen Exp $
+ $Date: 2006-03-02 10:23:46 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -103,10 +103,11 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 		if (pfx) OS_Mutex_Release(&pfx->mutex, "hb_checkhb");
 		return;
 	}
+	i = pfx->interface_id;
+	OS_Mutex_Release(&pfx->mutex, "hb_checkhb");
 
 	/* The interface */
-	iface = int_get(pfx->interface_id);
-	OS_Mutex_Release(&pfx->mutex, "hb_checkhb");
+	iface = int_get(i);
 	if (!iface) return;
 
 	/* Get the IPv4 endpoint */

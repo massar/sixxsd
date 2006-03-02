@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.16 2006-03-01 09:30:46 jeroen Exp $
- $Date: 2006-03-01 09:30:46 $
+ $Id: os_linux.c,v 1.17 2006-03-02 10:23:46 jeroen Exp $
+ $Date: 2006-03-02 10:23:46 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -812,7 +812,7 @@ void netlink_update_route(struct nlmsghdr *h);
 void netlink_update_route(struct nlmsghdr *h)
 {
 	int			len;
-	unsigned int		idx = 0;
+	unsigned int		idx = 0, i;
 	struct rtmsg		*rtm;
 	struct rtattr		*tb[RTA_MAX + 1];
 	char			anyaddr[16] = { 0 };
@@ -869,12 +869,13 @@ void netlink_update_route(struct nlmsghdr *h)
 		os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
 		return;
 	}
+	i = pfx->interface_id;
+	OS_Mutex_Release(&pfx->mutex, "netlink_update_route");
 
-	iface = int_get(pfx->interface_id);
+	iface = int_get(i);
 	if (!iface)
 	{
 		mddolog("Prefix %s/%u doesn't have an associated interface!?\n", dst, rtm->rtm_dst_len);
-		OS_Mutex_Release(&pfx->mutex, "netlink_update_route");
 		return;
 	}
 
@@ -884,7 +885,6 @@ void netlink_update_route(struct nlmsghdr *h)
 	{
 		/* Don't care about Route Deletion */
 		OS_Mutex_Release(&iface->mutex, "netlink_update_route");
-		OS_Mutex_Release(&pfx->mutex, "netlink_update_route");
 		return;
 	}
 
@@ -963,7 +963,6 @@ void netlink_update_route(struct nlmsghdr *h)
 	}
 
 	OS_Mutex_Release(&iface->mutex, "netlink_update_route");
-	OS_Mutex_Release(&pfx->mutex, "netlink_update_route");
 	return;
 }
 
