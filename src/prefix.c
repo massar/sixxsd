@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.9 2006-03-02 13:26:05 jeroen Exp $
- $Date: 2006-03-02 13:26:05 $
+ $Id: prefix.c,v 1.10 2006-03-02 13:29:13 jeroen Exp $
+ $Date: 2006-03-02 13:29:13 $
 
  SixXSd Prefix Management
 **************************************/
@@ -128,7 +128,7 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	}
 
 	/* New one? */
-	isnew = pfx->valid;
+	isnew = !pfx->valid;
 
 	/* Mark the prefix as valid/inuse */
 	pfx->valid = true;
