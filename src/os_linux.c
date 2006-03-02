@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.19 2006-03-02 11:19:29 jeroen Exp $
- $Date: 2006-03-02 11:19:29 $
+ $Id: os_linux.c,v 1.20 2006-03-02 11:53:04 jeroen Exp $
+ $Date: 2006-03-02 11:53:04 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -857,19 +857,31 @@ void netlink_update_route(struct nlmsghdr *h)
 	inet_ntop(rtm->rtm_family, dest, dst, sizeof(dst));
 	if (gate) inet_ntop(rtm->rtm_family, gate, gw, sizeof(gw));
 
-	if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
-	{
-		mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
-		return;
-	}
-
 	pfx = pfx_get(dest, rtm->rtm_dst_len);
 	if (!pfx)
 	{
-		mddolog("Unknown prefix %s/%u, removing it\n", dst, rtm->rtm_dst_len);
-		os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
+		if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
+		{
+			mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
+		}
+		else
+		{
+			mddolog("Unknown prefix %s/%u, removing it\n", dst, rtm->rtm_dst_len);
+			os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
+		}
 		return;
 	}
+
+	/* Handle PoP prefixes */
+	if (pfx->is_popprefix)
+	{
+		if (h->nlmsg_type == RTM_DELROUTE) pfx->synced = false;
+		else pfx->synced = true;
+
+		OS_Mutex_Release(&pfx->mutex, "netlink_update_route");
+		return;
+	}
+
 	i = pfx->interface_id;
 	OS_Mutex_Release(&pfx->mutex, "netlink_update_route");
 

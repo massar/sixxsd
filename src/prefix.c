@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.6 2006-02-21 14:30:47 jeroen Exp $
- $Date: 2006-02-21 14:30:47 $
+ $Id: prefix.c,v 1.7 2006-03-02 11:53:04 jeroen Exp $
+ $Date: 2006-03-02 11:53:04 $
 
  SixXSd Prefix Management
 **************************************/
@@ -111,7 +111,7 @@ struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 	return pfx;
 }
 
-void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, struct sixxs_interface *iface)
+void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, bool is_popprefix, struct sixxs_interface *iface)
 {
 	struct sixxs_prefix	*pfx, *p;
 
@@ -132,9 +132,17 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	pfx->length = length;
 	if (nexthop) memcpy(&pfx->nexthop, nexthop, sizeof(pfx->nexthop));
 	pfx->is_tunnel = is_tunnel;
-	pfx->interface_id = iface->interface_id;
+	pfx->is_popprefix = is_popprefix;
 	pfx->enabled = enabled;
 	pfx->ignore = ignore;
+
+	if (!iface)
+	{
+		OS_Mutex_Release(&pfx->mutex, "pfx_reconfig");
+		return;
+	}
+
+	pfx->interface_id = iface->interface_id;
 
 	if (iface->prefixes)
 	{

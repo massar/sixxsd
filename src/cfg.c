@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.13 2006-03-02 10:53:51 jeroen Exp $
- $Date: 2006-03-02 10:53:51 $
+ $Id: cfg.c,v 1.14 2006-03-02 11:53:04 jeroen Exp $
+ $Date: 2006-03-02 11:53:04 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -160,7 +160,13 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 
 	OS_Mutex_Release(&g_conf->mutex, "cfg_pop_prefix_add");
 
-	sock_printf(sock, "+OK Accepted PoP Prefix %s (%s)\n", args, found ? "new" : "old");
+	if (!found)
+	{
+		/* Add it to the prefix list */
+		pfx_reconfig(&pp->prefix, pp->length, NULL, true, false, false, true, NULL);
+	}
+
+	sock_printf(sock, "+OK Accepted PoP Prefix %s (%s)\n", args, found ? "old" : "new");
 
 	return true;
 }
@@ -493,7 +499,7 @@ bool cfg_cmd_route(int sock, const char *args)
 	}
 
 	/* Add the route */
-	pfx_reconfig(&prefix, length, &nexthop, enabled, ignore, false, iface);
+	pfx_reconfig(&prefix, length, &nexthop, enabled, ignore, false, false, iface);
 
 	sock_printf(sock, "+OK Route %s accepted over interface %s/%u\n",
 		pfix, iface->name, pfx->interface_id);

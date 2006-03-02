@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.8 2006-02-21 14:30:47 jeroen Exp $
- $Date: 2006-02-21 14:30:47 $
+ $Id: sixxsd.h,v 1.9 2006-03-02 11:53:04 jeroen Exp $
+ $Date: 2006-03-02 11:53:04 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -201,10 +201,11 @@ struct sixxs_prefix
 
 	bool			valid;				/* Is this structure valid? */
 	bool			is_tunnel;			/* Prefix is a tunnel */
+	bool			is_popprefix;			/* Prefix is a PoP Prefix */
 	bool			enabled;			/* Enabled? */
 	bool			synced;				/* Synchronized with kernel? */
 	bool			ignore;				/* Ignore this route? (also used for BGP) */
-	char			__padding[3];
+	char			__padding[2];
 };
 
 struct sixxs_interface
@@ -372,7 +373,7 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 
 /* prefix.c */
 struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen);
-void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, struct sixxs_interface *iface);
+void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr *nexthop, bool enabled, bool ignore, bool is_tunnel, bool is_popprefix, struct sixxs_interface *iface);
 bool pfx_issubnet(struct in6_addr *a_pfx, unsigned int a_len, struct in6_addr *b_pfx, unsigned int b_len);
 
 /* thread.c */
