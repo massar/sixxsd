@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.7 2006-02-24 13:08:03 jeroen Exp $
- $Date: 2006-02-24 13:08:03 $
+ $Id: ayiya.c,v 1.8 2006-03-02 10:43:32 jeroen Exp $
+ $Date: 2006-03-02 10:43:32 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -104,7 +104,7 @@ void *ayiya_process_outgoing(void *arg)
 	sha1_byte		hash[SHA1_DIGEST_LENGTH];
 	struct sockaddr_in	target;
 	int			lenin, lenout;
-	unsigned int		i;
+	unsigned int		i, sleep_backoff = 2;
 	struct in_addr		in_any;
 
 	struct pseudo_ayh	s;
@@ -135,9 +135,15 @@ void *ayiya_process_outgoing(void *arg)
 		{
 			mdolog(LOG_ERR, "[outgoing] Error reading from %s (%d): %s\n", iface->name, errno, strerror(errno));
 
-			/* Force it down */
-			os_int_set_state(iface, IFSTATE_DOWN);
-			break;
+			if (sleep_backoff > 1000)
+			{
+				int_set_state(iface, IFSTATE_DOWN);
+				break;
+			}
+
+			sleep(sleep_backoff);
+			sleep_backoff*=2;
+			continue;
 		}
 
 		if (lenin < 2)
@@ -151,6 +157,7 @@ void *ayiya_process_outgoing(void *arg)
 			mdolog(LOG_ERR, "[outgoing] Long packet of %d vs %u\n", lenin, sizeof(s.payload));
 			continue;
 		}
+		sleep_backoff = 2;
 
 		/* Move around the bytes */
 		memmove(&s.payload, &s.payload[4], lenin-4);
@@ -314,10 +321,11 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		if (pfx) OS_Mutex_Release(&pfx->mutex, "ayiya_process_incoming");
 		return;
 	}
+	i = pfx->interface_id;
+	OS_Mutex_Release(&pfx->mutex, "ayiya_process_incoming");
 
 	/* The interface */
-	iface = int_get(pfx->interface_id);
-	OS_Mutex_Release(&pfx->mutex, "ayiya_process_incoming");
+	iface = int_get(i);
 	if (!iface) return;
 	
 	/* Is this an AYIYA tunnel? */
@@ -464,12 +472,14 @@ void *ayiya_thread(void *arg)
 
 bool ayiya_start(struct sixxs_interface *iface)
 {
-	struct ifreq ifr;
-	char desc[128];
+	struct ifreq	ifr;
+	char		desc[128];
+
+	if (iface->running) return true;
 
 	/* Create a new tap device */
 	iface->ayiya_fd = open("/dev/net/tun", O_RDWR);
-	if (iface->ayiya_fd == -1)
+	if (iface->ayiya_fd < 0)
 	{
 		mdolog(LOG_ERR, "Couldn't open device %s (%d): %s\n", "/dev/net/tun", errno, strerror(errno));
 		/*
@@ -485,9 +495,12 @@ bool ayiya_start(struct sixxs_interface *iface)
 	/* Set the interface name */
 	strncpy(ifr.ifr_name, iface->name, sizeof(ifr.ifr_name));
 
-	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr))
+	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr) != 0)
 	{
 		mdolog(LOG_WARNING, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror(errno));
+		close(iface->ayiya_fd);
+		iface->ayiya_fd = 0;
+		return false;
 	}
 
 	iface->running = true;
