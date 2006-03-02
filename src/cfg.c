@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.15 2006-03-02 12:00:40 jeroen Exp $
- $Date: 2006-03-02 12:00:40 $
+ $Id: cfg.c,v 1.16 2006-03-02 12:13:02 jeroen Exp $
+ $Date: 2006-03-02 12:13:02 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -1047,7 +1047,7 @@ bool cfg_fromfile(const char *filename)
 	file = fopen(filename, "r");
 	if (file == NULL)
 	{
-		cfg_log(LOG_ERR, "Couldn't open configuration file %s (%d): %s\n", filename, errno, strerror(errno));
+		cfg_log(LOG_ERR, "Couldn't open configuration file %s (%d): %s\n", filename, strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 
@@ -1127,7 +1127,8 @@ void *cfg_thread(void UNUSED *arg)
 			socketpool_init(&pool);
 			if (use_uri(module, url, CFG_PORT, &pool, 42) == 0)
 			{
-				mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", strerror(errno), errno);
+				char buf[256];
+				mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 
 				/* Try again after 5 seconds */
 				sleep(5);
@@ -1156,8 +1157,9 @@ void *cfg_thread(void UNUSED *arg)
 
 		if (i < 0)
 		{
+			char buf[256];
 			if (errno == EINTR) continue;
-			mdolog(LOG_ERR, "Select failed: %s (%d)\n", strerror(errno), errno);
+			mdolog(LOG_ERR, "Select failed: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 			socketpool_exit(&pool);
 			needpool = true;
 			continue;
@@ -1170,7 +1172,8 @@ void *cfg_thread(void UNUSED *arg)
 			lc = malloc(sizeof(*lc));
 			if (!lc)
 			{
-				mdolog(LOG_ERR, "Out of memory during cfg_thread(): %s (%d)\n", strerror(errno), errno);
+				char buf[256];
+				mdolog(LOG_ERR, "Out of memory during cfg_thread(): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 				break;
 			}
 
@@ -1182,7 +1185,8 @@ void *cfg_thread(void UNUSED *arg)
 			lc->socket = accept(sn->socket, (struct sockaddr *)&sa, &sa_len);
 			if (lc->socket == -1)
 			{
-				mdolog(LOG_WARNING, "Accept failed: %s (%d)\n", strerror(errno), errno);
+				char buf[256];
+				mdolog(LOG_WARNING, "Accept failed: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 			}
 			else
 			{

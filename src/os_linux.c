@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.20 2006-03-02 11:53:04 jeroen Exp $
- $Date: 2006-03-02 11:53:04 $
+ $Id: os_linux.c,v 1.21 2006-03-02 12:13:02 jeroen Exp $
+ $Date: 2006-03-02 12:13:02 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -1081,7 +1081,7 @@ int os_netlink_parse_info(struct nlsock *nl)
 					(err->msg.nlmsg_type == RTM_NEWROUTE || err->msg.nlmsg_type == RTM_DELROUTE)) ?
 					LOG_DEBUG : LOG_ERR,
 					"%s error: %s, type=%s(%u), seq=%u, pid=%d\n",
-					nl->name, strerror(-(err->error)),
+					nl->name, strerror_r(-err->error, buf, sizeof(buf)),
 					lookup(nlmsg_str, err->msg.nlmsg_type),
 					err->msg.nlmsg_type,
 					err->msg.nlmsg_seq,
@@ -1149,14 +1149,16 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 	sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (sock < 0)
 	{
-		mdolog(LOG_ERR, "Can't open %s socket: %s\n", nl->name, strerror(errno));
+		char buf[256];
+		mdolog(LOG_ERR, "Can't open %s socket: %s (%d)\n", nl->name, strerror_r(errno, buf, sizeof(buf)), errno);
 		return -1;
 	}
 
 	ret = fcntl(sock, F_SETFL, O_NONBLOCK);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "Can't set %s socket flags: %s\n", nl->name, strerror(errno));
+		char buf[256];
+		mdolog(LOG_ERR, "Can't set %s socket flags: %s (%d)\n", nl->name, strerror_r(errno, buf, sizeof(buf)), errno);
 		close(sock);
 		return -1;
 	}
@@ -1167,7 +1169,8 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 	ret = getsockopt(sock, SOL_SOCKET, SO_RCVBUF, &oldsize, &oldlen);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "Can't get %s receive buffer size: %s", nl->name, strerror(errno));
+		char buf[256];
+		mdolog(LOG_ERR, "Can't get %s receive buffer size: %s (%d)\n", nl->name, strerror_r(errno, buf, sizeof(buf)), errno);
 		close(sock);
 		return -1;
 	}
@@ -1177,7 +1180,8 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 		ret = setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &newsize, sizeof(newsize));
 		if (ret < 0)
 		{
-			mdolog(LOG_ERR, "Can't get %s receive buffer size: %s", nl->name, strerror(errno));
+			char buf[256];
+			mdolog(LOG_ERR, "Can't get %s receive buffer size: %s (%d)\n", nl->name, strerror_r(errno, buf, sizeof(buf)), errno);
 			close(sock);
 			return -1;
 		}
@@ -1196,7 +1200,8 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 	ret = bind(sock, (struct sockaddr *)&snl, sizeof(snl));
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "Can't bind %s socket to group 0x%x: %s\n", nl->name, snl.nl_groups, strerror(errno));
+		char buf[256];
+		mdolog(LOG_ERR, "Can't bind %s socket to group 0x%x: %s (%d)\n", nl->name, snl.nl_groups, strerror_r(errno, buf, sizeof(buf)), errno);
 		close(sock);
 		return -1;
 	}
@@ -1206,7 +1211,8 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 	ret = getsockname(sock, (struct sockaddr *)&snl, &namelen);
 	if (ret < 0 || namelen != sizeof(snl))
 	{
-		mdolog(LOG_ERR, "Can't get %s socket name: %s\n", nl->name, strerror(errno));
+		char buf[256];
+		mdolog(LOG_ERR, "Can't get %s socket name: %s (%d)\n", nl->name, strerror_r(errno, buf, sizeof(buf)), errno);
 		close(sock);
 		return -1;
 	}
@@ -1254,7 +1260,8 @@ int os_netlink_request(int family, int type, struct nlsock *nl)
 /* Public functions */
 bool os_sync_complete(void)
 {
-	int ret;
+	char	buf[256];
+	int	ret;
 
 	if (!os_initialized)
 	{
@@ -1268,13 +1275,13 @@ bool os_sync_complete(void)
 	ret = os_netlink_request(AF_PACKET, RTM_GETLINK, &os_netlink_cmd);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "os_sync_complete(GETLINK) - %u: %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "os_sync_complete(GETLINK): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 	ret = os_netlink_parse_info(&os_netlink_cmd);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "os_sync_complete(GETLINK2) - %u: %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "os_sync_complete(GETLINK2): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 
@@ -1282,13 +1289,13 @@ bool os_sync_complete(void)
 	ret = os_netlink_request(AF_INET6, RTM_GETADDR, &os_netlink_cmd);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "os_sync_complete(GETADDR) - %u: %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "os_sync_complete(GETADDR): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 	ret = os_netlink_parse_info(&os_netlink_cmd);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "os_sync_complete(GETADDR2) - %u: %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "os_sync_complete(GETADDR2): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 
@@ -1296,13 +1303,13 @@ bool os_sync_complete(void)
 	ret = os_netlink_request(AF_INET6, RTM_GETROUTE, &os_netlink_cmd);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "os_sync_complete(GETROUTE) - %u: %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "os_sync_complete(GETROUTE): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 	ret = os_netlink_parse_info(&os_netlink_cmd);
 	if (ret < 0)
 	{
-		mdolog(LOG_ERR, "os_sync_complete(GETROUTE2) - %u: %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "os_sync_complete(GETROUTE2): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
 		return false;
 	}
 

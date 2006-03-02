@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.9 2006-03-02 11:54:13 jeroen Exp $
- $Date: 2006-03-02 11:54:13 $
+ $Id: ayiya.c,v 1.10 2006-03-02 12:13:02 jeroen Exp $
+ $Date: 2006-03-02 12:13:02 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -69,7 +69,7 @@ void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen
 		clienthost, sizeof(clienthost),
 		clientservice, sizeof(clientservice), NI_NUMERICHOST|NI_NUMERICSERV))
 	{
-		mdolog(LOG_ERR, "Resolve Error: %d : %s\n", errno, strerror(errno));
+		mdolog(LOG_ERR, "Resolve Error: %s (%d)\n", errno, strerror_r(errno, buf, sizeof(buf)), errno);
 		strncpy(clienthost, "unknown", sizeof(clienthost));
 		strncpy(clientservice, "unknown", sizeof(clientservice));
 	}
@@ -147,7 +147,7 @@ void *ayiya_process_outgoing(void *arg)
 		/* Check for errors */
 		if (lenin <= 0)
 		{
-			mdolog(LOG_ERR, "[outgoing] Error reading from %s (%d): %s\n", iface->name, errno, strerror(errno));
+			mdolog(LOG_ERR, "[outgoing] Error reading from %s (%d): %s\n", iface->name, strerror_r(errno, (char *)hash, sizeof(hash)), errno);
 
 			/* Turn it off */
 			int_set_state(iface, IFSTATE_DOWN);
@@ -220,11 +220,11 @@ void *ayiya_process_outgoing(void *arg)
 		lenout = sendto(ayiya_socket[i].socket, &s, lenin, 0, (struct sockaddr *)&target, sizeof(target));
 		if (lenout < 0)
 		{
-			mdolog(LOG_ERR, "[outgoing] %s Error while sending %u bytes sent to network using process %s socket %d (%d): %s)\n", iface->name, lenin, ayiya_socket[i].title, ayiya_socket[i].socket, errno, strerror(errno));
+			mdolog(LOG_ERR, "[outgoing] %s Error while sending %u bytes sent to network using process %s socket %d: %s (%d)\n", iface->name, lenin, ayiya_socket[i].title, ayiya_socket[i].socket, strerror_r(errno, (char *)hash, sizeof(hash)), errno);
 		}
 		else if (lenin != lenout)
 		{
-			mdolog(LOG_ERR, "[outgoing] %s Only %u of %u bytes sent to network (%d): %s)\n", iface->name, lenout, lenin, errno, strerror(errno));
+			mdolog(LOG_ERR, "[outgoing] %s Only %u of %u bytes sent to network: %s (%d)\n", iface->name, lenout, lenin, strerror_r(errno, (char *)hash, sizeof(hash)), errno);
 		}
 	}
 	return NULL;
@@ -511,7 +511,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 	iface->ayiya_fd = open("/dev/net/tun", O_RDWR);
 	if (iface->ayiya_fd < 0)
 	{
-		mdolog(LOG_ERR, "Couldn't open device %s (%d): %s\n", "/dev/net/tun", errno, strerror(errno));
+		mdolog(LOG_ERR, "Couldn't open device %s (%d): %s\n", "/dev/net/tun", strerror_r(errno, desc, sizeof(desc)), errno);
 		/*
 		 * Abort as we can't function properly
 		 * on Linux do 'cd /dev/; ./MAKEDEV tun' + modprobe tun
@@ -527,7 +527,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 
 	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr) != 0)
 	{
-		mdolog(LOG_ERR, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror(errno));
+		mdolog(LOG_ERR, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror_r(errno, desc, sizeof(desc)));
 		close(iface->ayiya_fd);
 		iface->ayiya_fd = 0;
 		return false;
