@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.19 2006-03-02 17:00:48 jeroen Exp $
- $Date: 2006-03-02 17:00:48 $
+ $Id: cfg.c,v 1.20 2006-03-02 17:01:44 jeroen Exp $
+ $Date: 2006-03-02 17:01:44 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -1233,7 +1233,7 @@ void *cfg_thread(void UNUSED *arg)
 					close(lc->socket);
 				}
 
-				D(cfg_log(LOG_DEBUG, "Accepted %s:%s\n", lc->clienthost, lc->clientservice);)
+				D(cfg_log(LOG_DEBUG, "Accepted %s%s%s:%s\n", lc->family == AF_INET6 ? "[" : "", lc->clienthost, lc->family == AF_INET6 ? "]" : "", lc->clientservice);)
 
 				thread_add("CfgClient", cfg_thread_client, lc, true);
 				lc = NULL;
