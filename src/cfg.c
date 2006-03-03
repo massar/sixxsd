@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.20 2006-03-02 17:01:44 jeroen Exp $
- $Date: 2006-03-02 17:01:44 $
+ $Id: cfg.c,v 1.21 2006-03-03 08:07:09 jeroen Exp $
+ $Date: 2006-03-03 08:07:09 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -1011,7 +1011,7 @@ struct {
 	{"ping6",		cfg_cmd_ping6,			"<ip6>"},
 
 	/* Management */
-	{"status",		cfg_cmd_status,			"all|threads|interfaces|routes"},
+	{"status",		cfg_cmd_status,			"all|count|threads|interfaces|interface <num>|routes"},
 	{"sync",		cfg_cmd_sync,			""},
 	{"beat",		cfg_cmd_beat,			"<interface id> <ipv4>"},
 	{"down",		cfg_cmd_down,			"<interface id>"},
