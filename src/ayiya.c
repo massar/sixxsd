@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.10 2006-03-02 12:13:02 jeroen Exp $
- $Date: 2006-03-02 12:13:02 $
+ $Id: ayiya.c,v 1.11 2006-03-03 08:01:15 jeroen Exp $
+ $Date: 2006-03-03 08:01:15 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -400,6 +400,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 
 	if (s->ayh.ayh_nextheader == IPPROTO_IPV6)
 	{
+#ifdef _LINUX
 		struct
 		{
 			struct tun_pi	pi;
@@ -413,6 +414,9 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 
 		/* Forward the packet to the kernel */
 		write(iface->ayiya_fd, &packet, payloadlen+sizeof(struct tun_pi));
+#else
+		write(iface->ayiya_fd, buf, payloadlen);
+#endif
 	}
 	else
 	{
@@ -500,13 +504,17 @@ void *ayiya_thread(void *arg)
 
 bool ayiya_start(struct sixxs_interface *iface)
 {
+#ifdef _LINUX
 	struct ifreq	ifr;
+#endif
 	char		desc[128];
+	int		i;
 
 	if (iface->running) return true;
 
 	mddolog("Starting AYIYA interface %s\n", iface->name);
 
+#ifdef _LINUX
 	/* Create a new tap device */
 	iface->ayiya_fd = open("/dev/net/tun", O_RDWR);
 	if (iface->ayiya_fd < 0)
@@ -525,14 +533,33 @@ bool ayiya_start(struct sixxs_interface *iface)
 	/* Set the interface name */
 	strncpy(ifr.ifr_name, iface->name, sizeof(ifr.ifr_name));
 
-	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr) != 0)
+	i = ioctl(iface->ayiya_fd, TUNSETIFF, &ifr);
+	if (i != 0)
 	{
 		mdolog(LOG_ERR, "Couldn't set interface name of %s (%d): %s\n", iface->name, errno, strerror_r(errno, desc, sizeof(desc)));
 		close(iface->ayiya_fd);
 		iface->ayiya_fd = 0;
 		return false;
 	}
-
+#else
+	iface->ayiya_fd = -1;
+	for (i = 0; i < 256; ++i)
+	{
+		char buf[128];
+		snprintf(buf, sizeof(buf), "/dev/tun%d", i);
+		iface->ayiya_fd = open(buf, O_RDWR);
+		if (iface->ayiya_fd >= 0)
+		{
+			break;
+		}
+	}
+	if (iface->ayiya_fd < 0)
+	{
+		char buf[256];
+		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", "/dev/tun", strerror_r(errno, buf, sizeof(buf)), errno);
+		return false;
+	}
+#endif
 	iface->running = true;
 
 	/* Add a thread for handling outgoing packets */

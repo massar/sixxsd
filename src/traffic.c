@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: traffic.c,v 1.4 2006-02-14 15:41:36 jeroen Exp $
- $Date: 2006-02-14 15:41:36 $
+ $Id: traffic.c,v 1.5 2006-03-03 08:01:15 jeroen Exp $
+ $Date: 2006-03-03 08:01:15 $
 
  SixXSd Traffic Handler
 **************************************/
@@ -13,10 +13,6 @@
 
 const char module_traffic[] = "traffic";
 #define module module_traffic
-
-#ifdef _BSD
-#include <sysctl.h>
-#endif
 
 void traffic_create_interface(const char *interface);
 void traffic_create_interface(const char *interface)

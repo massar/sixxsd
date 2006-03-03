@@ -3,16 +3,28 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.10 2006-03-02 13:21:01 jeroen Exp $
- $Date: 2006-03-02 13:21:01 $
+ $Id: sixxsd.h,v 1.11 2006-03-03 08:01:15 jeroen Exp $
+ $Date: 2006-03-03 08:01:15 $
 **************************************/
 
 #ifndef SIXXSD_H
 #define SIXXSD_H "42LI"
 
+#ifndef _BSD
 #include <features.h>
+#endif
 
-#define _XOPEN_SOURCE 600
+#ifndef __OpenBSD__
+#ifndef SUNOS
+#ifndef AIX
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
+#endif
+#endif
+#endif
+#define __STRICT_ANSI__
+
 #define __FAVOR_BSD 42
 
 /* MD5 routines require the correct types */
@@ -42,12 +54,21 @@
 #include <pthread.h>
 
 #ifdef _BSD
-#include <sysctl.h>
+#include <netinet/in_systm.h>
+#include <sys/sysctl.h>
+#include <sys/stat.h>
+#include <net/route.h>
+#include <net/if_dl.h>
 #endif
 
 #include <net/if.h>
-#include <netinet/if_ether.h>
+
+#ifdef _LINUX
 #include <netpacket/packet.h>
+#include <linux/if_tun.h>
+#endif
+
+#include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>
@@ -56,7 +77,6 @@
 #include <netinet/ip_icmp.h>
 #include <sys/ioctl.h>
 #include <sys/un.h>
-#include <linux/if_tun.h>
 
 #include <rrd.h>
 
@@ -74,6 +94,18 @@
 # define WORDS_BIGENDIAN 1
 #else
 #error unsupported endianness!
+#endif
+
+/* Not available on eg AIX */
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL		0
+#endif
+#ifndef IPPROTO_SCTP
+#define IPPROTO_SCTP		132
+#endif
+
+#ifndef IPV6_V6ONLY
+#define IPV6_V6ONLY		26
 #endif
 
 #ifndef UWORD32

@@ -3,8 +3,8 @@
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.4 2006-02-14 15:41:36 jeroen Exp $
-# $Date: 2006-02-14 15:41:36 $
+# $Id: Makefile,v 1.5 2006-03-03 08:01:15 jeroen Exp $
+# $Date: 2006-03-03 08:01:15 $
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
@@ -35,18 +35,18 @@ LINK    = @echo "* Linking $@"; $(CC) $(CFLAGS)
 RM      = @echo "* Removing $@"; rm
 
 # Our very *bliep* set of options to make sure that these things can't cause any issues
-CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-variadic-macros -Wpacked -Wpadded -pedantic -pthread -D_REENTRANT
+CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wpacked -Wpadded -pedantic -pthread -D_REENTRANT
 
 # Linux
 ifeq ($(shell uname | grep -c "Linux"),1)
-CFLAGS += -D_LINUX
+CFLAGS += -D_LINUX -Wno-variadic-macros
 SRCS += os_linux.c
 OBJS += os_linux.o
 endif
 
 # FreeBSD
 ifeq ($(shell uname | grep -c "FreeBSD"),1)
-CFLAGS += -D_FREEBSD -D_BSD
+CFLAGS += -D_FREEBSD -D_BSD -I/usr/local/include/
 SRCS += os_freebsd.c
 OBJS += os_freebsd.o
 endif

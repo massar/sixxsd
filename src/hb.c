@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.6 2006-03-02 11:58:51 jeroen Exp $
- $Date: 2006-03-02 11:58:51 $
+ $Id: hb.c,v 1.7 2006-03-03 08:01:15 jeroen Exp $
+ $Date: 2006-03-03 08:01:15 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -188,11 +188,11 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	pnt = ++pnt2;
 	digest = strdup((char *)pnt);
 
-	snprintf((char *)tmp, sizeof(tmp), "%s%s %s %ld %s",
+	snprintf((char *)tmp, sizeof(tmp), "%s%s %s %u %s",
 		HEARTBEAT_TUNNEL,
 		ipv6_them,
 		(using_sender == 1 ? sender : ipv4_them),
-		datetime,
+		(unsigned int)datetime,
 		iface->password);
 
 	/* Generate a MD5 */

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.11 2006-03-02 11:53:27 jeroen Exp $
- $Date: 2006-03-02 11:53:27 $
+ $Id: interface.c,v 1.12 2006-03-03 08:01:15 jeroen Exp $
+ $Date: 2006-03-03 08:01:15 $
 
  SixXSd Interface Management 
 **************************************/
@@ -281,17 +281,24 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		*/
 
 		/* Link Local (fe80::/64) */
-		iface->ipv6_ll.s6_addr16[0] = htons(0xfe80);
-		iface->ipv6_ll.s6_addr16[1] = 0x00;
-		iface->ipv6_ll.s6_addr16[2] = 0x00;
-		iface->ipv6_ll.s6_addr16[3] = 0x00;
+		iface->ipv6_ll.s6_addr[ 0] = 0xfe;
+		iface->ipv6_ll.s6_addr[ 1] = 0x80;
+		iface->ipv6_ll.s6_addr[ 2] = 0x00;
+		iface->ipv6_ll.s6_addr[ 3] = 0x00;
+		iface->ipv6_ll.s6_addr[ 4] = 0x00;
+		iface->ipv6_ll.s6_addr[ 5] = 0x00;
+		iface->ipv6_ll.s6_addr[ 6] = 0x00;
+		iface->ipv6_ll.s6_addr[ 7] = 0x00;
 
 		/* Clear the LL Unique Bit */
-		iface->ipv6_ll.s6_addr16[4] = ntohs(iface->ipv6_us.s6_addr16[1]) & 0xfffc;
-		iface->ipv6_ll.s6_addr16[4] = htons(iface->ipv6_us.s6_addr16[4]);
-		iface->ipv6_ll.s6_addr16[5] = iface->ipv6_us.s6_addr16[2];
-		iface->ipv6_ll.s6_addr16[6] = iface->ipv6_us.s6_addr16[3];
-		iface->ipv6_ll.s6_addr16[7] = iface->ipv6_us.s6_addr16[7];
+		iface->ipv6_ll.s6_addr[ 8] = iface->ipv6_us.s6_addr[ 2] & 0xfc;
+		iface->ipv6_ll.s6_addr[ 9] = iface->ipv6_us.s6_addr[ 3];
+		iface->ipv6_ll.s6_addr[10] = iface->ipv6_us.s6_addr[ 4];
+		iface->ipv6_ll.s6_addr[11] = iface->ipv6_us.s6_addr[ 5];
+		iface->ipv6_ll.s6_addr[12] = iface->ipv6_us.s6_addr[ 6];
+		iface->ipv6_ll.s6_addr[13] = iface->ipv6_us.s6_addr[ 7];
+		iface->ipv6_ll.s6_addr[14] = iface->ipv6_us.s6_addr[14];
+		iface->ipv6_ll.s6_addr[15] = iface->ipv6_us.s6_addr[15];
 
 		/* Configure a password ? */
 		if (password) int_set_password(iface, password);
