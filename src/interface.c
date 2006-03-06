@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.12 2006-03-03 08:01:15 jeroen Exp $
- $Date: 2006-03-03 08:01:15 $
+ $Id: interface.c,v 1.13 2006-03-06 15:34:26 jeroen Exp $
+ $Date: 2006-03-06 15:34:26 $
 
  SixXSd Interface Management 
 **************************************/
@@ -227,7 +227,8 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		/* Don't turn down Heartbeat or AYIYA interfaces */
 		if (iface->type == IFACE_PROTO41_HB || iface->type == IFACE_AYIYA)
 		{
-			if (state == IFSTATE_DISABLED || state == IFSTATE_UP) int_set_state(iface, state);
+			/* Only try to change state when the new one is disabled/up or the old one is disabled */
+			if (state == IFSTATE_DISABLED || state == IFSTATE_UP || iface->state == IFSTATE_DISABLED) int_set_state(iface, state);
 		}
 		else int_set_state(iface, state);
 
