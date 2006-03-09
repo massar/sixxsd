@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.13 2006-03-06 15:34:26 jeroen Exp $
- $Date: 2006-03-06 15:34:26 $
+ $Id: interface.c,v 1.14 2006-03-09 12:50:53 jeroen Exp $
+ $Date: 2006-03-09 12:50:53 $
 
  SixXSd Interface Management 
 **************************************/
@@ -157,7 +157,7 @@ struct sixxs_interface *int_get(unsigned int id)
 		return NULL;
 	}
 	
-	OS_Mutex_Lock(&g_conf->mutex, "int_get");
+	OS_Mutex_Lock(&g_conf->mutex_interfaces, "int_get");
 	iface = g_conf->interfaces + id;
 
 	/* Init the mutex on first hit */
@@ -167,7 +167,7 @@ struct sixxs_interface *int_get(unsigned int id)
 	}
 
 	/* XXX: Watch this one */
-	OS_Mutex_Release(&g_conf->mutex, "int_get");
+	OS_Mutex_Release(&g_conf->mutex_interfaces, "int_get");
 	OS_Mutex_Lock(&iface->mutex, "int_get");
 
 	return iface;
@@ -178,19 +178,19 @@ struct sixxs_interface *int_get_by_index(unsigned int id)
 	unsigned int		i;
 	struct sixxs_interface	*iface;
 
-	OS_Mutex_Lock(&g_conf->mutex, "int_get_by_index");
+	OS_Mutex_Lock(&g_conf->mutex_interfaces, "int_get_by_index");
 	for (i = 0; i < g_conf->max_interfaces; i++)
 	{
 		iface = g_conf->interfaces + i;
 		if (iface->type == IFACE_UNSPEC) continue;
 		if (iface->kernel_ifindex == id)
 		{
+			OS_Mutex_Release(&g_conf->mutex_interfaces, "int_get_by_index");
 			OS_Mutex_Lock(&iface->mutex, "int_get_by_index");
-			OS_Mutex_Release(&g_conf->mutex, "int_get_by_index");
 			return iface;
 		}
 	}
-	OS_Mutex_Release(&g_conf->mutex, "int_get_by_index");
+	OS_Mutex_Release(&g_conf->mutex_interfaces, "int_get_by_index");
 
 	return NULL;
 }

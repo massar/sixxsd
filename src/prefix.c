@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.11 2006-03-02 13:46:54 jeroen Exp $
- $Date: 2006-03-02 13:46:54 $
+ $Id: prefix.c,v 1.12 2006-03-09 12:50:53 jeroen Exp $
+ $Date: 2006-03-09 12:50:53 $
 
  SixXSd Prefix Management
 **************************************/
@@ -107,9 +107,9 @@ struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen)
 {
 	struct sixxs_prefix *pfx;
 
-	OS_Mutex_Lock(&g_conf->mutex, "pfx_get()");
+	OS_Mutex_Lock(&g_conf->mutex_prefixes, "pfx_get()");
 	pfx = pfx_getA(ipv6_them, prefixlen, false);
-	OS_Mutex_Release(&g_conf->mutex, "pfx_get()");
+	OS_Mutex_Release(&g_conf->mutex_prefixes, "pfx_get()");
 	return pfx;
 }
 
@@ -118,12 +118,12 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	struct sixxs_prefix	*pfx, *p;
 	bool			isnew;
 
-	OS_Mutex_Lock(&g_conf->mutex, "pfx_reconfig");
+	OS_Mutex_Lock(&g_conf->mutex_prefixes, "pfx_reconfig");
 	pfx = pfx_getA(prefix, length, true);
-	OS_Mutex_Release(&g_conf->mutex, "pfx_reconfig");
 
 	if (!pfx)
 	{
+		OS_Mutex_Release(&g_conf->mutex_prefixes, "pfx_reconfig");
 		mdolog(LOG_ERR, "pfx_reconfig() - Could not get a new prefix\n");
 		return;
 	}
@@ -142,6 +142,8 @@ void pfx_reconfig(struct in6_addr *prefix, unsigned int length, struct in6_addr 
 	pfx->enabled = enabled;
 	pfx->ignore = ignore;
 	pfx->interface_id = iface->interface_id;
+
+	OS_Mutex_Release(&g_conf->mutex_prefixes, "pfx_reconfig");
 
 	if (iface->prefixes)
 	{

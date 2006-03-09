@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.21 2006-03-03 08:07:09 jeroen Exp $
- $Date: 2006-03-03 08:07:09 $
+ $Id: cfg.c,v 1.22 2006-03-09 12:50:53 jeroen Exp $
+ $Date: 2006-03-09 12:50:53 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -139,7 +139,7 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 		return false;
 	}
 
-	OS_Mutex_Lock(&g_conf->mutex, "cfg_pop_prefix_add");
+	OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_pop_prefix_add");
 
 	/* Add it to the list of prefixes */
 	for (pn = g_conf->pop_prefixes; pn; pn = pn->next)
@@ -159,7 +159,7 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 		g_conf->pop_prefixes = pp;
 	}
 
-	OS_Mutex_Release(&g_conf->mutex, "cfg_pop_prefix_add");
+	OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_pop_prefix_add");
 
 	if (!found)
 	{
@@ -187,7 +187,7 @@ bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length)
 	struct sixxs_pop_prefix *pp;
 	bool			ret = false;
 
-	OS_Mutex_Lock(&g_conf->mutex, "cfg_pop_prefix_check");
+	OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_pop_prefix_check");
 
 	for (pp = g_conf->pop_prefixes; pp; pp = pp->next)
 	{
@@ -198,7 +198,7 @@ bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length)
 		}
 	}
 
-	OS_Mutex_Release(&g_conf->mutex, "cfg_pop_prefix_check");
+	OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_pop_prefix_check");
 
 	return ret;
 }
@@ -707,7 +707,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		c = a = 0;
 
 		/* Walk through all the interfaces */
-		OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
+		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_status");
 		for (i = 0; i < g_conf->max_interfaces; i++)
 		{
 			iface = g_conf->interfaces + i;
@@ -778,7 +778,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				iface->synced_subnet ? "S" : "s",
 				buf2);
 		}
-		OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
+		OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_status");
 		if (!count) sock_printf(sock, "\n");
 		else sock_printf(sock, "Interfaces: total: %u, active: %u\n", c, a);
 	}
@@ -790,7 +790,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		c = a = 0;
 
 		/* Walk through all the routes */
-		OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
+		OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_cmd_status");
 		for (i = 0; i < g_conf->max_prefixes; i++)
 		{
 			pfx = g_conf->prefixes + i;
@@ -806,9 +806,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 			memset(buf2, 0, sizeof(buf2));
 			inet_ntop(AF_INET6, &pfx->nexthop, buf2, sizeof(buf2));
 		
-			OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
 			iface = int_get(pfx->interface_id);
-			OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_status");
 
 			sock_printf(sock, "%s/%u %s %s %s\n",
 				buf1, pfx->length,
@@ -817,7 +815,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				pfx->synced ? "R" : "r");
 			if (iface) OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
 		}
-		OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_status");
+		OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_cmd_status");
 		if (!count) sock_printf(sock, "\n");
 		else sock_printf(sock, "Routes: total: %u, active: %u\n", c, a);
 	}
@@ -944,7 +942,7 @@ bool cfg_cmd_getstats(int sock, const char UNUSED *args)
 
 	sock_printf(sock, "+OK Statistics coming up...\n");
 
-	OS_Mutex_Lock(&g_conf->mutex, "cfg_cmd_getstats");
+	OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
 
 	/* Walk through all the interfaces */
 	for (i = 0; i < g_conf->max_interfaces; i++)
@@ -958,7 +956,7 @@ bool cfg_cmd_getstats(int sock, const char UNUSED *args)
 			iface->inpkt, iface->outpkt);
 	}
 
-	OS_Mutex_Release(&g_conf->mutex, "cfg_cmd_getstats");
+	OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
 
 	sock_printf(sock, "+OK End of statistics\n");
 	return true;

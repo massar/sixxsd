@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.11 2006-03-03 08:01:15 jeroen Exp $
- $Date: 2006-03-03 08:01:15 $
+ $Id: sixxsd.h,v 1.12 2006-03-09 12:50:53 jeroen Exp $
+ $Date: 2006-03-09 12:50:53 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -176,7 +176,7 @@ typedef	struct os_mutex		os_mutex;
 #define OS_Mutex_Init(m)	OS_Mutex_InitA(m)
 #define OS_Mutex_Lock(m,n)	OS_Mutex_LockA(m)
 #define OS_Mutex_Release(m,n)	OS_Mutex_ReleaseA(m)
-#define OS_Mutex_Destroy(m)	OS_Mutex_Destroy(m)
+#define OS_Mutex_Destroy(m)	OS_Mutex_DestroyA(m)
 #endif
 
 #include "common/common.h"
@@ -333,8 +333,9 @@ struct conf
 	unsigned int		verbose;			/* Verbosity level */
 
 	/* Mutex */
-	os_mutex		mutex;				/* Mutex for almost everything */
 	os_mutex		mutex_thread;			/* Mutex for Threads */
+	os_mutex		mutex_interfaces;		/* Mutex for Interfaces */
+	os_mutex		mutex_prefixes;			/* Mutex for Prefixes */
 	os_mutex		mutex_log;			/* Mutex for Logging */
 
 	/* PoP Configuration */
