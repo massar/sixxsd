@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.27 2006-03-22 17:40:34 jeroen Exp $
- $Date: 2006-03-22 17:40:34 $
+ $Id: os_linux.c,v 1.28 2006-03-22 17:41:44 jeroen Exp $
+ $Date: 2006-03-22 17:41:44 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -100,7 +100,7 @@ bool os_sync_link_down(struct sixxs_interface *iface);
 bool os_sync_link_down(struct sixxs_interface *iface)
 {
 	/* Only when syncing */
-	if (!g_conf->do_sync || !iface->synced_link) return;
+	if (!g_conf->do_sync || !iface->synced_link) return true;
 
 	os_exec(
 		"ip link set %s down",
