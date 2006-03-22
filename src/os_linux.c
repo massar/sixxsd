@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.25 2006-03-03 10:25:01 jeroen Exp $
- $Date: 2006-03-03 10:25:01 $
+ $Id: os_linux.c,v 1.26 2006-03-22 16:32:07 jeroen Exp $
+ $Date: 2006-03-22 16:32:07 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -51,7 +51,7 @@ bool os_sync_link_up(struct sixxs_interface *iface)
 {
 	/* Only when syncing */
 	if (!g_conf->do_sync || iface->synced_link) return true;
-	
+
 	/* Create the interface */
 	if (	iface->type == IFACE_PROTO41 ||
 		iface->type == IFACE_PROTO41_HB)
