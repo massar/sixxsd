@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.14 2006-03-09 12:50:53 jeroen Exp $
- $Date: 2006-03-09 12:50:53 $
+ $Id: interface.c,v 1.15 2006-03-22 16:31:43 jeroen Exp $
+ $Date: 2006-03-22 16:31:43 $
 
  SixXSd Interface Management 
 **************************************/
@@ -107,7 +107,7 @@ bool int_beat(struct sixxs_interface *iface)
 	iface->hb_lastbeat = mktime(gmtime(&tee));
 
 	/* Make it go up? (unless it is disabled) */
-	if (iface->state != IFSTATE_UP && iface->state != IFSTATE_DISABLED)
+	if (iface->state != IFSTATE_DISABLED)
 	{
 		/* Up up and beyond! */
 		int_set_state(iface, IFSTATE_UP);
