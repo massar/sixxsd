@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.12 2006-03-09 12:50:53 jeroen Exp $
- $Date: 2006-03-09 12:50:53 $
+ $Id: sixxsd.h,v 1.13 2006-03-22 16:41:22 jeroen Exp $
+ $Date: 2006-03-22 16:41:22 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -336,6 +336,7 @@ struct conf
 	os_mutex		mutex_thread;			/* Mutex for Threads */
 	os_mutex		mutex_interfaces;		/* Mutex for Interfaces */
 	os_mutex		mutex_prefixes;			/* Mutex for Prefixes */
+	os_mutex		mutex_pop_prefixes;		/* Mutex for POP Prefixes */
 	os_mutex		mutex_log;			/* Mutex for Logging */
 
 	/* PoP Configuration */

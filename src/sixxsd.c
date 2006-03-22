@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.12 2006-03-09 12:50:53 jeroen Exp $
- $Date: 2006-03-09 12:50:53 $
+ $Id: sixxsd.c,v 1.13 2006-03-22 16:41:22 jeroen Exp $
+ $Date: 2006-03-22 16:41:22 $
 
  SixXSd main code
 **************************************/
@@ -141,6 +141,7 @@ void cleanup(void)
 	OS_Mutex_Destroy(&g_conf->mutex_thread);
 	OS_Mutex_Destroy(&g_conf->mutex_interfaces);
 	OS_Mutex_Destroy(&g_conf->mutex_prefixes);
+	OS_Mutex_Destroy(&g_conf->mutex_pop_prefixes);
 	OS_Mutex_Destroy(&g_conf->mutex_thread);
 	OS_Mutex_Destroy(&g_conf->mutex_log);
 
@@ -188,6 +189,7 @@ bool init(void)
 	OS_Mutex_Init(&g_conf->mutex_thread);
 	OS_Mutex_Init(&g_conf->mutex_interfaces);
 	OS_Mutex_Init(&g_conf->mutex_prefixes);
+	OS_Mutex_Init(&g_conf->mutex_pop_prefixes);
 	OS_Mutex_Init(&g_conf->mutex_thread);
 	OS_Mutex_Init(&g_conf->mutex_log);
 

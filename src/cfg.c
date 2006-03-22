@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.23 2006-03-22 16:33:30 jeroen Exp $
- $Date: 2006-03-22 16:33:30 $
+ $Id: cfg.c,v 1.24 2006-03-22 16:41:22 jeroen Exp $
+ $Date: 2006-03-22 16:41:22 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -139,7 +139,7 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 		return false;
 	}
 
-	OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_pop_prefix_add");
+	OS_Mutex_Lock(&g_conf->mutex_pop_prefixes, "cfg_pop_prefix_add");
 
 	/* Add it to the list of prefixes */
 	for (pn = g_conf->pop_prefixes; pn; pn = pn->next)
@@ -159,7 +159,7 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 		g_conf->pop_prefixes = pp;
 	}
 
-	OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_pop_prefix_add");
+	OS_Mutex_Release(&g_conf->mutex_pop_prefixes, "cfg_pop_prefix_add");
 
 	if (!found)
 	{
@@ -187,7 +187,7 @@ bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length)
 	struct sixxs_pop_prefix *pp;
 	bool			ret = false;
 
-	OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_pop_prefix_check");
+	OS_Mutex_Lock(&g_conf->mutex_pop_prefixes, "cfg_pop_prefix_check");
 
 	for (pp = g_conf->pop_prefixes; pp; pp = pp->next)
 	{
@@ -198,7 +198,7 @@ bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length)
 		}
 	}
 
-	OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_pop_prefix_check");
+	OS_Mutex_Release(&g_conf->mutex_pop_prefixes, "cfg_pop_prefix_check");
 
 	return ret;
 }
