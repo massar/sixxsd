@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.24 2006-03-22 16:41:22 jeroen Exp $
- $Date: 2006-03-22 16:41:22 $
+ $Id: cfg.c,v 1.25 2006-03-22 17:01:41 jeroen Exp $
+ $Date: 2006-03-22 17:01:41 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -530,6 +530,53 @@ bool cfg_cmd_version(int sock, const char UNUSED *args)
 	return true;
 }
 
+
+bool cfg_cmd_uptimeA(int sock, bool ok);
+bool cfg_cmd_uptimeA(int sock, bool ok)
+{
+	unsigned int	uptime_s, uptime_m, uptime_h, uptime_d;
+	time_t		tee = time(NULL);
+
+	uptime_s  = tee - g_conf->starttime;
+	uptime_d  = uptime_s / (24*60*60);
+	uptime_s -= uptime_d *  24*60*60;
+	uptime_h  = uptime_s / (60*60);
+	uptime_s -= uptime_h *  60*60;
+	uptime_m  = uptime_s /  60;
+	uptime_s -= uptime_m *  60;
+
+	sock_printf(sock, "%sUptime : %u days %02u:%02u:%02u\n", ok ? "+OK " : "", uptime_d, uptime_h, uptime_m, uptime_s);
+	return true;
+}
+
+bool cfg_cmd_uptime(int sock, const char UNUSED *args);
+bool cfg_cmd_uptime(int sock, const char UNUSED *args)
+{
+	return cfg_cmd_uptimeA(sock, true);
+}
+
+bool cfg_cmd_timeinfo(int sock, const char UNUSED *args);
+bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
+{
+	struct tm	teem;
+	time_t		tee = time(NULL);
+	char		buf[128];
+
+	sock_printf(sock, "+OK Time Information following\n");
+
+	gmtime_r(&g_conf->starttime, &teem);
+	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &teem);
+	sock_printf(sock, "Started: %s GMT\n", buf);
+
+	gmtime_r(&tee, &teem);
+	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &teem);
+	sock_printf(sock, "Current: %s GMT\n", buf);
+
+	cfg_cmd_uptimeA(sock, false);
+	sock_printf(sock, "+OK Time Information done\n");
+	return true;
+}
+
 bool cfg_cmd_reply(int sock, const char *args);
 bool cfg_cmd_reply(int sock, const char *args)
 {
@@ -1015,6 +1062,8 @@ struct {
 
 	/* Misc commands */
 	{"version",		cfg_cmd_version,		""},
+	{"uptime",		cfg_cmd_uptime,			""},
+	{"timeinfo",		cfg_cmd_timeinfo,		""},
 	{"reply",		cfg_cmd_reply,			"<opts>"},
 	{"help",		cfg_cmd_help,			""},
 	{"quit",		cfg_cmd_quit,			"<byestring>"},

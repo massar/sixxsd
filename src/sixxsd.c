@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.13 2006-03-22 16:41:22 jeroen Exp $
- $Date: 2006-03-22 16:41:22 $
+ $Id: sixxsd.c,v 1.14 2006-03-22 17:01:41 jeroen Exp $
+ $Date: 2006-03-22 17:01:41 $
 
  SixXSd main code
 **************************************/
@@ -163,6 +163,9 @@ bool init(void)
 	memset(g_conf, 0, sizeof(*g_conf));
 
 	/* Initialize our configuration */
+	g_conf->starttime		= time(NULL);
+
+	
 #ifndef DEBUG
 	g_conf->daemonize		= true;
 	g_conf->verbose			= 0;
