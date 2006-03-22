@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.22 2006-03-09 12:50:53 jeroen Exp $
- $Date: 2006-03-09 12:50:53 $
+ $Id: cfg.c,v 1.23 2006-03-22 16:33:30 jeroen Exp $
+ $Date: 2006-03-22 16:33:30 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -429,7 +429,7 @@ bool cfg_cmd_route(int sock, const char *args);
 bool cfg_cmd_route(int sock, const char *args)
 {
 	char			buf[1024], pfix[64];
-	unsigned int		fields = countfields(args), length = 128;
+	unsigned int		fields = countfields(args), length = 128, id;
 	bool			enabled = false, ignore = false;
 	struct in6_addr		prefix, nexthop;
 	struct sixxs_prefix	*pfx;
@@ -500,23 +500,22 @@ bool cfg_cmd_route(int sock, const char *args)
 		sock_printf(sock, "-ERR Couldn't find nexthop '%s' while determining interface_id for route %s\n", buf, pfix);
 		return false;
 	}
+	id = pfx->interface_id;
+	OS_Mutex_Release(&pfx->mutex, "cfg_cmd_route");
 
-	iface = int_get(pfx->interface_id);
+	iface = int_get(id);
 	if (!iface)
 	{
-		sock_printf(sock, "-ERR Couldn't find interface %u for route %s\n", pfx->interface_id, pfix);
-		OS_Mutex_Release(&pfx->mutex, "cfg_cmd_route");
+		sock_printf(sock, "-ERR Couldn't find interface %u for route %s\n", id, pfix);
 		return false;
 	}
 
 	/* Add the route */
 	pfx_reconfig(&prefix, length, &nexthop, enabled, ignore, false, false, iface);
 
-	sock_printf(sock, "+OK Route %s accepted over interface %s/%u\n",
-		pfix, iface->name, pfx->interface_id);
+	sock_printf(sock, "+OK Route %s accepted over interface %s/%u\n", pfix, iface->name, id);
 
 	OS_Mutex_Release(&iface->mutex, "cfg_cmd_route");
-	OS_Mutex_Release(&pfx->mutex, "cfg_cmd_route");
 	return true;
 }
 

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.7 2006-03-03 08:01:15 jeroen Exp $
- $Date: 2006-03-03 08:01:15 $
+ $Id: hb.c,v 1.8 2006-03-22 16:33:30 jeroen Exp $
+ $Date: 2006-03-22 16:33:30 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -96,15 +96,17 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	}
 
 	pfx = pfx_get(&ipv6__them, 128);
+	if (pfx)
+	{
+		i = pfx->interface_id;
+		OS_Mutex_Release(&pfx->mutex, "hb_checkhb");
+	}
 	if (!pfx || !pfx->is_tunnel)
 	{
 		hb_log(LOG_WARNING, ci, cl, "Unknown endpoint \"%s\" in \"%s\"\n", ipv6_them, buf);
 		free(ipv6_them);
-		if (pfx) OS_Mutex_Release(&pfx->mutex, "hb_checkhb");
 		return;
 	}
-	i = pfx->interface_id;
-	OS_Mutex_Release(&pfx->mutex, "hb_checkhb");
 
 	/* The interface */
 	iface = int_get(i);

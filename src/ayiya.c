@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.11 2006-03-03 08:01:15 jeroen Exp $
- $Date: 2006-03-03 08:01:15 $
+ $Id: ayiya.c,v 1.12 2006-03-22 16:33:30 jeroen Exp $
+ $Date: 2006-03-22 16:33:30 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -320,16 +320,18 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 	}
 
 	pfx = pfx_get(&s->identity, 128);
+	if (pfx)
+	{
+		i = pfx->interface_id;
+		OS_Mutex_Release(&pfx->mutex, "ayiya_process_incoming");
+	}
 	if (!pfx || !pfx->is_tunnel)
 	{
 		memset(buf, 0, sizeof(buf));
 		inet_ntop(AF_INET6, &s->identity, buf, sizeof(buf));
 		ayiya_log(LOG_WARNING, ci, cl, "Unknown endpoint \"%s\"\n", buf);
-		if (pfx) OS_Mutex_Release(&pfx->mutex, "ayiya_process_incoming");
 		return;
 	}
-	i = pfx->interface_id;
-	OS_Mutex_Release(&pfx->mutex, "ayiya_process_incoming");
 
 	/* The interface */
 	iface = int_get(i);
