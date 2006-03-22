@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.12 2006-03-22 16:33:30 jeroen Exp $
- $Date: 2006-03-22 16:33:30 $
+ $Id: ayiya.c,v 1.13 2006-03-22 17:40:34 jeroen Exp $
+ $Date: 2006-03-22 17:40:34 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -139,11 +139,18 @@ void *ayiya_process_outgoing(void *arg)
 		timeout.tv_sec = 5;
 		lenin = select(iface->ayiya_fd+1, &readset, NULL, NULL, &timeout);
 
+		/* Break out if needed */
+		if  (!iface->running) break;
+
 		/* Nothing happened for 5 seconds */
 		if (lenin == 0) continue;
 
 		/* There is supposed to be something, so read it */
-		if (lenin > 0) lenin = read(iface->ayiya_fd, s.payload, sizeof(s.payload));
+		if (lenin > 0 && iface->running) lenin = read(iface->ayiya_fd, s.payload, sizeof(s.payload));
+
+		/* Break out if needed */
+		if  (!iface->running) break;
+
 		/* Check for errors */
 		if (lenin <= 0)
 		{
@@ -400,6 +407,13 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 
 	int_beat(iface);
 
+	if (iface->ayiya_fd == -1)
+	{
+		ayiya_log(LOG_WARNING, ci, cl, "[incoming] Not processing as outgoing socket is still closed\n");
+		OS_Mutex_Release(&iface->mutex, "ayiya_process_incoming");
+		return;
+	}
+
 	if (s->ayh.ayh_nextheader == IPPROTO_IPV6)
 	{
 #ifdef _LINUX
@@ -575,9 +589,9 @@ bool ayiya_stop(struct sixxs_interface *iface)
 {
 	if (!iface->running) return true;
 
-	mddolog("Stopping AYIYA interface %s\n", iface->name);
-
 	iface->running = false;
+
+	mddolog("Stopping AYIYA interface %s\n", iface->name);
 
 	close(iface->ayiya_fd);
 	iface->ayiya_fd = -1;

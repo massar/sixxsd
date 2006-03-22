@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.15 2006-03-22 16:31:43 jeroen Exp $
- $Date: 2006-03-22 16:31:43 $
+ $Id: interface.c,v 1.16 2006-03-22 17:40:34 jeroen Exp $
+ $Date: 2006-03-22 17:40:34 $
 
  SixXSd Interface Management 
 **************************************/
@@ -42,16 +42,19 @@ bool int_set_state(struct sixxs_interface *iface, enum iface_state state)
 bool int_set_type(struct sixxs_interface *iface, enum iface_type type);
 bool int_set_type(struct sixxs_interface *iface, enum iface_type type)
 {
+	bool restart = false;
+
 	/* Don't change when it is already done */
 	if (iface->type == type) return true;
 
 	/* Mark it down (stops stuff) */
 	if (iface->state == IFSTATE_UP)
 	{
+		restart = true;
 		int_set_state(iface, IFSTATE_DOWN);
 	}
 
-	/* Modify the interface and mark it unsynced */
+	/* Modify the interface type and mark it unsynced */
 	iface->type = type;
 	iface->synced_link		= false;
 	iface->synced_addr		= false;
@@ -59,11 +62,8 @@ bool int_set_type(struct sixxs_interface *iface, enum iface_type type)
 	iface->synced_remote		= false;
 	iface->synced_subnet		= false;
 
-	/* Mark it up (starts stuff) (unless disabled) */
-	if (iface->state != IFSTATE_DISABLED)
-	{
-		int_set_state(iface, IFSTATE_UP);
-	}
+	/* Mark it up when it was up */
+	if (restart) int_set_state(iface, IFSTATE_UP);
 
 	return true;
 }

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.26 2006-03-22 16:32:07 jeroen Exp $
- $Date: 2006-03-22 16:32:07 $
+ $Id: os_linux.c,v 1.27 2006-03-22 17:40:34 jeroen Exp $
+ $Date: 2006-03-22 17:40:34 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -100,27 +100,26 @@ bool os_sync_link_down(struct sixxs_interface *iface);
 bool os_sync_link_down(struct sixxs_interface *iface)
 {
 	/* Only when syncing */
-	if (g_conf->do_sync && iface->synced_link)
+	if (!g_conf->do_sync || !iface->synced_link) return;
+
+	os_exec(
+		"ip link set %s down",
+		iface->name);
+
+	if (	iface->type == IFACE_PROTO41 ||
+		iface->type == IFACE_PROTO41_HB)
 	{
 		os_exec(
-			"ip link set %s down",
+			"ip tunnel del %s",
 			iface->name);
-
-		if (	iface->type == IFACE_PROTO41 ||
-			iface->type == IFACE_PROTO41_HB)
-		{
-			os_exec(
-				"ip tunnel del %s",
-				iface->name);
-		}
-		else if (iface->type == IFACE_AYIYA)
-		{
-			ayiya_stop(iface);
-		}
-
-		iface->synced_link = false;
+	}
+	else if (iface->type == IFACE_AYIYA)
+	{
+		ayiya_stop(iface);
 	}
 
+	iface->synced_link = false;
+	
 	return true;
 }
 
