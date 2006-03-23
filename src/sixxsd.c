@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.14 2006-03-22 17:01:41 jeroen Exp $
- $Date: 2006-03-22 17:01:41 $
+ $Id: sixxsd.c,v 1.15 2006-03-23 13:43:11 jeroen Exp $
+ $Date: 2006-03-23 13:43:11 $
 
  SixXSd main code
 **************************************/
@@ -130,6 +130,7 @@ void cleanup(void)
 	if (g_conf->pop_ignoredevices)	free(g_conf->pop_ignoredevices);
 	if (g_conf->pop_tinc_device)	free(g_conf->pop_tinc_device);
 	if (g_conf->pop_tinc_config)	free(g_conf->pop_tinc_config);
+	if (g_conf->homedir) free(g_conf->homedir);
 
 	for (pp = g_conf->pop_prefixes; pp; pp = pp2)
 	{
