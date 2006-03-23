@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.8 2006-03-22 16:33:30 jeroen Exp $
- $Date: 2006-03-22 16:33:30 $
+ $Id: hb.c,v 1.9 2006-03-23 13:43:40 jeroen Exp $
+ $Date: 2006-03-23 13:43:40 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -278,7 +278,9 @@ void *hb_thread(void UNUSED *arg)
 		/* Handle errors */
 		if (n < 0)
 		{
-			mdolog(LOG_ERR, "Couldn't select from Heartbeat socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			memset(buf, 0, sizeof(buf));
+			strerror_r(errno, buf, sizeof(buf));
+			mdolog(LOG_ERR, "Couldn't select from Heartbeat socket: %s (%d)\n", buf, errno);
 			break;
 		}
 
@@ -292,7 +294,9 @@ void *hb_thread(void UNUSED *arg)
 		/* Handle errors */
 		if (n < 0)
 		{
-			mdolog(LOG_ERR, "Couldn't select from Heartbeat socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			memset(buf, 0, sizeof(buf));
+			strerror_r(errno, buf, sizeof(buf));
+			mdolog(LOG_ERR, "Couldn't select from Heartbeat socket: %s (%d)\n", buf, errno);
 			break;
 		}
 

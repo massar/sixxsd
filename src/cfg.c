@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.25 2006-03-22 17:01:41 jeroen Exp $
- $Date: 2006-03-22 17:01:41 $
+ $Id: cfg.c,v 1.26 2006-03-23 13:43:40 jeroen Exp $
+ $Date: 2006-03-23 13:43:40 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -1123,7 +1123,9 @@ bool cfg_fromfile(const char *filename)
 	file = fopen(filename, "r");
 	if (file == NULL)
 	{
-		cfg_log(LOG_ERR, "Couldn't open configuration file %s (%d): %s\n", filename, strerror_r(errno, buf, sizeof(buf)), errno);
+		memset(buf, 0, sizeof(buf));
+		strerror_r(errno, buf, sizeof(buf));
+		cfg_log(LOG_ERR, "Couldn't open configuration file %s: %s (%d)\n", filename, buf, errno);
 		return false;
 	}
 
@@ -1204,7 +1206,9 @@ void *cfg_thread(void UNUSED *arg)
 			if (use_uri(module, url, CFG_PORT, &pool, 42) == 0)
 			{
 				char buf[256];
-				mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+				memset(buf, 0, sizeof(buf));
+				strerror_r(errno, buf, sizeof(buf));
+				mdolog(LOG_ERR, "Error while trying to open the socket: %s (%d)\n", buf, errno);
 
 				/* Try again after 5 seconds */
 				sleep(5);
@@ -1235,7 +1239,9 @@ void *cfg_thread(void UNUSED *arg)
 		{
 			char buf[256];
 			if (errno == EINTR) continue;
-			mdolog(LOG_ERR, "Select failed: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+			memset(buf, 0, sizeof(buf));
+			strerror_r(errno, buf, sizeof(buf));
+			mdolog(LOG_ERR, "Select failed: %s (%d)\n", buf, errno);
 			socketpool_exit(&pool);
 			needpool = true;
 			continue;
@@ -1249,7 +1255,9 @@ void *cfg_thread(void UNUSED *arg)
 			if (!lc)
 			{
 				char buf[256];
-				mdolog(LOG_ERR, "Out of memory during cfg_thread(): %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+				memset(buf, 0, sizeof(buf));
+				strerror_r(errno, buf, sizeof(buf));
+				mdolog(LOG_ERR, "Out of memory during cfg_thread(): %s (%d)\n", buf, errno);
 				break;
 			}
 
@@ -1262,7 +1270,9 @@ void *cfg_thread(void UNUSED *arg)
 			if (lc->socket == -1)
 			{
 				char buf[256];
-				mdolog(LOG_WARNING, "Accept failed: %s (%d)\n", strerror_r(errno, buf, sizeof(buf)), errno);
+				memset(buf, 0, sizeof(buf));
+				strerror_r(errno, buf, sizeof(buf));
+				mdolog(LOG_WARNING, "Accept failed: %s (%d)\n", buf, errno);
 			}
 			else
 			{
