@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.29 2006-03-23 13:43:40 jeroen Exp $
- $Date: 2006-03-23 13:43:40 $
+ $Id: os_linux.c,v 1.30 2006-03-26 13:53:19 jeroen Exp $
+ $Date: 2006-03-26 13:53:19 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -71,6 +71,9 @@ bool os_sync_link_up(struct sixxs_interface *iface)
 	else if (iface->type == IFACE_AYIYA)
 	{
 		if (!ayiya_start(iface)) return false;
+
+		/* Disable Privacy extensions (required for older kernels, <2.6.10) */
+		os_exec("sysctl -w net.ipv6.conf.%s.use_tempaddr=-1", iface->name);
 	}
 
 	/* Mark the interface up + set MTU */
