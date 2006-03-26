@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.14 2006-03-23 13:43:40 jeroen Exp $
- $Date: 2006-03-23 13:43:40 $
+ $Id: ayiya.c,v 1.15 2006-03-26 13:35:06 jeroen Exp $
+ $Date: 2006-03-26 13:35:06 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -355,7 +355,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 	/* Is this an AYIYA tunnel? */
 	if (iface->type != IFACE_AYIYA)
 	{
-		ayiya_log(LOG_WARNING, ci, cl, "[incoming] Received AYIYA packet for non-AYIYA tunnel\n");
+		ayiya_log(LOG_WARNING, ci, cl, "[incoming] Received AYIYA packet on %s/%u for non-AYIYA (%u) tunnel\n", iface->name, iface->interface_id iface->type);
 		OS_Mutex_Release(&iface->mutex, "ayiya_process_incoming");
 		return;
 	}
@@ -366,7 +366,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 	{
 		memset(buf, 0, sizeof(buf));
 		inet_ntop(AF_INET6, &iface->ipv6_them, buf, sizeof(buf));
-		ayiya_log(LOG_WARNING, ci, cl, "[incoming] Time is %d seconds off for %u / %s \n", i, iface->interface_id, buf);
+		ayiya_log(LOG_WARNING, ci, cl, "[incoming] Time is %d seconds off for %s/%u / %s \n", i, iface->name, iface->interface_id, buf);
 		OS_Mutex_Release(&iface->mutex, "ayiya_process_incoming");
 		return;
 	}
