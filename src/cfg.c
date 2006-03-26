@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.26 2006-03-23 13:43:40 jeroen Exp $
- $Date: 2006-03-23 13:43:40 $
+ $Id: cfg.c,v 1.27 2006-03-26 20:18:28 jeroen Exp $
+ $Date: 2006-03-26 20:18:28 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -658,22 +658,22 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 			case IFACE_IGNORE:
 				sock_printf(sock, "Type                  : ignore\n");
 				break;
+
 			case IFACE_NULL:
 				sock_printf(sock, "Type                  : null\n");
 				break;
+
 			case IFACE_PROTO41:
 				sock_printf(sock, "Type                  : proto-41\n");
 				sock_printf(sock, "Endpoint              : %s\n", buf1);
 				break;
+
 			case IFACE_PROTO41_HB:
 				sock_printf(sock, "Type                  : proto-41_hb\n");
 				sock_printf(sock, "Endpoint              : %s\n", buf1);
 				sock_printf(sock, "Password              : %s\n", iface->password);
-				gmtime_r(&iface->hb_lastbeat, &teem);
-				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
-				sock_printf(sock, "Last Beat             : %s (%u seconds ago)\n", buf1,
-										(now - iface->hb_lastbeat));
 				break;
+
 			case IFACE_AYIYA:
 				sock_printf(sock, "Type                  : ayiya\n");
 				sock_printf(sock, "Endpoint              : %s\n", buf1);
@@ -685,16 +685,26 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 					iface->ayiya_protocol == IPPROTO_TCP	? "tcp"
 										: "unknown");
 				sock_printf(sock, "Password              : %s\n", iface->password);
-				gmtime_r(&iface->hb_lastbeat, &teem);
-				strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
-				sock_printf(sock, "Last Beat             : %s (%u seconds ago)\n", buf1,
-										(now - iface->hb_lastbeat));
 				break;
+
 			case IFACE_TINC:
 				sock_printf(sock, "Type                  : tinc\n");
 				break;
+
 			default:
 				sock_printf(sock, "unknown - WARNING!!!\n");
+			}
+
+			if (iface->type == IFACE_PROTO41_HB || iface->type == IFACE_AYIYA)
+			{
+				if (iface->hb_lastbeat != 0)
+				{
+					gmtime_r(&iface->hb_lastbeat, &teem);
+					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
+					sock_printf(sock, "Last Beat             : %s (%u seconds ago)\n", buf1,
+										(now - iface->hb_lastbeat));
+				}
+				else	sock_printf(sock, "Last Beat             : never\n");
 			}
 
 
@@ -706,7 +716,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
 					sock_printf(sock, "Last Alive            : %s (%u seconds ago)\n", buf1, (now - iface->lastalive));
 				}
-				else sock_printf(sock, "Last Alive            : never\n");
+				else	sock_printf(sock, "Last Alive            : never\n");
 
 				if (iface->prevdead != 0)
 				{
@@ -714,7 +724,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
 					sock_printf(sock, "Previously Dead       : %s (%u seconds ago)\n", buf1, (now - iface->prevdead));
 				}
-				else sock_printf(sock, "Previously Dead       : never\n");
+				else	sock_printf(sock, "Previously Dead       : never\n");
 
 				sock_printf(sock, "\n");
 				sock_printf(sock, "State                 : %s\n",
