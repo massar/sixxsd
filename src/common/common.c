@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.4 2006-01-09 22:43:09 jeroen Exp $
- $Date: 2006-01-09 22:43:09 $
+ $Id: common.c,v 1.5 2006-03-27 19:41:31 jeroen Exp $
+ $Date: 2006-03-27 19:41:31 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -583,7 +583,7 @@ void sock_printf(SOCKET sock, const char *fmt, ...)
 		/* Send the line(s) over the network */
 		send(sock, buf, len, MSG_NOSIGNAL);
 
-#ifdef DEBUG
+#if 0
 		/* Show this as debug output */
 		if (g_conf->verbose)
 		{
