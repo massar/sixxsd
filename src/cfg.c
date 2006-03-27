@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.28 2006-03-27 20:20:35 jeroen Exp $
- $Date: 2006-03-27 20:20:35 $
+ $Id: cfg.c,v 1.29 2006-03-27 20:52:41 jeroen Exp $
+ $Date: 2006-03-27 20:52:41 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -1327,8 +1327,26 @@ void *cfg_thread(void UNUSED *arg)
 
 				D(cfg_log(LOG_DEBUG, "Accepted %s%s%s:%s\n", lc->family == AF_INET6 ? "[" : "", lc->clienthost, lc->family == AF_INET6 ? "]" : "", lc->clientservice);)
 
-				thread_add("CfgClient", cfg_thread_client, lc, true);
-				lc = NULL;
+
+				/* Only accept noc.sixxs.net */
+				if (	(lc->family == AF_INET6 && strcmp(lc->clienthost, "2001:838:1:1:210:dcff:fe20:7c7c") != 0) &&
+					(lc->family == AF_INET6 && strcmp(lc->clienthost, "::ffff:213.197.29.32") != 0) &&
+					(lc->family == AF_INET && strcmp(lc->clienthost, "213.197.29.32") != 0))
+				{
+					sock_printf(lc->socket, "HTTP/1.1 301 Content Moved\n");
+					sock_printf(lc->socket, "Date: Sat, 25 Feb 1978 06:06:06\n");
+					sock_printf(lc->socket, "Server: SixXS\n");
+					sock_printf(lc->socket, "Location: http://www.sixxs.net/\n");
+					sock_printf(lc->socket, "Content-Type: text/html\n");
+					sock_printf(lc->socket, "\n");
+					sock_printf(lc->socket, "Information about SixXS can be found on the <a href=\"http://www.sixxs.net/\">SixXS website</a>.\n");
+					close(lc->socket);
+				}
+				else
+				{
+					thread_add("CfgClient", cfg_thread_client, lc, true);
+					lc = NULL;
+				}
 			}
 
 			/* Free the client memory when not launched */
