@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: traffic.c,v 1.5 2006-03-03 08:01:15 jeroen Exp $
- $Date: 2006-03-03 08:01:15 $
+ $Id: traffic.c,v 1.6 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 
  SixXSd Traffic Handler
 **************************************/
@@ -68,21 +68,15 @@ void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t ou
 	unsigned int		i = strlen(g_conf->pop_tunneldevice);
 	struct sixxs_interface	*iface = NULL;
 
-	/* It's a tunneldevice? */
-	if (strncasecmp(interface, g_conf->pop_tunneldevice, i) == 0)
+	iface = int_get_by_name(interface);
+	if (iface)
 	{
-		/* Update the in-mem interface */
-		i = atoi(&interface[i]);
-		iface = int_get(i);
-		if (iface)
-		{
-			iface->inoct	= inoct;
-			iface->outoct	= outoct;
-			iface->inpkt	= inpkt;
-			iface->outpkt	= outpkt;
+		iface->inoct	= inoct;
+		iface->outoct	= outoct;
+		iface->inpkt	= inpkt;
+		iface->outpkt	= outpkt;
 
-			OS_Mutex_Release(&iface->mutex, "traffic_update_interface");
-		}
+		OS_Mutex_Release(&iface->mutex, "traffic_update_interface");
 	}
 
 	args[0] = (char *)"update";

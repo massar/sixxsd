@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.16 2006-03-22 17:40:34 jeroen Exp $
- $Date: 2006-03-22 17:40:34 $
+ $Id: interface.c,v 1.17 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 
  SixXSd Interface Management 
 **************************************/
@@ -195,6 +195,28 @@ struct sixxs_interface *int_get_by_index(unsigned int id)
 	return NULL;
 }
 
+struct sixxs_interface *int_get_by_name(const char *name)
+{
+	unsigned int		i;
+
+	/* Default Tunnel Device scheme? */
+	if (strncmp(g_conf->pop_tunneldevice, name, strlen(g_conf->pop_tunneldevice)) == 0)
+	{
+		i = atoi(&name[strlen(g_conf->pop_tunneldevice)]);
+		return int_get(i);
+	}
+
+#ifdef _BSD
+	/* tun device? As tun101 maps directly to gif101 and gets renamed to it */
+	if (strncmp("tun", name, 3) == 0)
+	{
+		i = atoi(&name[3]);
+		return int_get(i);
+	}
+#endif
+	return NULL;
+}
+
 /* Reconfigure (add or update) an interface */
 bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password)
 {
@@ -305,7 +327,7 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		if (password) int_set_password(iface, password);
 
 		/* Construct the devicename */
-		snprintf(iface->name, sizeof(iface->name), "%s%u", g_conf->pop_tunneldevice, id);
+		snprintf(iface->name, sizeof(iface->name), "%s%u", g_conf->pop_tunneldevice, iface->interface_id);
 
 		mdolog(LOG_INFO, "Initializing new interface %u: %s, type=%s, state=%s\n",
 			id,

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.27 2006-03-26 20:18:28 jeroen Exp $
- $Date: 2006-03-26 20:18:28 $
+ $Id: cfg.c,v 1.28 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -990,29 +990,53 @@ bool cfg_cmd_beat(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_cmd_getstats(int sock, const char UNUSED *args);
-bool cfg_cmd_getstats(int sock, const char UNUSED *args)
+void cfg_cmd_getstatsA(int sock, struct sixxs_interface *iface);
+void cfg_cmd_getstatsA(int sock, struct sixxs_interface *iface)
 {
-	struct sixxs_interface	*iface;
-	unsigned int	i;
+	if (!iface || iface->type == IFACE_UNSPEC) return;
 
-	sock_printf(sock, "+OK Statistics coming up...\n");
+	sock_printf(sock, "%s%u %lld %lld %lld %lld\n",
+		g_conf->pop_tunneldevice,
+		iface->interface_id,
+		iface->inoct, iface->outoct,
+		iface->inpkt, iface->outpkt);
+}
 
-	OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
 
-	/* Walk through all the interfaces */
-	for (i = 0; i < g_conf->max_interfaces; i++)
+bool cfg_cmd_getstats(int sock, const char *args);
+bool cfg_cmd_getstats(int sock, const char *args)
+{
+	struct sixxs_interface	*iface = NULL;
+	unsigned int		i;
+	bool			ok = true;
+
+	if (args[0] != '\0')
 	{
-		iface = g_conf->interfaces + i;
-		if (iface->type == IFACE_UNSPEC) continue;
-
-		sock_printf(sock, "%s %lld %lld %lld %lld\n",
-			iface->name,
-			iface->inoct, iface->outoct,
-			iface->inpkt, iface->outpkt);
+		iface = int_get(atoi(args));
+		if (!iface)
+		{
+			sock_printf(sock, "-ERR No such interface %s\n", args);
+			ok = false;
+		}
 	}
 
-	OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
+	if (ok) sock_printf(sock, "+OK Statistics coming up...\n");
+
+	if (iface) cfg_cmd_getstatsA(sock, iface);
+	else
+	{
+
+		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
+
+		/* Walk through all the interfaces */
+		for (i = 0; i < g_conf->max_interfaces; i++)
+		{
+			iface = g_conf->interfaces + i;
+			cfg_cmd_getstatsA(sock, iface);
+		}
+
+		OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
+	}
 
 	sock_printf(sock, "+OK End of statistics\n");
 	return true;
@@ -1169,6 +1193,8 @@ void *cfg_thread_client(void *arg)
 	bool			quit = false;
 
 	memset(buf, 0, sizeof(buf));
+
+	socket_setblock(lc->socket);
 
 	sock_printf(lc->socket, "+OK SixXS PoP Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
 

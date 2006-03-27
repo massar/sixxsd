@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.14 2006-03-22 17:01:41 jeroen Exp $
- $Date: 2006-03-22 17:01:41 $
+ $Id: sixxsd.h,v 1.15 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -59,6 +59,7 @@
 #include <sys/stat.h>
 #include <net/route.h>
 #include <net/if_dl.h>
+#include <net/if_tun.h>
 #endif
 
 #include <net/if.h>
@@ -129,7 +130,11 @@ typedef pthread_t		os_thread;
 typedef pthread_t		os_thread_id;
 typedef pthread_mutex_t		os_mutexA;
 #define OS_GetThisThread	pthread_self
+#ifdef _LINUX
 #define OS_GetThisThreadId	pthread_self
+#else
+#define OS_GetThisThreadId	(void *)pthread_self
+#endif
 #define OS_Thread_Equal(a,b)	pthread_equal(a,b)
 #define OS_Mutex_InitA(m)	pthread_mutex_init(m, NULL);
 #define OS_Mutex_LockA(m)	pthread_mutex_lock(m)
@@ -405,6 +410,7 @@ bool int_set_port(struct sixxs_interface *iface, unsigned int port);
 bool int_beat(struct sixxs_interface *iface);
 struct sixxs_interface *int_get(unsigned int id);
 struct sixxs_interface *int_get_by_index(unsigned int id);
+struct sixxs_interface *int_get_by_name(const char *name);
 bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password);
 
 /* prefix.c */

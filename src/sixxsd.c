@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.15 2006-03-23 13:43:11 jeroen Exp $
- $Date: 2006-03-23 13:43:11 $
+ $Id: sixxsd.c,v 1.16 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 
  SixXSd main code
 **************************************/
@@ -39,8 +39,8 @@ void sync_complete()
 		if (iface->type == IFACE_UNSPEC) continue;
 
 		/* Only check inconsistent interfaces */
-		if (	(iface->synced_link && iface->synced_addr && iface->synced_local && iface->synced_remote) ||
-			(!iface->synced_link && !iface->synced_addr && !iface->synced_local && !iface->synced_remote))
+		if (	(iface->state == IFSTATE_UP && iface->synced_link && iface->synced_addr && iface->synced_local && iface->synced_remote) ||
+			(iface->state != IFSTATE_UP && !iface->synced_link && !iface->synced_addr && !iface->synced_local && !iface->synced_remote))
 		{
 			continue;
 		}
@@ -66,7 +66,23 @@ void sync_complete()
 
 		inet_ntop(AF_INET6, &pfx->prefix, buf, sizeof(buf));
 
-		printf("Prefix %u %s/%u is not synced\n", i, buf, pfx->length);
+		iface = int_get(pfx->interface_id);
+		if (!iface)
+		{
+			mddolog("Sync: Prefix %u %s/%u does not have a valid interface %u!?\n", i, buf, pfx->length, pfx->interface_id);
+			continue;
+		}
+
+		/* Only report when the link is up */
+		if (iface->synced_link)
+		{
+			mddolog("Sync: Prefix %u %s/%u on %s is not synced\n", i, buf, pfx->length, iface->name);
+
+			/* Try to make it working */
+			os_sync_routes(iface);
+		}
+
+		OS_Mutex_Release(&iface->mutex, "sync_complete");
 	}
 }
 

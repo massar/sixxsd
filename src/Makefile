@@ -3,8 +3,8 @@
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.5 2006-03-03 08:01:15 jeroen Exp $
-# $Date: 2006-03-03 08:01:15 $
+# $Id: Makefile,v 1.6 2006-03-27 20:20:35 jeroen Exp $
+# $Date: 2006-03-27 20:20:35 $
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
@@ -47,15 +47,16 @@ endif
 # FreeBSD
 ifeq ($(shell uname | grep -c "FreeBSD"),1)
 CFLAGS += -D_FREEBSD -D_BSD -I/usr/local/include/
-SRCS += os_freebsd.c
-OBJS += os_freebsd.o
+LDFLAGS += -L/usr/local/lib/
+SRCS += os_bsd.c
+OBJS += os_bsd.o
 endif
 
 # Darwin
 ifeq ($(shell uname | grep -c "Darwin"),1)
 CFLAGS += -D_DARWIN -D_BSD
-SRCS += os_freebsd.c
-OBJS += os_freebsd.o
+SRCS += os_bsd.c
+OBJS += os_bsd.o
 endif
 
 # AIX

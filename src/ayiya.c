@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.16 2006-03-26 20:18:11 jeroen Exp $
- $Date: 2006-03-26 20:18:11 $
+ $Id: ayiya.c,v 1.17 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -142,7 +142,7 @@ void *ayiya_process_outgoing(void *arg)
 		lenin = select(iface->ayiya_fd+1, &readset, NULL, NULL, &timeout);
 
 		/* Break out if needed */
-		if  (!iface->running) break;
+		if (!iface->running) break;
 
 		/* Nothing happened for 5 seconds */
 		if (lenin == 0) continue;
@@ -151,14 +151,14 @@ void *ayiya_process_outgoing(void *arg)
 		if (lenin > 0 && iface->running) lenin = read(iface->ayiya_fd, s.payload, sizeof(s.payload));
 
 		/* Break out if needed */
-		if  (!iface->running) break;
+		if (!iface->running) break;
 
 		/* Check for errors */
 		if (lenin <= 0)
 		{
 			memset(hash, 0, sizeof(hash));
 			strerror_r(errno, (char *)hash, sizeof(hash));
-			mdolog(LOG_ERR, "[outgoing] Error reading from %s: %s (%d)\n", iface->name, (char *)hash, errno);
+			mdolog(LOG_ERR, "[outgoing] Error reading from %s/%u: %s (%d)\n", iface->name, iface->interface_id, (char *)hash, errno);
 
 			/* Turn it off */
 			int_set_state(iface, IFSTATE_DOWN);
@@ -194,7 +194,7 @@ void *ayiya_process_outgoing(void *arg)
 			 * Drop the packet, we should actually have disconfigured
 			 * the thing though and thus this thread should not be running
 			 */
-			mdolog(LOG_ERR, "[outgoing] %s Received a packet while no remote address configured\n", iface->name);
+			mdolog(LOG_ERR, "[outgoing] %s/%u Received a packet while no remote address configured\n", iface->name, iface->interface_id);
 			continue;
 		}
 
@@ -233,13 +233,13 @@ void *ayiya_process_outgoing(void *arg)
 		{
 			memset(hash, 0, sizeof(hash));
 			strerror_r(errno, (char *)hash, sizeof(hash));
-			mdolog(LOG_ERR, "[outgoing] %s Error while sending %u bytes sent to network using process %s socket %d: %s (%d)\n", iface->name, lenin, ayiya_socket[i].title, ayiya_socket[i].socket, (char *)hash, errno);
+			mdolog(LOG_ERR, "[outgoing] %s/%u Error while sending %u bytes sent to network using process %s socket %d: %s (%d)\n", iface->name, iface->interface_id, lenin, ayiya_socket[i].title, ayiya_socket[i].socket, (char *)hash, errno);
 		}
 		else if (lenin != lenout)
 		{
 			memset(hash, 0, sizeof(hash));
 			strerror_r(errno, (char *)hash, sizeof(hash));
-			mdolog(LOG_ERR, "[outgoing] %s Only %u of %u bytes sent to network: %s (%d)\n", iface->name, lenout, lenin, (char *)hash, errno);
+			mdolog(LOG_ERR, "[outgoing] %s/%u Only %u of %u bytes sent to network: %s (%d)\n", iface->name, iface->interface_id, lenout, lenin, (char *)hash, errno);
 		}
 	}
 	return NULL;
@@ -532,15 +532,17 @@ void *ayiya_thread(void *arg)
 
 bool ayiya_start(struct sixxs_interface *iface)
 {
-#ifdef _LINUX
-	struct ifreq	ifr;
+#ifndef _LINUX
+	SOCKET		s;
+	char		buf[128];
 #endif
+	struct ifreq	ifr;
 	char		desc[128];
-	int		i;
+	unsigned int	i;
 
 	if (iface->running) return true;
 
-	mddolog("Starting AYIYA interface %s\n", iface->name);
+	mddolog("Starting AYIYA interface %s/%u\n", iface->name, iface->interface_id);
 
 #ifdef _LINUX
 	/* Create a new tap device */
@@ -556,15 +558,14 @@ bool ayiya_start(struct sixxs_interface *iface)
 		 */
 		exit(-1);
 	}
-	
+
 	memset(&ifr, 0, sizeof(ifr));
 	/* Request a TUN device */
 	ifr.ifr_flags = IFF_TUN;
 	/* Set the interface name */
 	strncpy(ifr.ifr_name, iface->name, sizeof(ifr.ifr_name));
 
-	i = ioctl(iface->ayiya_fd, TUNSETIFF, &ifr);
-	if (i != 0)
+	if (ioctl(iface->ayiya_fd, TUNSETIFF, &ifr) != 0)
 	{
 		memset(desc, 0, sizeof(desc));
 		strerror_r(errno, desc, sizeof(desc));
@@ -572,19 +573,16 @@ bool ayiya_start(struct sixxs_interface *iface)
 		close(iface->ayiya_fd);
 		iface->ayiya_fd = 0;
 		return false;
-	}
+        }
 #else
+	/*
+	 * Directly open iface->interface_id as otherwise
+	 * we loose track of what belongs where
+	 * Thus tun101 = gif101 in our case
+	 */
 	iface->ayiya_fd = -1;
-	for (i = 0; i < 256; ++i)
-	{
-		char buf[128];
-		snprintf(buf, sizeof(buf), "/dev/tun%d", i);
-		iface->ayiya_fd = open(buf, O_RDWR);
-		if (iface->ayiya_fd >= 0)
-		{
-			break;
-		}
-	}
+	snprintf(buf, sizeof(buf), "/dev/tun%u", iface->interface_id);
+	iface->ayiya_fd = open(buf, O_RDWR);
 	if (iface->ayiya_fd < 0)
 	{
 		memset(desc, 0, sizeof(desc));
@@ -592,11 +590,54 @@ bool ayiya_start(struct sixxs_interface *iface)
 		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", "/dev/tun", desc, errno);
 		return false;
 	}
+
+	i = 1;
+	if (ioctl(iface->ayiya_fd, TUNSIFHEAD, &i, sizeof(i)) == -1)
+	{
+		mdolog(LOG_ERR, "Couldn't set IFHEAD mode on %s: %s (%d)\n", "/dev/tun", desc, errno);
+		close(iface->ayiya_fd);
+		iface->ayiya_fd = 0;
+		return false;
+	}
+
+	/* The link is already there */
+	if (iface->kernel_ifindex == 0)
+	{
+		s = socket(AF_INET, SOCK_DGRAM, 0);
+		if (s >= 0)
+		{
+			memset(&ifr, 0, sizeof(ifr));
+			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tun%u", iface->interface_id);
+			ifr.ifr_data = iface->name;
+			if (ioctl(s, SIOCSIFNAME, &ifr) != 0)
+			{
+				memset(desc, 0, sizeof(desc));
+				strerror_r(errno, desc, sizeof(desc));
+				mdolog(LOG_ERR, "Couldn't set interface name of %s to %s/%u: %s (%d)\n", buf, iface->name, iface->kernel_ifindex, desc, errno);
+				close(s);
+				iface->ayiya_fd = 0;
+				return false;
+			}
+		}
+		else
+		{
+			memset(desc, 0, sizeof(desc));
+			strerror_r(errno, desc, sizeof(desc));
+			mdolog(LOG_ERR, "Couldn't create socket for renaming %s to %s/%u: %s (%d)\n", buf, iface->name, iface->kernel_ifindex, desc, errno);
+			close(s);
+			iface->ayiya_fd = 0;
+			return false;
+		}
+		close(s);
+	}
+	else mddolog("Assuming %s/%u is already renamed correctly\n", iface->name, iface->kernel_ifindex);
+
 #endif
+
 	iface->running = true;
 
 	/* Add a thread for handling outgoing packets */
-	snprintf(desc, sizeof(desc), "AYIYA-Out [%s]", iface->name);
+	snprintf(desc, sizeof(desc), "AYIYA-Out [%s/%u]", iface->name, iface->interface_id);
 	thread_add(desc, ayiya_process_outgoing, iface, true);
 
 	return true;
@@ -608,7 +649,7 @@ bool ayiya_stop(struct sixxs_interface *iface)
 
 	iface->running = false;
 
-	mddolog("Stopping AYIYA interface %s\n", iface->name);
+	mddolog("Stopping AYIYA interface %s/%u\n", iface->name, iface->interface_id);
 
 	close(iface->ayiya_fd);
 	iface->ayiya_fd = -1;

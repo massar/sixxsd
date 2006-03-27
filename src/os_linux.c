@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.30 2006-03-26 13:53:19 jeroen Exp $
- $Date: 2006-03-26 13:53:19 $
+ $Id: os_linux.c,v 1.31 2006-03-27 20:20:35 jeroen Exp $
+ $Date: 2006-03-27 20:20:35 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -542,31 +542,27 @@ void netlink_update_link(struct nlmsghdr *h)
 	}
 	name = (char *)RTA_DATA(tb[IFLA_IFNAME]);
 
-	if (strncmp(g_conf->pop_tunneldevice, name, strlen(g_conf->pop_tunneldevice)) != 0)
+	if (strcmp("lo", name) == 0)
 	{
-		if (strcmp("lo", name) == 0)
-		{
-			mddolog("Found loopback device as index %u\n", ifi->ifi_index);
-			g_conf->loopback_ifindex = ifi->ifi_index;
-		}
-		else
-		{
-			mddolog("Ignoring non-tunneldevice %s\n", name);
-		}
+		mddolog("Found loopback device as index %u\n", ifi->ifi_index);
+		g_conf->loopback_ifindex = ifi->ifi_index;
 		return;
 	}
 
-	/* Shortcut to get the interface */
-	i = atoi(&name[strlen(g_conf->pop_tunneldevice)]);
-	iface = int_get(i);
+	iface = int_get_by_name(name);
+	if (!iface)
+	{
+		mddolog("Ignoring non-tunneldevice %s\n", name);
+		return;
+	}
 
-	if (!iface || iface->type == IFACE_UNSPEC || iface->state == IFSTATE_DOWN)
+	if (iface->type == IFACE_UNSPEC || iface->state == IFSTATE_DOWN)
 	{
 		if (h->nlmsg_type == RTM_NEWLINK && (ifi->ifi_flags & IFF_UP))
 		{
 			
 			/* XXX - Remove interfaces we don't want to know about */
-			mddolog("%s interface %u/%s, remove it!\n", !iface || iface->type == IFACE_UNSPEC ? "Unknown" : "Down-marked", i, name);
+			mddolog("%s interface %u/%s, remove it!\n", iface->type == IFACE_UNSPEC ? "Unknown" : "Down-marked", i, name);
 
 			/* XXX - Ignore certain devices! */
 
@@ -584,7 +580,7 @@ void netlink_update_link(struct nlmsghdr *h)
 				os_exec("ip tunnel del %s", name);
 			}
 		}
-		if (iface) OS_Mutex_Release(&iface->mutex, "netlink_update_link");
+		OS_Mutex_Release(&iface->mutex, "netlink_update_link");
 		return;
 	}
 
@@ -620,6 +616,7 @@ void netlink_update_link(struct nlmsghdr *h)
 			struct ip_tunnel_parm	p;
 			int			fd, err;
 
+			memset(&ifr, 0, sizeof(ifr));
 			memset(&p, 0, sizeof(p));
 			strncpy(ifr.ifr_name, name, IFNAMSIZ);
 			ifr.ifr_ifru.ifru_data = (void *)&p;
@@ -660,14 +657,11 @@ void netlink_update_link(struct nlmsghdr *h)
 			os_int_set_mtu(iface, iface->mtu);
 		}
 
-		/* When the link was not synced yet try to give it an address */
-		if (!iface->synced_link)
-		{
-			iface->synced_link = true;
+		/* The link is synced */
+		iface->synced_link = true;
 
-			/* Add interface address */
-			os_sync_address_up(iface);
-		}
+		/* Add interface address */
+		os_sync_address_up(iface);
 	}
 	else
 	{
@@ -862,16 +856,13 @@ void netlink_update_route(struct nlmsghdr *h)
 	pfx = pfx_get(dest, rtm->rtm_dst_len);
 	if (!pfx)
 	{
-		if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
+		if (h->nlmsg_type == RTM_NEWROUTE)
 		{
-			if (h->nlmsg_type == RTM_NEWROUTE)
+			if (!cfg_pop_prefix_check(dest, rtm->rtm_dst_len))
 			{
 				mddolog("Ignoring %s/%u which we don't manage\n", dst, rtm->rtm_dst_len);
 			}
-		}
-		else
-		{
-			if (h->nlmsg_type == RTM_NEWROUTE)
+			else
 			{
 				mddolog("Unknown prefix %s/%u, removing it\n", dst, rtm->rtm_dst_len);
 				os_exec("ip -6 ro del %s/%u", dst, rtm->rtm_dst_len);
@@ -1349,7 +1340,7 @@ bool os_sync_complete(void)
 		return false;
 	}
 
-	return false;
+	return true;
 }
 
 void *os_dthread(void UNUSED *arg);
@@ -1366,7 +1357,7 @@ void *os_dthread(void UNUSED *arg)
 	return NULL;
 }
 
-/* Initialze OS Handler, might start a thread */
+/* Initialize OS Handler, might start a thread */
 bool os_init()
 {
 	unsigned long groups;
