@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.30 2006-03-28 08:43:58 jeroen Exp $
- $Date: 2006-03-28 08:43:58 $
+ $Id: cfg.c,v 1.31 2006-03-28 11:52:44 jeroen Exp $
+ $Date: 2006-03-28 11:52:44 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -992,12 +992,12 @@ bool cfg_cmd_beat(int sock, const char UNUSED *args)
 	return true;
 }
 
-void cfg_cmd_getstatsA(int sock, struct sixxs_interface *iface);
-void cfg_cmd_getstatsA(int sock, struct sixxs_interface *iface)
+void cfg_cmd_getstatA(int sock, struct sixxs_interface *iface);
+void cfg_cmd_getstatA(int sock, struct sixxs_interface *iface)
 {
 	if (!iface || iface->type == IFACE_UNSPEC) return;
 
-	sock_printf(sock, "%s%u %lld %lld %lld %lld\n",
+	sock_printf(sock, "%s%u %llu %llu %llu %llu\n",
 		g_conf->pop_tunneldevice,
 		iface->interface_id,
 		iface->inoct, iface->outoct,
@@ -1005,8 +1005,8 @@ void cfg_cmd_getstatsA(int sock, struct sixxs_interface *iface)
 }
 
 
-bool cfg_cmd_getstats(int sock, const char *args);
-bool cfg_cmd_getstats(int sock, const char *args)
+bool cfg_cmd_getstat(int sock, const char *args);
+bool cfg_cmd_getstat(int sock, const char *args)
 {
 	struct sixxs_interface	*iface = NULL;
 	unsigned int		i;
@@ -1024,20 +1024,19 @@ bool cfg_cmd_getstats(int sock, const char *args)
 
 	if (ok) sock_printf(sock, "+OK Statistics coming up...\n");
 
-	if (iface) cfg_cmd_getstatsA(sock, iface);
+	if (iface) cfg_cmd_getstatA(sock, iface);
 	else
 	{
-
-		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
+		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_getstat");
 
 		/* Walk through all the interfaces */
 		for (i = 0; i < g_conf->max_interfaces; i++)
 		{
 			iface = g_conf->interfaces + i;
-			cfg_cmd_getstatsA(sock, iface);
+			cfg_cmd_getstatA(sock, iface);
 		}
 
-		OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_getstats");
+		OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_getstat");
 	}
 
 	sock_printf(sock, "+OK End of statistics\n");
@@ -1084,7 +1083,7 @@ struct {
 	{"route",		cfg_cmd_route,			"<opts>"},
 
 	/* Traffic */
-	{"getstats",		cfg_cmd_getstats,		"[<device>]"},
+	{"getstat",		cfg_cmd_getstat,		"[<device>]"},
 
 	/* Ping */
 	{"ping4",		cfg_cmd_ping4,			"<ip4>"},
