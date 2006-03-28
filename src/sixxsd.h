@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.15 2006-03-27 20:20:35 jeroen Exp $
- $Date: 2006-03-27 20:20:35 $
+ $Id: sixxsd.h,v 1.16 2006-03-28 08:43:59 jeroen Exp $
+ $Date: 2006-03-28 08:43:59 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -52,6 +52,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <pthread.h>
+#include <sys/utsname.h>
 
 #ifdef _BSD
 #include <netinet/in_systm.h>

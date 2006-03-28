@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.29 2006-03-27 20:52:41 jeroen Exp $
- $Date: 2006-03-27 20:52:41 $
+ $Id: cfg.c,v 1.30 2006-03-28 08:43:58 jeroen Exp $
+ $Date: 2006-03-28 08:43:58 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -526,10 +526,12 @@ bool cfg_cmd_help(int sock, const char *args);
 bool cfg_cmd_version(int sock, const char UNUSED *args);
 bool cfg_cmd_version(int sock, const char UNUSED *args)
 {
-	sock_printf(sock, "+OK SixXSd (SixXS PoP Daemon) %s by Jeroen Massar <jeroen@sixxs.net>\n", SIXXSD_VERSION);
+	struct utsname uts_name;
+
+	uname(&uts_name);
+	sock_printf(sock, "+OK SixXSd (SixXS PoP Daemon) %s on %s/%s by Jeroen Massar <jeroen@sixxs.net>\n", SIXXSD_VERSION, uts_name.sysname, uts_name.release);
 	return true;
 }
-
 
 bool cfg_cmd_uptimeA(int sock, bool ok);
 bool cfg_cmd_uptimeA(int sock, bool ok)
@@ -1329,9 +1331,14 @@ void *cfg_thread(void UNUSED *arg)
 
 
 				/* Only accept noc.sixxs.net */
-				if (	(lc->family == AF_INET6 && strcmp(lc->clienthost, "2001:838:1:1:210:dcff:fe20:7c7c") != 0) &&
-					(lc->family == AF_INET6 && strcmp(lc->clienthost, "::ffff:213.197.29.32") != 0) &&
-					(lc->family == AF_INET && strcmp(lc->clienthost, "213.197.29.32") != 0))
+				if (	(lc->family == AF_INET6 && strcmp(lc->clienthost, "2001:838:1:1:210:dcff:fe20:7c7c") == 0) ||
+					(lc->family == AF_INET6 && strcmp(lc->clienthost, "::ffff:213.197.29.32") == 0) ||
+					(lc->family == AF_INET && strcmp(lc->clienthost, "213.197.29.32") == 0))
+				{
+					thread_add("CfgClient", cfg_thread_client, lc, true);
+					lc = NULL;
+				}
+				else
 				{
 					sock_printf(lc->socket, "HTTP/1.1 301 Content Moved\n");
 					sock_printf(lc->socket, "Date: Sat, 25 Feb 1978 06:06:06\n");
@@ -1341,11 +1348,6 @@ void *cfg_thread(void UNUSED *arg)
 					sock_printf(lc->socket, "\n");
 					sock_printf(lc->socket, "Information about SixXS can be found on the <a href=\"http://www.sixxs.net/\">SixXS website</a>.\n");
 					close(lc->socket);
-				}
-				else
-				{
-					thread_add("CfgClient", cfg_thread_client, lc, true);
-					lc = NULL;
 				}
 			}
 
