@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.1 2006-03-27 20:30:15 jeroen Exp $
- $Date: 2006-03-27 20:30:15 $
+ $Id: os_bsd.c,v 1.2 2006-03-29 15:38:02 jeroen Exp $
+ $Date: 2006-03-29 15:38:02 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -266,8 +266,6 @@ bool os_sync_link_down(struct sixxs_interface *iface)
 		ayiya_stop(iface);
 	}
 
-	iface->synced_link = false;
-	
 	return true;
 }
 
@@ -669,13 +667,6 @@ void os_update_linkchange(struct if_announcemsghdr *ifan)
 				/* Remove interfaces we don't want to know about */
 				os_exec("/sbin/ifconfig %s destroy", ifan->ifan_name);
 
-				/* When the link is gone the rest is desynced too */
-				iface->synced_link = false;
-				iface->synced_addr = false;
-				iface->synced_local = false;
-				iface->synced_remote = false;
-				iface->synced_subnet = false;
-
 				OS_Mutex_Release(&iface->mutex, "netlink_update_link");
 				return;
 			}
@@ -696,12 +687,16 @@ void os_update_linkchange(struct if_announcemsghdr *ifan)
 	{
 		if (iface != NULL)
 		{
+			mddolog("Received Interface Departure for interface %s/%u/%s\n", iface->name, ifan->ifan_index, ifan->ifan_name);
 			/* When the link is gone the rest is desynced too */
 			iface->synced_link = false;
 			iface->synced_addr = false;
 			iface->synced_local = false;
 			iface->synced_remote = false;
 			iface->synced_subnet = false;
+
+			/* BSD changes kernel_ifindex's so zero it out */
+			iface->kernel_ifindex = 0;
 
 			OS_Mutex_Release(&iface->mutex, "netlink_update_link");
 			return;
