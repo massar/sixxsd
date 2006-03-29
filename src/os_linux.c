@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.31 2006-03-27 20:20:35 jeroen Exp $
- $Date: 2006-03-27 20:20:35 $
+ $Id: os_linux.c,v 1.32 2006-03-29 16:07:16 jeroen Exp $
+ $Date: 2006-03-29 16:07:16 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -599,6 +599,10 @@ void netlink_update_link(struct nlmsghdr *h)
 		iface->synced_local = false;
 		iface->synced_remote = false;
 		iface->synced_subnet = false;
+
+		/* Reset the ifindex as it might change */
+		iface->kernel_ifindex = 0;
+
 		OS_Mutex_Release(&iface->mutex, "netlink_update_link");
 		return;
 	}
