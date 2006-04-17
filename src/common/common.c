@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.5 2006-03-27 19:41:31 jeroen Exp $
- $Date: 2006-03-27 19:41:31 $
+ $Id: common.c,v 1.6 2006-04-17 13:01:47 jeroen Exp $
+ $Date: 2006-04-17 13:01:47 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -243,7 +243,7 @@ int listen_server(const char *module, const char *hostname, const char *service,
 				on = 1;
 				setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char *)&on, sizeof(on));
 				on = 1;
-				setsockopt(sock, SOL_SOCKET, IPV6_V6ONLY, &on, sizeof(on));
+				setsockopt(sock, SOL_IPV6, IPV6_V6ONLY, &on, sizeof(on));
 
 				if (bind(sock, res->ai_addr, (int)res->ai_addrlen) == 0)
 				{
