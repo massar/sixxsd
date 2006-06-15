@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.18 2006-03-27 20:52:27 jeroen Exp $
- $Date: 2006-03-27 20:52:27 $
+ $Id: ayiya.c,v 1.19 2006-06-15 23:19:08 jeroen Exp $
+ $Date: 2006-06-15 23:19:08 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -178,8 +178,13 @@ void *ayiya_process_outgoing(void *arg)
 		}
 
 		/* Move around the bytes */
+#ifdef _LINUX
 		memmove(&s.payload, &s.payload[4], lenin-4);
 		lenin-=4;
+#else
+		memmove(&s.payload, &s.payload[2], lenin-2);
+		lenin-=2;
+#endif
 
 		/*
 		 * Check if the tunnel has a remote address
@@ -437,9 +442,25 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		memcpy(&packet.payload, &s->payload, payloadlen);
 
 		/* Forward the packet to the kernel */
-		write(iface->ayiya_fd, &packet, payloadlen+sizeof(struct tun_pi));
+		i = write(iface->ayiya_fd, &packet, payloadlen+sizeof(struct tun_pi));
 #else
-		write(iface->ayiya_fd, buf, payloadlen);
+		struct
+		{
+			uint16_t	proto;
+			char		payload[2048];
+		} packet;
+
+		memset(&packet, 0, sizeof(packet));
+
+		packet.proto = htons(ETHERTYPE_IPV6);
+		memcpy(&packet.payload, &s->payload, payloadlen);
+
+		/* Forward the packet to the kernel */
+		i = write(iface->ayiya_fd, &packet, payloadlen+2);
+
+		memset(buf, 0, sizeof(buf));
+		strerror_r(errno, buf, sizeof(buf));
+		printf("Wrote %d bytes of payload: %s (%d)\n", i, buf, errno);
 #endif
 	}
 	else
