@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.32 2006-03-29 16:07:16 jeroen Exp $
- $Date: 2006-03-29 16:07:16 $
+ $Id: os_linux.c,v 1.33 2006-06-15 23:17:41 jeroen Exp $
+ $Date: 2006-06-15 23:17:41 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -213,7 +213,7 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 				subnet,
 				pfx->length,
 				them,
-				iface->name);
+				iface->type == IFACE_NULL ? "lo" : iface->name);
 		}
 	}
 
@@ -240,7 +240,7 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 			subnet,
 			pfx->length,
 			them,
-			iface->name);
+			iface->type == IFACE_NULL ? "lo" : iface->name);
 	}
 	iface->synced_subnet = false;
 	return true;
@@ -588,7 +588,13 @@ void netlink_update_link(struct nlmsghdr *h)
 	iface->kernel_flags = ifi->ifi_flags & 0xffffffff;
 	kernel_mtu = *(int *)RTA_DATA(tb[IFLA_MTU]);
 
-	mddolog("Found LINK %s, type %u (%s), mtu %u, %s\n", name, ifi->ifi_type, lookup(ifi_types, ifi->ifi_type), kernel_mtu, iface->kernel_flags & IFF_UP ? "UP" : "DOWN");
+	mddolog("Found LINK %s, type %u (%s), mtu %u, %s/%s\n",
+		name, ifi->ifi_type,
+		lookup(ifi_types, ifi->ifi_type),
+		kernel_mtu,
+		iface->kernel_flags & IFF_UP ? "UP" : "DOWN",
+		iface->state == IFSTATE_DISABLED ? "DISABLED" :
+			(iface->state == IFSTATE_UP ? "UP" : "DOWN"));
 
 	/* Going down */
 	if (!(iface->kernel_flags & IFF_UP))
@@ -1383,11 +1389,11 @@ bool os_init()
 	*/
 
 	/* Buffersize adjustments */
-	os_exec("sysctl -q -w net.core.rmem_default=65536");
-	os_exec("sysctl -q -w net.core.wmem_default=65536");
-	os_exec("sysctl -q -w net.core.rmem_max=8388608");
-	os_exec("sysctl -q -w net.core.wmem_max=8388608");
-	os_exec("sysctl -q -w net.ipv6.route.max_size=%u", (256*1024));
+	os_exec("sysctl -q -w net.core.rmem_default=%u", (256*1024));
+	os_exec("sysctl -q -w net.core.wmem_default=%u", (256*1024));
+	os_exec("sysctl -q -w net.core.rmem_max=%u", (32*1024*1024));
+	os_exec("sysctl -q -w net.core.wmem_max=%u", (32*1024*1024));
+	os_exec("sysctl -q -w net.ipv6.route.max_size=%u", (1024*1024));
 
 	/* Our interrests */
 	groups = RTMGRP_LINK |
