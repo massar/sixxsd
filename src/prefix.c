@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: prefix.c,v 1.12 2006-03-09 12:50:53 jeroen Exp $
- $Date: 2006-03-09 12:50:53 $
+ $Id: prefix.c,v 1.13 2006-06-15 23:16:46 jeroen Exp $
+ $Date: 2006-06-15 23:16:46 $
 
  SixXSd Prefix Management
 **************************************/
@@ -100,6 +100,7 @@ struct sixxs_prefix *pfx_getA(struct in6_addr *ipv6_them, unsigned int prefixlen
 		}
 	}
 
+	if (empty) mdolog(LOG_ERR, "pfx_getA() - Could not get an empty prefix (%u/%u)\n", i, g_conf->max_prefixes);
 	return NULL;
 }
 
