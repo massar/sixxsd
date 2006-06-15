@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.2 2006-03-29 15:38:02 jeroen Exp $
- $Date: 2006-03-29 15:38:02 $
+ $Id: os_bsd.c,v 1.3 2006-06-15 23:17:08 jeroen Exp $
+ $Date: 2006-06-15 23:17:08 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -345,7 +345,7 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 	if (!g_conf->do_sync || iface->synced_subnet) return true;
 
 	/* null0 on BSD can be done using the 'reject' flag */
-	if (iface->interface_id == 0) strncpy(them, "::1 -reject", sizeof(them));
+	if (iface->type == IFACE_NULL) strncpy(them, "::1 -reject", sizeof(them));
 	else inet_ntop(AF_INET6, &iface->ipv6_them, them, sizeof(them));
 
 	/* Sync subnets over this tunnel */
