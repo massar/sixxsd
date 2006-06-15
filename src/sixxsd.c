@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.16 2006-03-27 20:20:35 jeroen Exp $
- $Date: 2006-03-27 20:20:35 $
+ $Id: sixxsd.c,v 1.17 2006-06-15 23:16:34 jeroen Exp $
+ $Date: 2006-06-15 23:16:34 $
 
  SixXSd main code
 **************************************/
@@ -195,8 +195,8 @@ bool init(void)
 	g_conf->do_sync			= false;
 
 	/* Defaults */
-	g_conf->max_interfaces		= 4000;
-	g_conf->max_prefixes		= 4000;
+	g_conf->max_interfaces		= 1024*4;
+	g_conf->max_prefixes		= 1024*64;
 	g_conf->pop_tunneldevice	= strdup("sixxs");
 
 	g_conf->homedir			= strdup("/home/sixxs");
