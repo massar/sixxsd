@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.9 2006-03-23 13:43:40 jeroen Exp $
- $Date: 2006-03-23 13:43:40 $
+ $Id: hb.c,v 1.10 2006-06-15 23:18:15 jeroen Exp $
+ $Date: 2006-06-15 23:18:15 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -179,7 +179,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	/* This also allows for some latency */
 	if (i > CLOCK_OFF)
 	{
-		hb_log(LOG_WARNING, ci, cl, "Time is %d seconds off for %s\n", i, ipv6_them);
+		hb_log(LOG_WARNING, ci, cl, "Time is %d seconds off for %s/%s/%u\n", i, ipv6_them, iface->name, iface->interface_id);
 		free(ipv6_them);
 		free(ipv4_them);
 		OS_Mutex_Release(&iface->mutex, "hb_checkhb");
