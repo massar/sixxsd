@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.31 2006-03-28 11:52:44 jeroen Exp $
- $Date: 2006-03-28 11:52:44 $
+ $Id: cfg.c,v 1.32 2006-06-15 23:18:36 jeroen Exp $
+ $Date: 2006-06-15 23:18:36 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -876,6 +876,49 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_cmd_status");
 		if (!count) sock_printf(sock, "\n");
 		else sock_printf(sock, "Routes: total: %u, active: %u\n", c, a);
+	}
+
+	if (strcasecmp(args, "settings") == 0)
+	{
+		ok = true;
+
+		sock_printf(sock, "Daemonize        : %s\n", g_conf->daemonize ? "yes" : "no");
+		sock_printf(sock, "Running          : %s\n", g_conf->running ? "yes" : "no");
+		sock_printf(sock, "Do Sync          : %s\n", g_conf->do_sync ? "yes" : "no");
+		sock_printf(sock, "Verbosity        : %u\n", g_conf->verbose);
+		sock_printf(sock, "PoP Name         : %s\n", g_conf->pop_name);
+		sock_printf(sock, "PoP TunnelDevice : %s\n", g_conf->pop_tunneldevice);
+		sock_printf(sock, "PoP IgnoreDevice : %s\n", g_conf->pop_ignoredevices);
+		sock_printf(sock, "HB Send Interval : %u\n", g_conf->pop_hb_sendinterval);
+		sock_printf(sock, "HB Timeout       : %u\n", g_conf->pop_hb_timeout);
+		sock_printf(sock, "HB Supported     : %s\n", g_conf->pop_hb_supported ? "yes" : "no");
+		sock_printf(sock, "tinc Supported   : %s\n", g_conf->pop_tinc_supported ? "yes" : "no");
+		sock_printf(sock, "PoP tinc Device  : %s\n", g_conf->pop_tinc_device);
+		sock_printf(sock, "PoP tinc Config  : %s\n", g_conf->pop_tinc_config);
+
+		c = 0;
+		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_status");
+		for (i = 0; i < g_conf->max_interfaces; i++)
+		{
+			iface = g_conf->interfaces + i;
+			if (iface->type != IFACE_UNSPEC) c++;
+		}
+		OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_status");
+
+		sock_printf(sock, "Interfaces       : %u/%u\n", c, g_conf->max_interfaces, c);
+
+		c = 0;
+		OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_cmd_status");
+		for (i = 0; i < g_conf->max_prefixes; i++)
+		{
+			pfx = g_conf->prefixes + i;
+			if (pfx->valid) c++;
+		}
+		OS_Mutex_Release(&g_conf->mutex_prefixes, "cfg_cmd_status");
+
+		sock_printf(sock, "Prefixes         : %u/%u\n", c, g_conf->max_prefixes);
+
+		sock_printf(sock, "Loopback IfIndex : %u\n", g_conf->loopback_ifindex);
 	}
 
 	if (!ok) sock_printf(sock, "No such status: %s\n", args);
