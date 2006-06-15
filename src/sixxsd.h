@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.16 2006-03-28 08:43:59 jeroen Exp $
- $Date: 2006-03-28 08:43:59 $
+ $Id: sixxsd.h,v 1.17 2006-06-15 23:16:12 jeroen Exp $
+ $Date: 2006-06-15 23:16:12 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -104,6 +104,10 @@
 #endif
 #ifndef IPPROTO_SCTP
 #define IPPROTO_SCTP		132
+#endif
+
+#ifndef SOL_IPV6
+#define SOL_IPV6		IPPROTO_IPV6
 #endif
 
 #ifndef IPV6_V6ONLY
