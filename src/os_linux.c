@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.33 2006-06-15 23:17:41 jeroen Exp $
- $Date: 2006-06-15 23:17:41 $
+ $Id: os_linux.c,v 1.34 2006-06-19 18:07:03 jeroen Exp $
+ $Date: 2006-06-19 18:07:03 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -1394,6 +1394,11 @@ bool os_init()
 	os_exec("sysctl -q -w net.core.rmem_max=%u", (32*1024*1024));
 	os_exec("sysctl -q -w net.core.wmem_max=%u", (32*1024*1024));
 	os_exec("sysctl -q -w net.ipv6.route.max_size=%u", (1024*1024));
+
+	os_exec("sysctl -q -w net.ipv6.route.gc_thresh=%u", (16*1024));
+	os_exec("sysctl -q -w net.ipv6.neigh.default.gc_thresh3=%u", (16*1024));
+	os_exec("sysctl -q -w net.ipv6.neigh.default.gc_thresh2=%u", (8*1024));
+	os_exec("sysctl -q -w net.ipv6.neigh.default.gc_thresh1=%u", (4*1024));
 
 	/* Our interrests */
 	groups = RTMGRP_LINK |
