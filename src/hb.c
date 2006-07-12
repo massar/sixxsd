@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.10 2006-06-15 23:18:15 jeroen Exp $
- $Date: 2006-06-15 23:18:15 $
+ $Id: hb.c,v 1.11 2006-07-12 21:25:18 jeroen Exp $
+ $Date: 2006-07-12 21:25:18 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -78,7 +78,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	/* Skip over the first part */
 	pnt = pnt2 = (unsigned char *)buf + sizeof(HEARTBEAT_TUNNEL) - 1;
 
-	while (*pnt2 != '\0' && *pnt2 != ' ') *pnt2++;
+	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
 		hb_log(LOG_WARNING, ci, cl, "No IPv6 Endpoint found in \"%s\"\n", buf);
@@ -114,7 +114,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 
 	/* Get the IPv4 endpoint */
 	pnt = ++pnt2;
-	while (*pnt2 != '\0' && *pnt2 != ' ') *pnt2++;
+	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
 		hb_log(LOG_WARNING, ci, cl, "No IPv4 Endpoint found in \"%s\" from %s for %s\n", buf, ipv6_them);
@@ -155,7 +155,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 
 	/* Get the date */
 	pnt = ++pnt2;
-	while (*pnt2 != '\0' && *pnt2 != ' ') *pnt2++;
+	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
 		hb_log(LOG_WARNING, ci, cl, "No unixtime found in \"%s\" for %s\n", buf, ipv6_them);
