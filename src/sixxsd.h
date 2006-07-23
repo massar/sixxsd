@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.17 2006-06-15 23:16:12 jeroen Exp $
- $Date: 2006-06-15 23:16:12 $
+ $Id: sixxsd.h,v 1.18 2006-07-23 18:35:27 jeroen Exp $
+ $Date: 2006-07-23 18:35:27 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -61,6 +61,20 @@
 #include <net/route.h>
 #include <net/if_dl.h>
 #include <net/if_tun.h>
+#include <sys/uio.h>
+#endif
+
+#if defined(_SUNOS) || defined(_AIX) || defined(_DARWIN)
+/* Include this as it knows quite a bit about endianess */
+#include <arpa/nameser_compat.h>
+#else
+#ifndef _WIN32
+#ifdef _BSD
+#include <sys/endian.h>
+#else
+#include <endian.h>
+#endif
+#endif
 #endif
 
 #include <net/if.h>

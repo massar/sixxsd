@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.19 2006-06-15 23:19:08 jeroen Exp $
- $Date: 2006-06-15 23:19:08 $
+ $Id: ayiya.c,v 1.20 2006-07-23 18:35:27 jeroen Exp $
+ $Date: 2006-07-23 18:35:27 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -71,7 +71,7 @@ void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen
 	{
 		memset(buf, 0, sizeof(buf));
 		strerror_r(errno, buf, sizeof(buf));
-		mdolog(LOG_ERR, "Resolve Error: %s (%d)\n", errno, buf, errno);
+		mdolog(LOG_ERR, "Resolve Error: %s (%d)\n", buf, errno);
 		strncpy(clienthost, "unknown", sizeof(clienthost));
 		strncpy(clientservice, "unknown", sizeof(clientservice));
 	}
@@ -177,14 +177,9 @@ void *ayiya_process_outgoing(void *arg)
 			continue;
 		}
 
-		/* Move around the bytes */
-#ifdef _LINUX
+		/* tun_pi struct */
 		memmove(&s.payload, &s.payload[4], lenin-4);
 		lenin-=4;
-#else
-		memmove(&s.payload, &s.payload[2], lenin-2);
-		lenin-=2;
-#endif
 
 		/*
 		 * Check if the tunnel has a remote address
@@ -323,7 +318,8 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		s->ayh.ayh_autmeth != ayiya_auth_sharedsecret ||
 		(s->ayh.ayh_nextheader != IPPROTO_IPV6 &&
 		 s->ayh.ayh_nextheader != IPPROTO_NONE) ||
-		(s->ayh.ayh_opcode != ayiya_op_forward &&
+		(s->ayh.ayh_opcode != ayiya_op_noop &&
+		 s->ayh.ayh_opcode != ayiya_op_forward &&
 		 s->ayh.ayh_opcode != ayiya_op_echo_request &&
 		 s->ayh.ayh_opcode != ayiya_op_echo_request_forward))
 	{
@@ -335,7 +331,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		ayiya_log(LOG_ERR, ci, cl, "hshmeth: %u != %u\n", s->ayh.ayh_hshmeth, ayiya_hash_sha1);
 		ayiya_log(LOG_ERR, ci, cl, "autmeth: %u != %u\n", s->ayh.ayh_autmeth, ayiya_auth_sharedsecret);
 		ayiya_log(LOG_ERR, ci, cl, "nexth  : %u != %u || %u\n", s->ayh.ayh_nextheader, IPPROTO_IPV6, IPPROTO_NONE);
-		ayiya_log(LOG_ERR, ci, cl, "opcode : %u != %u || %u || %u\n", s->ayh.ayh_opcode, ayiya_op_forward, ayiya_op_echo_request, ayiya_op_echo_request_forward);
+		ayiya_log(LOG_ERR, ci, cl, "opcode : %u != %u || %u || %u || %u\n", s->ayh.ayh_opcode, ayiya_op_noop, ayiya_op_forward, ayiya_op_echo_request, ayiya_op_echo_request_forward);
 		return;
 	}
 
@@ -427,45 +423,44 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		return;
 	}
 
-	if (s->ayh.ayh_nextheader == IPPROTO_IPV6)
+	if (s->ayh.ayh_opcode == ayiya_op_forward)
 	{
+		if (s->ayh.ayh_nextheader == IPPROTO_IPV6)
+		{
 #ifdef _LINUX
-		struct
-		{
+			struct iovec	dat[2];
 			struct tun_pi	pi;
-			char		payload[2048];
-		} packet;
 
-		memset(&packet, 0, sizeof(packet));
+			pi.proto = htons(ETH_P_IPV6);
 
-		packet.pi.proto = htons(ETH_P_IPV6);
-		memcpy(&packet.payload, &s->payload, payloadlen);
+			dat[0].iov_base = &pi;
+			dat[0].iov_len  = sizeof(pi);
+			dat[1].iov_base = s->payload;
+			dat[1].iov_len  = payloadlen;
 
-		/* Forward the packet to the kernel */
-		i = write(iface->ayiya_fd, &packet, payloadlen+sizeof(struct tun_pi));
+			/* Forward the packet to the kernel */
+			i = writev(iface->ayiya_fd, dat, 2);
 #else
-		struct
-		{
-			uint16_t	proto;
-			char		payload[2048];
-		} packet;
+			uint32_t	type = htonl(AF_INET6);
+			struct iovec	dat[2];
 
-		memset(&packet, 0, sizeof(packet));
+			dat[0].iov_base = &type;
+			dat[0].iov_len  = sizeof(type);
+			dat[1].iov_base = s->payload;
+			dat[1].iov_len  = payloadlen;
 
-		packet.proto = htons(ETHERTYPE_IPV6);
-		memcpy(&packet.payload, &s->payload, payloadlen);
-
-		/* Forward the packet to the kernel */
-		i = write(iface->ayiya_fd, &packet, payloadlen+2);
-
-		memset(buf, 0, sizeof(buf));
-		strerror_r(errno, buf, sizeof(buf));
-		printf("Wrote %d bytes of payload: %s (%d)\n", i, buf, errno);
+			/* Forward the packet to the kernel */
+			i = writev(iface->ayiya_fd, dat, 2);
 #endif
+		}
+		else
+		{
+			ayiya_log(LOG_WARNING, ci, cl, "[incoming] Not forwarding nextheader %u\n", (int)s->ayh.ayh_nextheader);
+		}
 	}
-	else
+	else if (s->ayh.ayh_opcode == ayiya_op_noop)
 	{
-		ayiya_log(LOG_WARNING, ci, cl, "[incoming] Not processing %u\n", (int)s->ayh.ayh_nextheader);
+		/* Silence about this, most likely just used for beating */
 	}
 
 	OS_Mutex_Release(&iface->mutex, "ayiya_process_incoming");
@@ -475,7 +470,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 void *ayiya_thread(void *arg);
 void *ayiya_thread(void *arg)
 {
-	int			n;
+	int			n, failcount = 0;
 	struct sockaddr_storage	ci;
 	socklen_t		cl;
 	char			buf[2048];
@@ -522,6 +517,8 @@ void *ayiya_thread(void *arg)
 			memset(buf, 0, sizeof(buf));
 			strerror_r(errno, buf, sizeof(buf));
 			mdolog(LOG_ERR, "Select failed on Incoming AYIYA socket: %s (%d)\n", buf, errno);
+			failcount++;
+			if (failcount < 10) continue;
 			break;
 		}
 
@@ -535,6 +532,8 @@ void *ayiya_thread(void *arg)
 			memset(buf, 0, sizeof(buf));
 			strerror_r(errno, buf, sizeof(buf));
 			mdolog(LOG_ERR, "Read failed on Incoming AYIYA socket: %s (%d)\n", buf, errno);
+			failcount++;
+			if (failcount < 10) continue;
 			break;
 		}
 

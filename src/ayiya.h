@@ -6,6 +6,8 @@
 #ifndef AYIYA_H
 #define AYIYA_H "5UU5N1K1"
 
+#include "sixxsd.h"
+
 /*
  * Anything In Anything - AYIYA (uses UDP in our case)
  *
@@ -54,24 +56,25 @@ enum ayiya_opcode
 
 struct ayiyahdr
 {
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if BYTE_ORDER == BIG_ENDIAN
 	u_int32_t	ayh_idlen:4;		/* Identity Length */
 	u_int32_t	ayh_idtype:4;		/* Identity Type */
 	u_int32_t	ayh_siglen:4;		/* Signature Length */
 	u_int32_t	ayh_hshmeth:4;		/* Hashing Method */
 	u_int32_t	ayh_autmeth:4;		/* Authentication Method */
 	u_int32_t	ayh_opcode:4;		/* Operation Code */
-#elif __BYTE_ORDER == __LITTLE_ENDIAN
+	u_int32_t	ayh_nextheader:8;	/* Next Header (PROTO_*) */
+#elif BYTE_ORDER == LITTLE_ENDIAN
 	u_int32_t	ayh_idtype:4;		/* Identity Type */
 	u_int32_t	ayh_idlen:4;		/* Identity Length */
 	u_int32_t	ayh_hshmeth:4;		/* Hashing Method */
 	u_int32_t	ayh_siglen:4;		/* Signature Length */
 	u_int32_t	ayh_opcode:4;		/* Operation Code */
 	u_int32_t	ayh_autmeth:4;		/* Authentication Method */
+	u_int32_t	ayh_nextheader:8;	/* Next Header (PROTO_*) */
 #else
 #error unsupported endianness!
 #endif
-	u_int8_t	ayh_nextheader;		/* Next Header (PROTO_*) */
 	u_int32_t	ayh_epochtime;		/* Time in seconds since "00:00:00 1970-01-01 UTC" */
 };
 
