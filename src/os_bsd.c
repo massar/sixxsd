@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.3 2006-06-15 23:17:08 jeroen Exp $
- $Date: 2006-06-15 23:17:08 $
+ $Id: os_bsd.c,v 1.4 2006-08-06 20:26:09 jeroen Exp $
+ $Date: 2006-08-06 20:26:09 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -29,6 +29,50 @@ void os_exec(const char *fmt, ...)
 	mddolog("#### os_exec(\"%s\")\n", buf);
 	system(buf);
 	va_end(ap);
+}
+
+bool os_int_rename(struct sixxs_interface *iface, bool back)
+{
+	char		tmp[128], desc[256];
+	struct ifreq	ifr;
+	SOCKET		s;
+
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s >= 0)
+	{
+		memset(&ifr, 0, sizeof(ifr));
+		if (!back)
+		{
+			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tun%u", iface->interface_id);
+			ifr.ifr_data = iface->name;
+		}
+		else
+		{
+			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", iface->name);
+			snprintf(tmp, sizeof(tmp), "tun%u", iface->interface_id);
+			ifr.ifr_data = tmp;
+		}
+
+		if (ioctl(s, SIOCSIFNAME, &ifr) != 0)
+		{
+			memset(desc, 0, sizeof(desc));
+			strerror_r(errno, desc, sizeof(desc));
+			mdolog(LOG_ERR, "Couldn't set %sinterface name of tun%u to %s/%u: %s (%d)\n", back ? "back " : "", iface->interface_id, iface->name, iface->kernel_ifindex, desc, errno);
+			close(s);
+			return false;
+		}
+	}
+	else
+	{
+		memset(desc, 0, sizeof(desc));
+		strerror_r(errno, desc, sizeof(desc));
+		mdolog(LOG_ERR, "Couldn't create socket for renaming %stun%u to %s/%u: %s (%d)\n", back ? "back " : "", iface->interface_id, iface->name, iface->kernel_ifindex, desc, errno);
+		close(s);
+		return false;
+	}
+	close(s);
+
+	return true;
 }
 
 /* Convert struct in6_addr netmask into integer */

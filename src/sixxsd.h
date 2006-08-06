@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.18 2006-07-23 18:35:27 jeroen Exp $
- $Date: 2006-07-23 18:35:27 $
+ $Id: sixxsd.h,v 1.19 2006-08-06 20:26:09 jeroen Exp $
+ $Date: 2006-08-06 20:26:09 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -420,6 +420,7 @@ bool os_int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them
 bool os_int_set_state(struct sixxs_interface *iface, enum iface_state state);
 bool os_int_set_mtu(struct sixxs_interface *iface, unsigned int mtu);
 bool os_int_set_ttl(struct sixxs_interface *iface, unsigned int ttl);
+bool os_int_rename(struct sixxs_interface *iface, bool back);
 
 /* interface.c */
 bool int_set_state(struct sixxs_interface *iface, enum iface_state state);

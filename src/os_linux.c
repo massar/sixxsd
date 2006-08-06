@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.34 2006-06-19 18:07:03 jeroen Exp $
- $Date: 2006-06-19 18:07:03 $
+ $Id: os_linux.c,v 1.35 2006-08-06 20:26:09 jeroen Exp $
+ $Date: 2006-08-06 20:26:09 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -44,6 +44,13 @@ void os_exec(const char *fmt, ...)
 	system(buf);
 	va_end(ap);
 }
+
+bool os_int_rename(struct sixxs_interface *iface, bool back)
+{
+	mddolog("######## Not implemented to rename %s%s\n", iface->name, back ? " back" : "");
+	return true;
+}
+
 
 /* Configure interfaces */
 bool os_sync_link_up(struct sixxs_interface *iface);

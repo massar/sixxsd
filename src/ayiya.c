@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.20 2006-07-23 18:35:27 jeroen Exp $
- $Date: 2006-07-23 18:35:27 $
+ $Id: ayiya.c,v 1.21 2006-08-06 20:26:09 jeroen Exp $
+ $Date: 2006-08-06 20:26:09 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -553,11 +553,11 @@ void *ayiya_thread(void *arg)
 bool ayiya_start(struct sixxs_interface *iface)
 {
 #ifndef _LINUX
-	SOCKET		s;
 	char		buf[128];
 	unsigned int	i;
-#endif
+#else
 	struct ifreq	ifr;
+#endif
 	char		desc[128];
 
 	if (iface->running) return true;
@@ -623,32 +623,13 @@ bool ayiya_start(struct sixxs_interface *iface)
 	/* The link is already there */
 	if (iface->kernel_ifindex == 0)
 	{
-		s = socket(AF_INET, SOCK_DGRAM, 0);
-		if (s >= 0)
+		/* Rename the interface from tun%u to gif%u */
+		if (!os_int_rename(iface, false))
 		{
-			memset(&ifr, 0, sizeof(ifr));
-			snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "tun%u", iface->interface_id);
-			ifr.ifr_data = iface->name;
-			if (ioctl(s, SIOCSIFNAME, &ifr) != 0)
-			{
-				memset(desc, 0, sizeof(desc));
-				strerror_r(errno, desc, sizeof(desc));
-				mdolog(LOG_ERR, "Couldn't set interface name of %s to %s/%u: %s (%d)\n", buf, iface->name, iface->kernel_ifindex, desc, errno);
-				close(s);
-				iface->ayiya_fd = 0;
-				return false;
-			}
-		}
-		else
-		{
-			memset(desc, 0, sizeof(desc));
-			strerror_r(errno, desc, sizeof(desc));
-			mdolog(LOG_ERR, "Couldn't create socket for renaming %s to %s/%u: %s (%d)\n", buf, iface->name, iface->kernel_ifindex, desc, errno);
-			close(s);
+			close(iface->ayiya_fd);
 			iface->ayiya_fd = 0;
 			return false;
 		}
-		close(s);
 	}
 	else mddolog("Assuming %s/%u is already renamed correctly\n", iface->name, iface->kernel_ifindex);
 
@@ -670,6 +651,11 @@ bool ayiya_stop(struct sixxs_interface *iface)
 	iface->running = false;
 
 	mddolog("Stopping AYIYA interface %s/%u\n", iface->name, iface->interface_id);
+
+#ifndef _LINUX
+	/* Rename the interface from gif%u to tun%u */
+	os_int_rename(iface, true);
+#endif
 
 	close(iface->ayiya_fd);
 	iface->ayiya_fd = -1;
