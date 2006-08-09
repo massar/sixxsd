@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.21 2006-08-06 20:26:09 jeroen Exp $
- $Date: 2006-08-06 20:26:09 $
+ $Id: ayiya.c,v 1.22 2006-08-09 10:09:12 jeroen Exp $
+ $Date: 2006-08-09 10:09:12 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -620,18 +620,13 @@ bool ayiya_start(struct sixxs_interface *iface)
 		return false;
 	}
 
-	/* The link is already there */
-	if (iface->kernel_ifindex == 0)
+	/* Rename the interface from tun%u to gif%u */
+	if (!os_int_rename(iface, false))
 	{
-		/* Rename the interface from tun%u to gif%u */
-		if (!os_int_rename(iface, false))
-		{
-			close(iface->ayiya_fd);
-			iface->ayiya_fd = 0;
-			return false;
-		}
+		close(iface->ayiya_fd);
+		iface->ayiya_fd = 0;
+		return false;
 	}
-	else mddolog("Assuming %s/%u is already renamed correctly\n", iface->name, iface->kernel_ifindex);
 
 #endif
 
