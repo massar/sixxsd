@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.19 2006-08-06 20:26:09 jeroen Exp $
- $Date: 2006-08-06 20:26:09 $
+ $Id: sixxsd.h,v 1.20 2006-12-15 19:26:25 jeroen Exp $
+ $Date: 2006-12-15 19:26:25 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -286,7 +286,8 @@ struct sixxs_interface
 
 	bool			running;			/* Tunnel process running? */
 
-	struct in_addr		ipv4_them;			/* IPv4 tunnel endpoints */
+	struct in_addr		ipv4_us,			/* IPv4 tunnel PoP side */
+				ipv4_them;			/* IPv4 tunnel User side */
 
 	struct in6_addr		ipv6_us,			/* Primary IPv6 endpoints */
 				ipv6_them,
@@ -431,7 +432,7 @@ bool int_beat(struct sixxs_interface *iface);
 struct sixxs_interface *int_get(unsigned int id);
 struct sixxs_interface *int_get_by_index(unsigned int id);
 struct sixxs_interface *int_get_by_name(const char *name);
-bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password);
+bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_us, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password);
 
 /* prefix.c */
 struct sixxs_prefix *pfx_get(struct in6_addr *ipv6_them, unsigned int prefixlen);

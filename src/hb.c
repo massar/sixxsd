@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.11 2006-07-12 21:25:18 jeroen Exp $
- $Date: 2006-07-12 21:25:18 $
+ $Id: hb.c,v 1.12 2006-12-15 19:26:25 jeroen Exp $
+ $Date: 2006-12-15 19:26:25 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -249,14 +249,8 @@ void *hb_thread(void UNUSED *arg)
 	/* Show that we have started */
 	mdolog(LOG_INFO, "Heartbeat Handler\n");
 
-	if (!inet_ntop(AF_INET, &g_conf->pop_ipv4, buf, sizeof(buf)))
-	{
-		mdolog(LOG_ERR, "Configuration error, pop_ipv4 not set to a valid IPv4 address\n");
-		return NULL;
-	}
-
 	/* Setup listening socket */
-	listenfd = listen_server("hb", buf, HEARTBEAT_PORT, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
+	listenfd = listen_server("hb", NULL, HEARTBEAT_PORT, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
 	if (listenfd < 0)
 	{
 		mdolog(LOG_ERR, "listen_server error:: could not create listening socket\n");

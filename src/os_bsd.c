@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.4 2006-08-06 20:26:09 jeroen Exp $
- $Date: 2006-08-06 20:26:09 $
+ $Id: os_bsd.c,v 1.5 2006-12-15 19:26:25 jeroen Exp $
+ $Date: 2006-12-15 19:26:25 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -260,7 +260,7 @@ bool os_sync_link_up(struct sixxs_interface *iface)
 	{
 		char ipv4_us[100], ipv4_them[100];
 
-		inet_ntop(AF_INET, &g_conf->pop_ipv4, ipv4_us, sizeof(ipv4_us));
+		inet_ntop(AF_INET, &iface->ipv4_us, ipv4_us, sizeof(ipv4_us));
 		inet_ntop(AF_INET, &iface->ipv4_them, ipv4_them, sizeof(ipv4_them));
 
 		os_exec(
@@ -519,7 +519,7 @@ bool os_int_set_endpoint(struct sixxs_interface *iface, struct in_addr ipv4_them
 		else /* Link is synced -> move endpoint */
 		{
 			char local[100], remote[100];
-			inet_ntop(AF_INET, &g_conf->pop_ipv4, local, sizeof(local));
+			inet_ntop(AF_INET, &iface->ipv4_us, local, sizeof(local));
 			inet_ntop(AF_INET, &iface->ipv4_them, remote, sizeof(remote));
 
 			os_exec(
@@ -913,7 +913,7 @@ void os_update_link(struct if_msghdr *ifm)
 			}
 
 			/* Check local tunnel address */
-			if (memcmp(&sa->sin_addr, &g_conf->pop_ipv4, sizeof(g_conf->pop_ipv4)) != 0)
+			if (memcmp(&sa->sin_addr, &iface->ipv4_us, sizeof(iface->ipv4_us)) != 0)
 			{
 				mddolog("LINK %s has local address mismatch\n", iface->name);
 				changeendpoint = true;

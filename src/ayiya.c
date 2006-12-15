@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.22 2006-08-09 10:09:12 jeroen Exp $
- $Date: 2006-08-09 10:09:12 $
+ $Id: ayiya.c,v 1.23 2006-12-15 19:26:25 jeroen Exp $
+ $Date: 2006-12-15 19:26:25 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -31,7 +31,6 @@ struct ayiya_socket
 } ayiya_socket[] = {
 	{"AYIYA",	0,	"5072",	-1},
 	{"AYIYA 8374",	0,	"8374",	-1},
-	{"AYIYA 80",	0,	"80",	-1},
 	{NULL,		0,	NULL,	-1}
 };
 
@@ -485,14 +484,8 @@ void *ayiya_thread(void *arg)
 	/* Clear the lastlog table */
 /*	memset(&lastlogs, 0, sizeof(lastlogs)); */
 
-	if (!inet_ntop(AF_INET, &g_conf->pop_ipv4, buf, sizeof(buf)))
-	{
-		mdolog(LOG_ERR, "Configuration error, pop_ipv4 not set to a valid IPv4 address\n");
-		return NULL;
-	}
-
 	/* Setup listening socket */
-	s = listen_server("ayiya", buf, as->sport, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
+	s = listen_server("ayiya", NULL, as->sport, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
 	if (s < 0)
 	{
 		mdolog(LOG_ERR, "listen_server error:: could not create listening socket\n");

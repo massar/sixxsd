@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.17 2006-03-27 20:20:35 jeroen Exp $
- $Date: 2006-03-27 20:20:35 $
+ $Id: interface.c,v 1.18 2006-12-15 19:26:25 jeroen Exp $
+ $Date: 2006-12-15 19:26:25 $
 
  SixXSd Interface Management 
 **************************************/
@@ -218,7 +218,7 @@ struct sixxs_interface *int_get_by_name(const char *name)
 }
 
 /* Reconfigure (add or update) an interface */
-bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password)
+bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ipv6_them, int prefixlen, struct in_addr ipv4_us, struct in_addr ipv4_them, enum iface_type type, enum iface_state state, unsigned int mtu, char *password)
 {
 	struct sixxs_interface *iface;
 
@@ -254,6 +254,13 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		}
 		else int_set_state(iface, state);
 
+		/* Changed local endpoint? (Should actually never happen) */
+		if (memcmp(&iface->ipv4_us, &ipv4_us, sizeof(ipv4_us)) != 0)
+		{
+			/* Just use the new value and hope for a good restart ;) */
+			memcpy(&iface->ipv4_us, &ipv4_us, sizeof(iface->ipv4_us));
+		}
+
 		/* Changed IPv4 endpoint? */
 		if (type == IFACE_PROTO41) int_set_endpoint(iface, ipv4_them);
 
@@ -283,9 +290,10 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		iface->ayiya_sport	= atoi(AYIYA_PORT);
 		iface->ayiya_port	= atoi(AYIYA_PORT);
 
+		memcpy(&iface->ipv4_us,		&ipv4_us,	sizeof(iface->ipv4_us));
 		memcpy(&iface->ipv4_them,	&ipv4_them,	sizeof(iface->ipv4_them));
-		memcpy(&iface->ipv6_them,	ipv6_them,	sizeof(iface->ipv6_them));
 		memcpy(&iface->ipv6_us,		ipv6_us,	sizeof(iface->ipv6_us));
+		memcpy(&iface->ipv6_them,	ipv6_them,	sizeof(iface->ipv6_them));
 
 		iface->prefixlen = prefixlen;
 

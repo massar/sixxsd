@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.32 2006-06-15 23:18:36 jeroen Exp $
- $Date: 2006-06-15 23:18:36 $
+ $Id: cfg.c,v 1.33 2006-12-15 19:26:25 jeroen Exp $
+ $Date: 2006-12-15 19:26:25 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -296,7 +296,7 @@ bool cfg_cmd_tunnel(int sock, const char *args)
 	unsigned int		fields = countfields(args);
 	char			buf[1024];
 	struct in6_addr		ipv6_us, ipv6_them;
-	struct in_addr		ipv4_them;
+	struct in_addr		ipv4_us, ipv4_them;
 	int			id, prefixlen, mtu;
 	enum iface_type		type = IFACE_UNSPEC;
 	enum iface_state	state = IFSTATE_DISABLED;
@@ -351,6 +351,19 @@ bool cfg_cmd_tunnel(int sock, const char *args)
 		return false;
 	}
 	prefixlen = atoi(buf);
+
+	/* Get the ipv4_us address */
+	memset(&ipv4_us, 0, sizeof(ipv4_us));
+	if (!copyfield(args, 5, buf, sizeof(buf)))
+	{
+		sock_printf(sock, "-ERR Field 5 didn't exist in '%s'\n", args);
+		return false;
+	}
+	if (!inet_pton(AF_INET, buf, &ipv4_us))
+	{
+		sock_printf(sock, "-ERR Field 5 was not a valid IPv4 address\n");
+		return false;
+	}
 
 	/* Get the ipv4_them address */
 	memset(&ipv4_them, 0, sizeof(ipv4_them));
@@ -415,7 +428,7 @@ bool cfg_cmd_tunnel(int sock, const char *args)
 		}
 	}
 
-	int_reconfig(id, &ipv6_us, &ipv6_them, prefixlen, ipv4_them, type, state, mtu, fields == 9 ? buf : NULL);
+	int_reconfig(id, &ipv6_us, &ipv6_them, prefixlen, ipv4_us, ipv4_them, type, state, mtu, fields == 9 ? buf : NULL);
 
 	sock_printf(sock, "+OK Tunnel %u accepted\n", id);
 	return true;
