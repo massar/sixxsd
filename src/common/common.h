@@ -2,15 +2,13 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.h,v 1.2 2006-01-09 19:16:24 jeroen Exp $
- $Date: 2006-01-09 19:16:24 $
+ $Id: common.h,v 1.3 2006-12-20 21:19:46 jeroen Exp $
+ $Date: 2006-12-20 21:19:46 $
 *****************************************************/
 
 void dologA(int level, const char *mod, const char *fmt, va_list ap);
 void dolog(int level, const char *mod, const char *fmt, ...);
 int huprunning(void);
-void savepid(void);
-void cleanpid(int UNUSED i);
 
 /* Module Logging shortcuts */
 #define mdolog(level, ...) dolog(level, module, __VA_ARGS__)

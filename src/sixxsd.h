@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.20 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: sixxsd.h,v 1.21 2006-12-20 21:19:44 jeroen Exp $
+ $Date: 2006-12-20 21:19:44 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -205,15 +205,6 @@ typedef	struct os_mutex		os_mutex;
 
 #include "common/common.h"
 
-/* Some changable settings */
-#define PIDFILE "/var/run/sixxsd.pid"
-
-#ifndef DEBUG
-#define SIXXSD_DUMPFILE "/var/run/sixxsd.dump"
-#else
-#define SIXXSD_DUMPFILE "/tmp/sixxsd.dump"
-#endif
-
 #ifdef DEBUG
 #define D(x) x
 #else
@@ -393,8 +384,6 @@ struct conf
 	unsigned int		loopback_ifindex;		/* Ifindex of the loopback device */
 
 	/* Statistics */
-	FILE			*stat_file;			/* The file handle of ourdump file */
-	char			*stat_filename;			/* Name of the file to dump into */
 	struct
 	{
 		time_t		starttime;			/* When did we start */

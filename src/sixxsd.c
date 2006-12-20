@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.17 2006-06-15 23:16:34 jeroen Exp $
- $Date: 2006-06-15 23:16:34 $
+ $Id: sixxsd.c,v 1.18 2006-12-20 21:19:44 jeroen Exp $
+ $Date: 2006-12-20 21:19:44 $
 
  SixXSd main code
 **************************************/
@@ -134,10 +134,6 @@ void cleanup(void)
 
 	thread_cleanup();
 
-	/* Close files and sockets */
-	fclose(g_conf->stat_file);
-	free(g_conf->stat_filename);
-
 	/* Free interfaces & prefixes */
 	if (g_conf->interfaces)		free(g_conf->interfaces);
 	if (g_conf->prefixes)		free(g_conf->prefixes);
@@ -203,7 +199,6 @@ bool init(void)
 
 	/* Initialize our counters */
 	g_conf->stats.starttime		= time(NULL);
-	g_conf->stat_filename		= strdup(SIXXSD_DUMPFILE);
 
 	/* Initialize various mutexes */
 	OS_Mutex_Init(&g_conf->mutex_thread);
@@ -233,64 +228,6 @@ void sighup(int i)
 
 	/* Reset the signal */
 	signal(i, &sighup);
-}
-
-void dumpstats(FILE *f);
-void dumpstats(FILE *f)
-{
-	time_t			time_tee;
-	unsigned int		uptime_s, uptime_m, uptime_h, uptime_d;
-	char			buf[200];
-
-	/* Get the current time */
-	time_tee  = time(NULL);
-	uptime_s  = time_tee - g_conf->stats.starttime;
-	uptime_d  = uptime_s / (24*60*60);
-	uptime_s -= uptime_d *  24*60*60;
-	uptime_h  = uptime_s / (60*60);
-	uptime_s -= uptime_h *  60*60;
-	uptime_m  = uptime_s /  60;
-	uptime_s -= uptime_m *  60;
-
-	/* Dump out some generic program statistics */
-	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", gmtime(&g_conf->stats.starttime));
-
-	fprintf(f, "*** Statistics Dump\n");
-
-	fprintf(f, "\n");
-
-	fprintf(f, "Version              : sixxsd %s\n", SIXXSD_VERSION);
-	fprintf(f, "Started              : %s GMT\n", buf);
-	fprintf(f, "Uptime               : %u days %02u:%02u:%02u\n", uptime_d, uptime_h, uptime_m, uptime_s);
-
-	fprintf(f, "\n");
-
-	fprintf(f, "*** Statistics Dump (end)\n");
-}
-
-/* Dump the statistical information */
-void sigusr1(int i);
-void sigusr1(int i)
-{
-	/* Ignore the signal */
-	signal(i, SIG_IGN);
-
-	/* Rewind the file to the start */
-	rewind(g_conf->stat_file);
-
-	/* Truncate the file */
-	ftruncate(fileno(g_conf->stat_file), (off_t)0);
-
-	/* Dump the stats */
-	dumpstats(g_conf->stat_file);
-
-	/* Flush the information to disk */
-	fflush(g_conf->stat_file);
-
-	mdolog(LOG_INFO, "Dumped statistics into %s\n", g_conf->stat_filename);
-
-	/* Reset the signal */
-	signal(i, &sigusr1);
 }
 
 void welcome(void);
@@ -325,16 +262,6 @@ int parse_arguments(int argc, char *argv[])
 		switch (i)
 		{
 		case 0:	/* Long option */
-			if (strcmp(long_options[option_index].name, "statsfile") == 0)
-			{
-				if (g_conf->stat_filename) free(g_conf->stat_filename);
-				g_conf->stat_filename = strdup(optarg);
-				if (!g_conf->stat_filename)
-				{
-					mdolog(LOG_ERR, "Couldn't allocate memory for statsfilename\n");
-					return false;
-				}
-			}
 			break;
 
 		case 'd': /* background */
@@ -449,27 +376,14 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	/* Handle a SIGHUP to reload the config */
 	signal(SIGHUP, &sighup);
 
-	/* Handle SIGTERM/INT/KILL to cleanup the pid file and exit */
-	signal(SIGTERM,	&cleanpid);
-	signal(SIGINT,	&cleanpid);
-	signal(SIGKILL,	&cleanpid);
+	/* Ignore SIGTERM/INT/KILL */
+	signal(SIGTERM,	SIG_IGN);
+	signal(SIGINT,	SIG_IGN);
+	signal(SIGKILL,	SIG_IGN);
 
-	/* Dump operations */
-	signal(SIGUSR1,	&sigusr1);
-
+	signal(SIGUSR1,	SIG_IGN);
 	signal(SIGUSR2, SIG_IGN);
 
-	/* Save our PID */
-	savepid();
-
-	/* Open our dump file */
-	g_conf->stat_file = fopen(g_conf->stat_filename, "w");
-	if (!g_conf->stat_file)
-	{
-		mdolog(LOG_ERR, "Couldn't open dumpfile %s\n", g_conf->stat_filename);
-		return -1;
-	}
-	
 	/* Read the former configuration file, bootstrapping this server */
 	cfg_fromfile("/home/sixxs/sixxsd.conf");
 

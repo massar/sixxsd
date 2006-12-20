@@ -2,12 +2,11 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.6 2006-04-17 13:01:47 jeroen Exp $
- $Date: 2006-04-17 13:01:47 $
+ $Id: common.c,v 1.7 2006-12-20 21:19:46 jeroen Exp $
+ $Date: 2006-12-20 21:19:46 $
 *****************************************************/
 
 #include "../sixxsd.h"
-extern void sigusr1(int i);
 
 /* The listen queue */
 #define LISTEN_QUEUE    128
@@ -93,44 +92,6 @@ void dolog(int level, const char *mod, const char *fmt, ...)
 	va_start(ap, fmt);
 	dologA(level, mod, fmt, ap);
 	va_end(ap);
-}
-
-int huprunning()
-{
-	int pid;
-
-	FILE *f = fopen(PIDFILE, "r");
-	if (!f) return 0;
-	fscanf(f, "%d", &pid);
-	fclose(f);
-	/* If we can HUP it, it still runs */
-	return (kill(pid, SIGHUP) == 0 ? 1 : 0);
-}
-
-void savepid()
-{
-	FILE *f = fopen(PIDFILE, "w");
-	if (!f) return;
-	fprintf(f, "%d", getpid());
-	fclose(f);
-
-	dolog(LOG_INFO, "common", "Running as PID %d\n", getpid());
-}
-
-void cleanpid(int UNUSED i)
-{
-	/* Ignore these signals, we need to get out */
-	signal(SIGTERM, SIG_IGN);
-	signal(SIGINT, SIG_IGN);
-	signal(SIGKILL, SIG_IGN);
-
-	/* Dump the stats one last time */
-	sigusr1(SIGUSR1);
-
-	/* Remove the PID file */
-	unlink(PIDFILE);
-
-	g_conf->running = false;
 }
 
 int listen_server(const char *module, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, unsigned int tag)
