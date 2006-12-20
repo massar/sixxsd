@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.5 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: os_bsd.c,v 1.6 2006-12-20 21:19:02 jeroen Exp $
+ $Date: 2006-12-20 21:19:02 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -169,7 +169,24 @@ void if_get_flags(struct sixxs_interface *iface)
 	iface->kernel_flags = ifreq.ifr_flags & 0x0000ffff;
 }
 
-/* get interface MTU */
+/* get interface index number */
+unsigned int if_get_ifindex_byname(const char *iface);
+unsigned int if_get_ifindex_byname(const char *iface)
+{
+	struct ifreq ifreq;
+
+	memset(&ifreq, 0, sizeof(struct ifreq));
+	strncpy(ifreq.ifr_name, iface, IFNAMSIZ);
+
+	if (if_ioctl(AF_INET, SIOCGIFMTU, (caddr_t)&ifreq) < 0)
+	{
+		mdolog(LOG_WARNING, "Can't lookup mtu by ioctl(SIOCGIFMTU)\n");
+		return 0;
+	}
+	return ifreq.ifr_mtu;
+}
+
+/* get interface index number */
 unsigned int if_get_ifindex(struct sixxs_interface *iface);
 unsigned int if_get_ifindex(struct sixxs_interface *iface)
 {
@@ -1284,9 +1301,18 @@ void os_update_route(struct rt_msghdr *rtm)
 		return;
 	}
 
-	/* Route should go over either the interface or the loopback */
-	/* XXX: Only local routes should go over loopback! */
-	if (iface->kernel_ifindex != 0 && iface->kernel_ifindex != rtm->rtm_index && g_conf->loopback_ifindex != rtm->rtm_index && rtm->rtm_index != 0)
+	/* Check if the interface given is correct
+	 * - we know the ifindex already for this interface
+	 * - it is not equal to the one we had before
+	 * - it is not the loopback
+	 * - the new index is not 0
+	 * then resync it
+	 */
+	if (
+		iface->kernel_ifindex != 0 &&
+		iface->kernel_ifindex != rtm->rtm_index &&
+		g_conf->loopback_ifindex != rtm->rtm_index &&
+		rtm->rtm_index != 0)
 	{
 		mddolog("Route %s/%u goes over wrong interface %u instead of %u\n",
 			dst, dst_len, rtm->rtm_index, iface->kernel_ifindex);
@@ -1309,6 +1335,13 @@ void os_update_route(struct rt_msghdr *rtm)
 	{
 		/* When the link is not up there is something wrong here */
 		if (!iface->synced_link) rem = true;
+
+		/* Check that we are not going over the loopback */
+		if (g_conf->loopback_ifindex == rtm->rtm_index)
+		{
+			/* Need to resync this one then */
+			resync = true;
+		}
 
 		if (!resync && !rem)
 		{
@@ -1695,6 +1728,9 @@ bool os_init(void)
 
 	/* Build the sockets */
 	os_kernelsocket = os_socket();
+
+	/* Find out where lo0 hangs out at */
+	g_conf->loopback_ifindex = if_get_ifindex_byname("lo0");
 
 	/*
 	 * Create a thread for handling updates from the OS
