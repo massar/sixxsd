@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.6 2006-12-20 21:19:02 jeroen Exp $
- $Date: 2006-12-20 21:19:02 $
+ $Id: os_bsd.c,v 1.7 2006-12-21 12:37:29 jeroen Exp $
+ $Date: 2006-12-21 12:37:29 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -1367,20 +1367,31 @@ void os_update_route(struct rt_msghdr *rtm)
 				continue;
 			}
 
+			/* Check that we are not going over the loopback */
+			if (g_conf->loopback_ifindex == rtm->rtm_index)
+			{
+				/* Need to resync this one then */
+				resync = true;
+			}
+
 			/* It's one of ours, keep it */
 			rem = false;
 
-			/* Mark this one as synced */
-			subnet->synced = true;
+			if (!resync)
+			{
+				/* Mark this one as synced */
+				subnet->synced = true;
 
-			/* Most interfaces only have one subnet thus just mark it up */
-			iface->synced_subnet = true;
+				/* Most interfaces only have one subnet thus just mark it up */
+				iface->synced_subnet = true;
+				mddolog("SUBNET %s/%u on %s\n", dst, dst_len, iface->name);
+			}
 
-			mddolog("SUBNET %s/%u on %s\n", dst, dst_len, iface->name);
 			break;
 		}
 
-		if (rem) mddolog("Removing %s/%u on %s\n", dst, dst_len, iface->name);
+		/* When we remove it, it really doesn't belong here, thus don't resync */
+		if (rem) resync = false;
 	}
 
 	if ((rem || resync) && g_conf->do_sync)
@@ -1698,6 +1709,11 @@ void *os_dthread(void UNUSED *arg)
 		case RTM_IFANNOUNCE:
 			os_update_linkchange(&buf.ian.ifan);
 			break;
+
+		case RTM_NEWMADDR:
+			/* Silently ignore */
+			break;
+
 		default:
 			mddolog("Unprocessed RTM_type: %s (%d)\n", lookup(rtm_type_str, rtm->rtm_type), rtm->rtm_type);
 			break;
