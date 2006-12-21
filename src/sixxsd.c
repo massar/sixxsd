@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.18 2006-12-20 21:19:44 jeroen Exp $
- $Date: 2006-12-20 21:19:44 $
+ $Id: sixxsd.c,v 1.19 2006-12-21 12:40:45 jeroen Exp $
+ $Date: 2006-12-21 12:40:45 $
 
  SixXSd main code
 **************************************/
@@ -242,10 +242,10 @@ void welcome(void)
 static struct option const long_options[] = {
 	{"daemonize",	no_argument,		NULL, 'd'},
 	{"foreground",	no_argument,		NULL, 'f'},
+	{"logfile",	required_argument,	NULL, 'l'},
 	{"verbose",	no_argument,		NULL, 'v'},
 	{"verbosity",	required_argument,	NULL, 'Y'},
 	{"version",	no_argument,		NULL, 'V'},
-	{"statsfile",	required_argument,	NULL, 0},
 	{NULL,		0, NULL, 0},
 };
 
@@ -270,6 +270,10 @@ int parse_arguments(int argc, char *argv[])
 
 		case 'f': /* foreground */
 			g_conf->daemonize = false;
+			break;
+
+		case 'l': /* logfile */
+			openlogfile(optarg);
 			break;
 
 		case 'v': /* verbose */
@@ -298,7 +302,7 @@ int parse_arguments(int argc, char *argv[])
 				" (default)"
 #endif
 				"\n"
-				"    --statsfile <filename> Name of the file to dump stats into\n"
+				"-l  --logfile <filename>   Name of the file to use for logging\n"
 				"-v  --verbose              Verbose mode (multiple to make higher)\n"
 				"-Y  --verbosity <x>        Directly set verbosity level\n"
 				"-V  --version              Show version and exit\n"

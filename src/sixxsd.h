@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.21 2006-12-20 21:19:44 jeroen Exp $
- $Date: 2006-12-20 21:19:44 $
+ $Id: sixxsd.h,v 1.22 2006-12-21 12:40:45 jeroen Exp $
+ $Date: 2006-12-21 12:40:45 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -347,6 +347,7 @@ struct conf
 	bool			do_sync;			/* To synchronize or to not to synchronize */
 	char			__padding[1];
 	unsigned int		verbose;			/* Verbosity level */
+	FILE			*logfile;			/* logfile */
 	time_t			starttime;			/* Time that we started running */
 
 	/* Mutex */

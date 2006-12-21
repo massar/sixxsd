@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.h,v 1.3 2006-12-20 21:19:46 jeroen Exp $
- $Date: 2006-12-20 21:19:46 $
+ $Id: common.h,v 1.4 2006-12-21 12:40:47 jeroen Exp $
+ $Date: 2006-12-21 12:40:47 $
 *****************************************************/
 
 void dologA(int level, const char *mod, const char *fmt, va_list ap);
@@ -19,6 +19,8 @@ int huprunning(void);
 #define ddolog(level, ...) {}
 #define mddolog(...) {}
 #endif
+bool openlogfile(const char *name);
+void closelogfile(void);
 
 /* Parsing functions */
 unsigned int countfields(const char *s);

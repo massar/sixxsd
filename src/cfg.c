@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.33 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: cfg.c,v 1.34 2006-12-21 12:40:45 jeroen Exp $
+ $Date: 2006-12-21 12:40:45 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -592,6 +592,51 @@ bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
 	return true;
 }
 
+bool cfg_cmd_logfile(int sock, const char *args);
+bool cfg_cmd_logfile(int sock, const char *args)
+{
+	char buf[1024];
+
+	/* Get the prefix */
+	if (!copyfield(args, 1, buf, sizeof(buf)))
+	{
+		sock_printf(sock, "-ERR logfile requires either open or close as an argument, not: %s\n", args);
+		return false;
+	}
+
+	if (strcasecmp(buf, "open") == 0)
+	{
+		if (!copyfield(args, 2, buf, sizeof(buf)))
+		{
+			sock_printf(sock, "-ERR logfile open requires a filename as an argument\n");
+			return false;
+		}
+
+		if (openlogfile(buf))
+		{
+			sock_printf(sock, "+OK Now using logfile %s\n", buf);
+			return true;
+		}
+		else
+		{
+			sock_printf(sock, "-ERR Couldn't open logfile '%s' (note: old logfile has been closed)\n", buf);
+			return false;
+		}
+	}
+	else if (strcasecmp(buf, "close") == 0)
+	{
+		closelogfile();
+		sock_printf(sock, "+OK logfile has been closed\n");
+	}
+	else
+	{
+		sock_printf(sock, "-ERR logfile requires either open or close as an argument, not: %s\n", args);
+		return false;
+	}
+
+	return true;
+}
+
 bool cfg_cmd_reply(int sock, const char *args);
 bool cfg_cmd_reply(int sock, const char *args)
 {
@@ -1155,6 +1200,7 @@ struct {
 	{"version",		cfg_cmd_version,		""},
 	{"uptime",		cfg_cmd_uptime,			""},
 	{"timeinfo",		cfg_cmd_timeinfo,		""},
+	{"logfile",		cfg_cmd_logfile,		"open <name>|close"},
 	{"reply",		cfg_cmd_reply,			"<opts>"},
 	{"help",		cfg_cmd_help,			""},
 	{"quit",		cfg_cmd_quit,			"<byestring>"},

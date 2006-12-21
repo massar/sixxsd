@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.7 2006-12-20 21:19:46 jeroen Exp $
- $Date: 2006-12-20 21:19:46 $
+ $Id: common.c,v 1.8 2006-12-21 12:40:47 jeroen Exp $
+ $Date: 2006-12-21 12:40:47 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -53,10 +53,15 @@ void dologA(int level, const char *mod, const char *fmt, va_list ap)
 	}
 
 #ifndef _WIN32
-	if (g_conf && g_conf->daemonize) syslog(LOG_LOCAL7|level, buf);
+	/* When daemonized and no logfile, log to syslog */
+	if (g_conf && g_conf->daemonize && !g_conf->logfile) syslog(LOG_LOCAL7|level, buf);
+	/* Otherwise, log to the logfile or stdout/stderr */
 	else
 	{
-		FILE *out = (level == LOG_DEBUG || level == LOG_ERR ? stderr : stdout);
+		FILE *out = (g_conf && g_conf->logfile ?
+				g_conf->logfile :
+				(level == LOG_DEBUG || level == LOG_ERR ? stderr : stdout));
+
 		if (g_conf && g_conf->verbose)
 		{
 			fprintf(out, "[%6s : %9s] ",
@@ -92,6 +97,32 @@ void dolog(int level, const char *mod, const char *fmt, ...)
 	va_start(ap, fmt);
 	dologA(level, mod, fmt, ap);
 	va_end(ap);
+}
+
+bool openlogfile(const char *name)
+{
+	if (!g_conf) return false;
+
+	closelogfile();
+
+	g_conf->logfile = fopen(name, "w+");
+	if (g_conf->logfile)
+	{
+		dolog(LOG_INFO, "common", "Using %s as a logfile\n", name);
+		return true;
+	}
+	else
+	{
+		dolog(LOG_WARNING, "common", "Couldn't open logfile %s\n", name);
+		return false;
+	}
+}
+
+void closelogfile(void)
+{
+	if (!g_conf) return;
+	if (g_conf->logfile) fclose(g_conf->logfile);
+	g_conf->logfile = NULL;
 }
 
 int listen_server(const char *module, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, unsigned int tag)
