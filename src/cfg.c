@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.34 2006-12-21 12:40:45 jeroen Exp $
- $Date: 2006-12-21 12:40:45 $
+ $Id: cfg.c,v 1.35 2006-12-21 12:47:53 jeroen Exp $
+ $Date: 2006-12-21 12:47:53 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -589,6 +589,24 @@ bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
 
 	cfg_cmd_uptimeA(sock, false);
 	sock_printf(sock, "+OK Time Information done\n");
+	return true;
+}
+
+bool cfg_cmd_verbosity(int sock, const char *args);
+bool cfg_cmd_verbosity(int sock, const char *args)
+{
+	char buf[10];
+
+	/* Get the prefix */
+	if (!copyfield(args, 1, buf, sizeof(buf)))
+	{
+		sock_printf(sock, "-ERR verbosity requires a value as an argument, not: %s\n", args);
+		return false;
+	}
+
+	g_conf->verbose = atoi(buf);
+	sock_printf(sock, "+OK verbosity is now %u\n", g_conf->verbose);
+
 	return true;
 }
 
@@ -1200,6 +1218,7 @@ struct {
 	{"version",		cfg_cmd_version,		""},
 	{"uptime",		cfg_cmd_uptime,			""},
 	{"timeinfo",		cfg_cmd_timeinfo,		""},
+	{"verbosity",		cfg_cmd_verbosity,		"<level>"},
 	{"logfile",		cfg_cmd_logfile,		"open <name>|close"},
 	{"reply",		cfg_cmd_reply,			"<opts>"},
 	{"help",		cfg_cmd_help,			""},

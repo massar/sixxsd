@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.19 2006-12-21 12:40:45 jeroen Exp $
- $Date: 2006-12-21 12:40:45 $
+ $Id: sixxsd.c,v 1.20 2006-12-21 12:47:53 jeroen Exp $
+ $Date: 2006-12-21 12:47:53 $
 
  SixXSd main code
 **************************************/
@@ -184,7 +184,7 @@ bool init(void)
 	g_conf->verbose			= 0;
 #else
 	g_conf->daemonize		= false;
-	g_conf->verbose			= 3;
+	g_conf->verbose			= 0;
 #endif
 
 	/* Don't sync yet as we are not configured */
