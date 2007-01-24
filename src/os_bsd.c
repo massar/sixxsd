@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.7 2006-12-21 12:37:29 jeroen Exp $
- $Date: 2006-12-21 12:37:29 $
+ $Id: os_bsd.c,v 1.8 2007-01-24 01:37:00 jeroen Exp $
+ $Date: 2007-01-24 01:37:00 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -31,8 +31,13 @@ void os_exec(const char *fmt, ...)
 	va_end(ap);
 }
 
+/* Note: OpenBSD doesn't support renames */
 bool os_int_rename(struct sixxs_interface *iface, bool back)
 {
+#ifdef _OPENBSD
+	iface = iface;
+	back = back;
+#else
 	char		tmp[128], desc[256];
 	struct ifreq	ifr;
 	SOCKET		s;
@@ -71,6 +76,7 @@ bool os_int_rename(struct sixxs_interface *iface, bool back)
 		return false;
 	}
 	close(s);
+#endif
 
 	return true;
 }
@@ -409,11 +415,25 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 	if (iface->type == IFACE_NULL) strncpy(them, "::1 -reject", sizeof(them));
 	else inet_ntop(AF_INET6, &iface->ipv6_them, them, sizeof(them));
 
+	/* Make sure we account for all subnets to be up */
+	iface->subnets_got = 0;
+	iface->subnets_up = 0;
+
 	/* Sync subnets over this tunnel */
 	for (pfx = iface->prefixes; pfx; pfx = pfx->next)
 	{
-		if (pfx->is_tunnel || pfx->synced) continue;
+		if (pfx->is_tunnel) continue;
 
+		iface->subnets_got++;
+
+		if (pfx->synced)
+		{
+			/* Count this one as being up */
+			iface->subnets_up++;
+			continue;
+		}
+
+		/* Add a route for this subnet */
 		inet_ntop(AF_INET6, &pfx->prefix, subnet, sizeof(subnet));
 		os_exec(
 			"/sbin/route add -inet6 %s -prefixlen %u %s",
@@ -447,6 +467,8 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 			them);
 	}
 	iface->synced_subnet = false;
+	/* We marked them all down */
+	iface->subnets_up = 0;
 	return true;
 }
 
@@ -615,8 +637,12 @@ struct message rtm_type_str[] =
 	{RTM_REDIRECT,		"RTM_REDIRECT"},
 	{RTM_MISS,		"RTM_MISS"},
 	{RTM_LOCK,		"RTM_LOCK"},
+#ifdef RTM_OLDADD
 	{RTM_OLDADD,		"RTM_OLDADD"},
+#endif
+#ifdef RTM_OLDDEL
 	{RTM_OLDDEL,		"RTM_OLDDEL"},
+#endif
 	{RTM_RESOLVE,		"RTM_RESOLVE"},
 	{RTM_NEWADDR,		"RTM_NEWADDR"},
 	{RTM_DELADDR,		"RTM_DELADDR"},
@@ -755,6 +781,7 @@ void os_update_linkchange(struct if_announcemsghdr *ifan)
 			iface->synced_local = false;
 			iface->synced_remote = false;
 			iface->synced_subnet = false;
+			iface->subnets_up = 0;
 
 			/* BSD changes kernel_ifindex's so zero it out */
 			iface->kernel_ifindex = 0;
@@ -904,6 +931,7 @@ void os_update_link(struct if_msghdr *ifm)
 		iface->synced_local = false;
 		iface->synced_remote = false;
 		iface->synced_subnet = false;
+		iface->subnets_up = 0;
 		OS_Mutex_Release(&iface->mutex, "os_update_link");
 		return;
 	}
@@ -1297,6 +1325,8 @@ void os_update_route(struct rt_msghdr *rtm)
 	{
 		/* Prefix is removed */
 		pfx->synced = false;
+		/* One less interface to sync down */
+		if (iface->subnets_up > 0) iface->subnets_up--;
 		OS_Mutex_Release(&iface->mutex, "os_update_route");
 		return;
 	}
@@ -1361,6 +1391,7 @@ void os_update_route(struct rt_msghdr *rtm)
 		/* Is it a subnet over this tunnel? */
 		for (subnet = iface->prefixes; subnet; subnet = subnet->next)
 		{
+			/* Is it this subnet? */
 			if (	subnet->is_tunnel ||
 				memcmp(&dest->sin6_addr, &subnet->prefix, sizeof(subnet->prefix)) != 0)
 			{
@@ -1374,6 +1405,16 @@ void os_update_route(struct rt_msghdr *rtm)
 				resync = true;
 			}
 
+			/* Make sure that the interface is actually fully working */
+                        if (	!iface->synced_link ||
+				!iface->synced_addr ||
+				!iface->synced_local ||
+                        	!iface->synced_remote)
+			{
+				mddolog("SUBNET %s/%u on %s but link is not fully synced, removing\n", dst, dst_len, iface->name);
+				continue;
+			}
+
 			/* It's one of ours, keep it */
 			rem = false;
 
@@ -1382,9 +1423,11 @@ void os_update_route(struct rt_msghdr *rtm)
 				/* Mark this one as synced */
 				subnet->synced = true;
 
-				/* Most interfaces only have one subnet thus just mark it up */
-				iface->synced_subnet = true;
 				mddolog("SUBNET %s/%u on %s\n", dst, dst_len, iface->name);
+
+				/* When all subnets are up, mark it up */
+				iface->subnets_up++;
+				if (iface->subnets_up == iface->subnets_got) iface->synced_subnet = true;
 			}
 
 			break;
@@ -1710,9 +1753,11 @@ void *os_dthread(void UNUSED *arg)
 			os_update_linkchange(&buf.ian.ifan);
 			break;
 
+#ifdef RTM_NEWMADDR
 		case RTM_NEWMADDR:
 			/* Silently ignore */
 			break;
+#endif
 
 		default:
 			mddolog("Unprocessed RTM_type: %s (%d)\n", lookup(rtm_type_str, rtm->rtm_type), rtm->rtm_type);

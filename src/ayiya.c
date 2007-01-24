@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.23 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: ayiya.c,v 1.24 2007-01-24 01:37:00 jeroen Exp $
+ $Date: 2007-01-24 01:37:00 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -547,7 +547,9 @@ bool ayiya_start(struct sixxs_interface *iface)
 {
 #ifndef _LINUX
 	char		buf[128];
+#ifndef _OPENBSD
 	unsigned int	i;
+#endif
 #else
 	struct ifreq	ifr;
 #endif
@@ -604,6 +606,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		return false;
 	}
 
+#ifndef _OPENBSD
 	i = 1;
 	if (ioctl(iface->ayiya_fd, TUNSIFHEAD, &i, sizeof(i)) == -1)
 	{
@@ -612,6 +615,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		iface->ayiya_fd = 0;
 		return false;
 	}
+#endif
 
 	/* Rename the interface from tun%u to gif%u */
 	if (!os_int_rename(iface, false))

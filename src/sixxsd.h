@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.22 2006-12-21 12:40:45 jeroen Exp $
- $Date: 2006-12-21 12:40:45 $
+ $Id: sixxsd.h,v 1.23 2007-01-24 01:37:00 jeroen Exp $
+ $Date: 2007-01-24 01:37:00 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -14,9 +14,9 @@
 #include <features.h>
 #endif
 
-#ifndef __OpenBSD__
-#ifndef SUNOS
-#ifndef AIX
+#ifndef _OPENBSD
+#ifndef _SUNOS
+#ifndef _AIX
 #ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE
 #endif
@@ -53,6 +53,7 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <sys/utsname.h>
+#include <assert.h>
 
 #ifdef _BSD
 #include <netinet/in_systm.h>
@@ -276,6 +277,9 @@ struct sixxs_interface
 	bool			synced_subnet;			/* Subnet configured or not */
 
 	bool			running;			/* Tunnel process running? */
+
+	unsigned int		subnets_got;			/* Number of subnets it has */
+	unsigned int		subnets_up;			/* Number of subnets that are up */
 
 	struct in_addr		ipv4_us,			/* IPv4 tunnel PoP side */
 				ipv4_them;			/* IPv4 tunnel User side */

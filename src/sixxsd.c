@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.20 2006-12-21 12:47:53 jeroen Exp $
- $Date: 2006-12-21 12:47:53 $
+ $Id: sixxsd.c,v 1.21 2007-01-24 01:37:00 jeroen Exp $
+ $Date: 2007-01-24 01:37:00 $
 
  SixXSd main code
 **************************************/
@@ -36,11 +36,11 @@ void sync_complete()
 	for (i = 0; g_conf && g_conf->running && i < g_conf->max_interfaces; i++)
 	{
 		iface = g_conf->interfaces + i;
-		if (iface->type == IFACE_UNSPEC) continue;
+		if (iface->type == IFACE_UNSPEC || iface->type == IFACE_NULL) continue;
 
 		/* Only check inconsistent interfaces */
-		if (	(iface->state == IFSTATE_UP && iface->synced_link && iface->synced_addr && iface->synced_local && iface->synced_remote) ||
-			(iface->state != IFSTATE_UP && !iface->synced_link && !iface->synced_addr && !iface->synced_local && !iface->synced_remote))
+		if (	(iface->state == IFSTATE_UP && iface->synced_link && iface->synced_addr && iface->synced_local && iface->synced_remote && iface->subnets_got == iface->subnets_up) ||
+			(iface->state != IFSTATE_UP && !iface->synced_link && !iface->synced_addr && !iface->synced_local && !iface->synced_remote && iface->subnets_up == 0))
 		{
 			continue;
 		}
@@ -249,7 +249,7 @@ static struct option const long_options[] = {
 	{NULL,		0, NULL, 0},
 };
 
-static const char long_opts[] = "dfvYV";
+static const char long_opts[] = "dfl:vY:V";
 
 int parse_arguments(int argc, char *argv[]);
 int parse_arguments(int argc, char *argv[])
@@ -356,7 +356,7 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	g_conf->interfaces[0].synced_addr = true;
 	g_conf->interfaces[0].synced_local = true;
 	g_conf->interfaces[0].synced_remote = true;
-	
+
 	/* Daemonize */
 	if (g_conf->daemonize)
 	{
