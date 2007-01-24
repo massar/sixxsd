@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.36 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: os_linux.c,v 1.37 2007-01-24 01:35:57 jeroen Exp $
+ $Date: 2007-01-24 01:35:57 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -209,11 +209,25 @@ bool os_sync_route_up(struct sixxs_interface *iface)
 	{
 		inet_ntop(AF_INET6, &iface->ipv6_them, them, sizeof(them));
 
+		/* Make sure we account for all subnets to be up */
+		iface->subnets_got = 0;
+		iface->subnets_up = 0;
+
 		/* Sync subnets over this tunnel */
 		for (pfx = iface->prefixes; pfx; pfx = pfx->next)
 		{
 			if (pfx->is_tunnel) continue;
 
+			iface->subnets_got++;
+
+			if (pfx->synced)
+			{
+				/* Count this one as being up */
+				iface->subnets_up++;
+				continue;
+			}
+
+			/* Add a route for this subnet */
 			inet_ntop(AF_INET6, &pfx->prefix, subnet, sizeof(subnet));
 			os_exec(
 				"ip -6 ro add %s/%u via %s dev %s",
@@ -249,7 +263,13 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 			them,
 			iface->type == IFACE_NULL ? "lo" : iface->name);
 	}
+
+	/* Not synced anymore */
 	iface->synced_subnet = false;
+
+	/* None should be left */
+	iface->subnets_up = 0;
+
 	return true;
 }
 
@@ -582,6 +602,7 @@ void netlink_update_link(struct nlmsghdr *h)
 				iface->synced_local = false;
 				iface->synced_remote = false;
 				iface->synced_subnet = false;
+				iface->subnets_up = 0;
 
 				/* Remove the interface */
 				os_exec("ip tunnel del %s", name);
@@ -612,6 +633,7 @@ void netlink_update_link(struct nlmsghdr *h)
 		iface->synced_local = false;
 		iface->synced_remote = false;
 		iface->synced_subnet = false;
+		iface->subnets_up = 0;
 
 		/* Reset the ifindex as it might change */
 		iface->kernel_ifindex = 0;
@@ -689,6 +711,7 @@ void netlink_update_link(struct nlmsghdr *h)
 		iface->synced_local = false;
 		iface->synced_remote = false;
 		iface->synced_subnet = false;
+		iface->subnets_up = 0;
 
 		/* XXX Try to delete the old one */
 	}
@@ -956,11 +979,24 @@ void netlink_update_route(struct nlmsghdr *h)
 		/* Is it a subnet over this tunnel? */
 		for (subnet = iface->prefixes; subnet; subnet = subnet->next)
 		{
+			/* Is it this prefix? */
 			if (	subnet->is_tunnel ||
 				memcmp(dest, &subnet->prefix, sizeof(subnet->prefix)) != 0)
 			{
 				continue;
 			}
+
+			/* Verify that the link is really up completely */
+			if (	!iface->synced_link ||
+				!iface->synced_addr ||
+				!iface->synced_local ||
+				!iface->synced_remote)
+			{
+				/* Not up completely, lets do that sync again */
+				mddolog("SUBNET %s/%u on %s but interface was not synced completely\n", dst, rtm->rtm_dst_len, iface->name);
+				break;
+			}
+
 
 			/* It's one of ours, keep it */
 			rem = false;
@@ -968,8 +1004,11 @@ void netlink_update_route(struct nlmsghdr *h)
 			/* Mark this one as synced */
 			subnet->synced = true;
 
-			/* Most interfaces only have one subnet thus just mark it up */
-			iface->synced_subnet = true;
+			/* Another subnet goes up */
+			iface->subnets_up++;
+
+			/* When they are all up mark it as synced */
+			if (iface->subnets_got == iface->subnets_up) iface->synced_subnet = true;
 
 			mddolog("SUBNET %s/%u on %s\n", dst, rtm->rtm_dst_len, iface->name);
 			break;
