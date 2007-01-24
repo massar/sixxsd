@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.12 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: hb.c,v 1.13 2007-01-24 01:34:45 jeroen Exp $
+ $Date: 2007-01-24 01:34:45 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -206,7 +206,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	/* make the digest */
 	for (i = 0; i < 16; i++)
 	{
-		sprintf((char *)pnt2, "%02x", *p++);
+		snprintf((char *)pnt2, sizeof(tmp), "%02x", *p++);
 		pnt2+=2;
 	}
 	*pnt2 = '\0';
