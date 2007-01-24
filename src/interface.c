@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.18 2006-12-15 19:26:25 jeroen Exp $
- $Date: 2006-12-15 19:26:25 $
+ $Id: interface.c,v 1.19 2007-01-24 01:35:02 jeroen Exp $
+ $Date: 2007-01-24 01:35:02 $
 
  SixXSd Interface Management 
 **************************************/
@@ -61,6 +61,8 @@ bool int_set_type(struct sixxs_interface *iface, enum iface_type type)
 	iface->synced_local		= false;
 	iface->synced_remote		= false;
 	iface->synced_subnet		= false;
+	iface->subnets_got		= 666;
+	iface->subnets_up		= 0;
 
 	/* Mark it up when it was up */
 	if (restart) int_set_state(iface, IFSTATE_UP);
@@ -278,6 +280,8 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		iface->synced_local	= false;
 		iface->synced_remote	= false;
 		iface->synced_subnet	= false;
+		iface->subnets_got	= 666;
+		iface->subnets_up	= 0;
 
 		/* State is down */
 		iface->state		= IFSTATE_DOWN;
