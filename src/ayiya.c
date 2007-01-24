@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.24 2007-01-24 01:37:00 jeroen Exp $
- $Date: 2007-01-24 01:37:00 $
+ $Id: ayiya.c,v 1.25 2007-01-24 02:34:39 jeroen Exp $
+ $Date: 2007-01-24 02:34:39 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -545,14 +545,13 @@ void *ayiya_thread(void *arg)
 
 bool ayiya_start(struct sixxs_interface *iface)
 {
-#ifndef _LINUX
-	char		buf[128];
-#ifndef _OPENBSD
-	unsigned int	i;
-#endif
-#else
+#ifdef _LINUX
 	struct ifreq	ifr;
 #endif
+#ifdef _FREEBSD
+	unsigned int	i;
+#endif
+	char		buf[128];
 	char		desc[128];
 
 	if (iface->running) return true;
@@ -561,12 +560,13 @@ bool ayiya_start(struct sixxs_interface *iface)
 
 #ifdef _LINUX
 	/* Create a new tap device */
-	iface->ayiya_fd = open("/dev/net/tun", O_RDWR);
+	snprintf(buf, sizeof(buf), "/dev/net/tun");
+	iface->ayiya_fd = open(buf, O_RDWR);
 	if (iface->ayiya_fd < 0)
 	{
 		memset(desc, 0, sizeof(desc));
 		strerror_r(errno, desc, sizeof(desc));
-		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", "/dev/net/tun", desc, errno);
+		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", buf, desc, errno);
 		/*
 		 * Abort as we can't function properly
 		 * on Linux do 'cd /dev/; ./MAKEDEV tun' + modprobe tun
@@ -602,7 +602,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 	{
 		memset(desc, 0, sizeof(desc));
 		strerror_r(errno, desc, sizeof(desc));
-		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", "/dev/tun", desc, errno);
+		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", buf, desc, errno);
 		return false;
 	}
 
@@ -610,7 +610,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 	i = 1;
 	if (ioctl(iface->ayiya_fd, TUNSIFHEAD, &i, sizeof(i)) == -1)
 	{
-		mdolog(LOG_ERR, "Couldn't set IFHEAD mode on %s: %s (%d)\n", "/dev/tun", desc, errno);
+		mdolog(LOG_ERR, "Couldn't set IFHEAD mode on %s: %s (%d)\n", buf, desc, errno);
 		close(iface->ayiya_fd);
 		iface->ayiya_fd = 0;
 		return false;

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.8 2007-01-24 01:37:00 jeroen Exp $
- $Date: 2007-01-24 01:37:00 $
+ $Id: os_bsd.c,v 1.9 2007-01-24 02:34:39 jeroen Exp $
+ $Date: 2007-01-24 02:34:39 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -298,6 +298,22 @@ bool os_sync_link_up(struct sixxs_interface *iface)
 	}
 	else if (iface->type == IFACE_AYIYA)
 	{
+#ifdef _OPENBSD
+		/* OpenBSD doesn't support device renames thus name the device tunX */
+		snprintf(iface->name, sizeof(iface->name), "tun%u", iface->interface_id);
+
+		/* OpenBSD requires one to explicitly create the tunnel device */
+		os_exec(
+			"/sbin/ifconfig %s create",
+			iface->name);
+
+		/* Make the device node so that we can access it */
+		os_exec(
+			"mknod /dev/%s c 40 %u",
+			iface->name,
+			iface->interface_id);
+#endif
+
 		if (!ayiya_start(iface)) return false;
 	}
 
