@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.9 2007-01-24 02:34:39 jeroen Exp $
- $Date: 2007-01-24 02:34:39 $
+ $Id: os_bsd.c,v 1.10 2007-12-18 21:45:07 jeroen Exp $
+ $Date: 2007-12-18 21:45:07 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -13,6 +13,9 @@
 
 const char module_os[] = "os_bsd";
 #define module module_os
+
+/* Temporary nasty hack against FBSD boxes crashing */
+#define WAITPATCH() usleep(2000)
 
 int os_kernelsocket;
 
@@ -337,6 +340,8 @@ bool os_sync_link_down(struct sixxs_interface *iface)
 		"/sbin/ifconfig %s down",
 		iface->name);
 
+	WAITPATCH();
+
 	if (	iface->type == IFACE_PROTO41 ||
 		iface->type == IFACE_PROTO41_HB)
 	{
@@ -392,6 +397,7 @@ bool os_sync_address_down(struct sixxs_interface *iface)
 
 		iface->synced_addr = false;
 		iface->synced_local = false;
+		WAITPATCH();
 	}
 
 	return true;
@@ -485,6 +491,7 @@ bool os_sync_route_down(struct sixxs_interface *iface)
 	iface->synced_subnet = false;
 	/* We marked them all down */
 	iface->subnets_up = 0;
+	WAITPATCH();
 	return true;
 }
 
@@ -507,6 +514,7 @@ bool os_sync_remote_down(struct sixxs_interface *iface)
 
 		iface->synced_remote = false;
 	}
+	WAITPATCH();
 	return true;
 }
 
