@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.10 2007-12-18 21:45:07 jeroen Exp $
- $Date: 2007-12-18 21:45:07 $
+ $Id: os_bsd.c,v 1.11 2008-01-16 17:30:34 jeroen Exp $
+ $Date: 2008-01-16 17:30:34 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -15,7 +15,8 @@ const char module_os[] = "os_bsd";
 #define module module_os
 
 /* Temporary nasty hack against FBSD boxes crashing */
-#define WAITPATCH() usleep(2000)
+/* #define WAITPATCH() usleep(2000) */
+#define WAITPATCH() {}
 
 int os_kernelsocket;
 
@@ -345,9 +346,11 @@ bool os_sync_link_down(struct sixxs_interface *iface)
 	if (	iface->type == IFACE_PROTO41 ||
 		iface->type == IFACE_PROTO41_HB)
 	{
+/*
 		os_exec(
 			"/sbin/ifconfig %s destroy",
 			iface->name);
+*/
 	}
 	else if (iface->type == IFACE_AYIYA)
 	{
@@ -776,7 +779,8 @@ void os_update_linkchange(struct if_announcemsghdr *ifan)
 				/* XXX - Ignore certain devices! */
 
 				/* Remove interfaces we don't want to know about */
-				os_exec("/sbin/ifconfig %s destroy", ifan->ifan_name);
+/*				os_exec("/sbin/ifconfig %s destroy", ifan->ifan_name); */
+				os_exec("/sbin/ifconfig %s down", ifan->ifan_name);
 
 				OS_Mutex_Release(&iface->mutex, "netlink_update_link");
 				return;
@@ -940,7 +944,8 @@ void os_update_link(struct if_msghdr *ifm)
 			/* XXX - Ignore certain devices! */
 
 			/* Remove interfaces we don't want to know about */
-			os_exec("/sbin/ifconfig %s destroy", iface->name);
+/*			os_exec("/sbin/ifconfig %s destroy", iface->name); */
+			os_exec("/sbin/ifconfig %s down", iface->name);
 		}
 		OS_Mutex_Release(&iface->mutex, "os_update_link");
 		return;

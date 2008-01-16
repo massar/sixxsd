@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.25 2007-01-24 02:34:39 jeroen Exp $
- $Date: 2007-01-24 02:34:39 $
+ $Id: ayiya.c,v 1.26 2008-01-16 17:30:33 jeroen Exp $
+ $Date: 2008-01-16 17:30:33 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -590,39 +590,41 @@ bool ayiya_start(struct sixxs_interface *iface)
 		return false;
         }
 #else
-	/*
-	 * Directly open iface->interface_id as otherwise
-	 * we loose track of what belongs where
-	 * Thus tun101 = gif101 in our case
-	 */
-	iface->ayiya_fd = -1;
-	snprintf(buf, sizeof(buf), "/dev/tun%u", iface->interface_id);
-	iface->ayiya_fd = open(buf, O_RDWR);
-	if (iface->ayiya_fd < 0)
+	if (iface->ayiya_fd == -1)
 	{
-		memset(desc, 0, sizeof(desc));
-		strerror_r(errno, desc, sizeof(desc));
-		mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", buf, desc, errno);
-		return false;
-	}
+		/*
+		 * Directly open iface->interface_id as otherwise
+		 * we loose track of what belongs where
+		 * Thus tun101 = gif101 in our case
+		 */
+		snprintf(buf, sizeof(buf), "/dev/tun%u", iface->interface_id);
+		iface->ayiya_fd = open(buf, O_RDWR);
+		if (iface->ayiya_fd < 0)
+		{
+			memset(desc, 0, sizeof(desc));
+			strerror_r(errno, desc, sizeof(desc));
+			mdolog(LOG_ERR, "Couldn't open device %s: %s (%d)\n", buf, desc, errno);
+			return false;
+		}
 
 #ifndef _OPENBSD
-	i = 1;
-	if (ioctl(iface->ayiya_fd, TUNSIFHEAD, &i, sizeof(i)) == -1)
-	{
-		mdolog(LOG_ERR, "Couldn't set IFHEAD mode on %s: %s (%d)\n", buf, desc, errno);
-		close(iface->ayiya_fd);
-		iface->ayiya_fd = 0;
-		return false;
-	}
+		i = 1;
+		if (ioctl(iface->ayiya_fd, TUNSIFHEAD, &i, sizeof(i)) == -1)
+		{
+			mdolog(LOG_ERR, "Couldn't set IFHEAD mode on %s: %s (%d)\n", buf, desc, errno);
+			close(iface->ayiya_fd);
+			iface->ayiya_fd = 0;
+			return false;
+		}
 #endif
 
-	/* Rename the interface from tun%u to gif%u */
-	if (!os_int_rename(iface, false))
-	{
-		close(iface->ayiya_fd);
-		iface->ayiya_fd = 0;
-		return false;
+		/* Rename the interface from tun%u to gif%u */
+		if (!os_int_rename(iface, false))
+		{
+			close(iface->ayiya_fd);
+			iface->ayiya_fd = 0;
+			return false;
+		}
 	}
 
 #endif
@@ -649,8 +651,10 @@ bool ayiya_stop(struct sixxs_interface *iface)
 	os_int_rename(iface, true);
 #endif
 
+#ifdef _BSD
 	close(iface->ayiya_fd);
 	iface->ayiya_fd = -1;
+#endif
 
 	return true;
 }
