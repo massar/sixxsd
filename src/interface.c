@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.20 2008-01-17 01:19:24 jeroen Exp $
- $Date: 2008-01-17 01:19:24 $
+ $Id: interface.c,v 1.21 2008-01-17 08:19:12 jeroen Exp $
+ $Date: 2008-01-17 08:19:12 $
 
  SixXSd Interface Management 
 **************************************/
@@ -293,6 +293,7 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 		iface->ttl		= 64;
 		iface->ayiya_sport	= atoi(AYIYA_PORT);
 		iface->ayiya_port	= atoi(AYIYA_PORT);
+		iface->ayiya_fd		= -1;
 
 		memcpy(&iface->ipv4_us,		&ipv4_us,	sizeof(iface->ipv4_us));
 		memcpy(&iface->ipv4_them,	&ipv4_them,	sizeof(iface->ipv4_them));
