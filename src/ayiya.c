@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.28 2008-01-17 08:18:56 jeroen Exp $
- $Date: 2008-01-17 08:18:56 $
+ $Id: ayiya.c,v 1.29 2008-01-17 09:03:12 jeroen Exp $
+ $Date: 2008-01-17 09:03:12 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -59,8 +59,6 @@ void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen
 	{
 
 	}
-
-	return;
 
 	/* Clear them just in case */
 	memset(buf, 0, sizeof(buf));
@@ -231,6 +229,14 @@ void *ayiya_process_outgoing(void *arg)
 			if (ayiya_socket[i].port != iface->ayiya_sport) continue;
 			break;
 		}
+
+		if (!ayiya_socket[i].title)
+		{
+			/* No such interface!? */
+			mdolog(LOG_ERR, "[outgoing] Couldn't find AYIYA Source Interface with port %u for interface %s/%u\n", iface->ayiya_sport, iface->name, iface->interface_id);
+			break;
+		}
+
 		lenout = sendto(ayiya_socket[i].socket, &s, lenin, 0, (struct sockaddr *)&target, sizeof(target));
 		if (lenout < 0)
 		{
@@ -566,7 +572,8 @@ bool ayiya_start(struct sixxs_interface *iface)
 	/* Create a new tap device */
 	snprintf(buf, sizeof(buf), "/dev/net/tun");
 	iface->ayiya_fd = open(buf, O_RDWR);
-	if (iface->ayiya_fd < 0)
+
+	if (iface->ayiya_fd != -1)
 	{
 		memset(desc, 0, sizeof(desc));
 		strerror_r(errno, desc, sizeof(desc));
@@ -590,7 +597,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		strerror_r(errno, desc, sizeof(desc));
 		mdolog(LOG_ERR, "Couldn't set interface name of %s: %s (%d)\n", iface->name, desc, errno);
 		close(iface->ayiya_fd);
-		iface->ayiya_fd = 0;
+		iface->ayiya_fd = -1;
 		return false;
         }
 #else
@@ -603,7 +610,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		 */
 		snprintf(buf, sizeof(buf), "/dev/tun%u", iface->interface_id);
 		iface->ayiya_fd = open(buf, O_RDWR);
-		if (iface->ayiya_fd < 0)
+		if (iface->ayiya_fd != -1)
 		{
 			memset(desc, 0, sizeof(desc));
 			strerror_r(errno, desc, sizeof(desc));
@@ -617,7 +624,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		{
 			mdolog(LOG_ERR, "Couldn't set IFHEAD mode on %s: %s (%d)\n", buf, desc, errno);
 			close(iface->ayiya_fd);
-			iface->ayiya_fd = 0;
+			iface->ayiya_fd = -1;
 			return false;
 		}
 #endif
@@ -626,7 +633,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		if (!os_int_rename(iface, false))
 		{
 			close(iface->ayiya_fd);
-			iface->ayiya_fd = 0;
+			iface->ayiya_fd = -1;
 			return false;
 		}
 	}
@@ -650,9 +657,11 @@ bool ayiya_stop(struct sixxs_interface *iface)
 
 	mddolog("Stopping AYIYA interface %s/%u\n", iface->name, iface->interface_id);
 
-#ifndef _LINUX
+#ifdef _BSD
+#if 0
 	/* Rename the interface from gif%u to tun%u */
 	os_int_rename(iface, true);
+#endif
 #endif
 
 #ifndef _BSD
