@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.29 2008-01-17 09:03:12 jeroen Exp $
- $Date: 2008-01-17 09:03:12 $
+ $Id: ayiya.c,v 1.30 2008-01-17 09:19:44 jeroen Exp $
+ $Date: 2008-01-17 09:19:44 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -573,7 +573,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 	snprintf(buf, sizeof(buf), "/dev/net/tun");
 	iface->ayiya_fd = open(buf, O_RDWR);
 
-	if (iface->ayiya_fd != -1)
+	if (iface->ayiya_fd == -1)
 	{
 		memset(desc, 0, sizeof(desc));
 		strerror_r(errno, desc, sizeof(desc));
@@ -610,7 +610,7 @@ bool ayiya_start(struct sixxs_interface *iface)
 		 */
 		snprintf(buf, sizeof(buf), "/dev/tun%u", iface->interface_id);
 		iface->ayiya_fd = open(buf, O_RDWR);
-		if (iface->ayiya_fd != -1)
+		if (iface->ayiya_fd == -1)
 		{
 			memset(desc, 0, sizeof(desc));
 			strerror_r(errno, desc, sizeof(desc));
