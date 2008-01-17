@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.12 2008-01-17 01:19:24 jeroen Exp $
- $Date: 2008-01-17 01:19:24 $
+ $Id: os_bsd.c,v 1.13 2008-01-17 01:24:19 jeroen Exp $
+ $Date: 2008-01-17 01:24:19 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -30,7 +30,7 @@ void os_exec(const char *fmt, ...)
 	va_list ap;
 	va_start(ap, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, ap);
-	dolog(LOG_ERR, "os_bsd", "#### os_exec(\"%s\") ###\n", buf);
+	mddolog("#### os_exec(\"%s\")\n", buf);
 	system(buf);
 	va_end(ap);
 }

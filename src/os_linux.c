@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.38 2008-01-17 01:19:24 jeroen Exp $
- $Date: 2008-01-17 01:19:24 $
+ $Id: os_linux.c,v 1.39 2008-01-17 01:24:19 jeroen Exp $
+ $Date: 2008-01-17 01:24:19 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -1303,10 +1303,10 @@ int os_netlink_request(int family, int type, struct nlsock *nl)
 {
 	struct sockaddr_nl	snl;
 
-	struct
+	struct __attribute__ ((packed))
 	{
-		struct nlmsghdr nlh;
-		struct rtgenmsg g;
+		struct nlmsghdr	nlh;
+		struct rtgenmsg	g;
 	} req;
 
 	/* Check netlink socket. */
