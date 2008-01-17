@@ -3,8 +3,8 @@
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
 # $Author: jeroen $
-# $Id: Makefile,v 1.8 2008-01-17 01:19:24 jeroen Exp $
-# $Date: 2008-01-17 01:19:24 $
+# $Id: Makefile,v 1.9 2008-01-17 09:03:26 jeroen Exp $
+# $Date: 2008-01-17 09:03:26 $
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
@@ -35,7 +35,7 @@ LINK    = @echo "* Linking $@"; $(CC) $(CFLAGS)
 RM      = @echo "* Removing $@"; rm
 
 # Our very *bliep* set of options to make sure that these things can't cause any issues
-CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-packed -Wpadded -pedantic -Wall -Wmissing-include-dirs -Wswitch-default -Wformat=2 -Wformat-security -Wformat -Wmissing-format-attribute -D_REENTRANT -D_THREAD_SAFE -pipe -combine -Wunused -Winit-self -Wextra -Wno-long-long
+CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-packed -Wpadded -pedantic -Wall -Wswitch-default -Wformat=2 -Wformat-security -Wformat -Wmissing-format-attribute -D_REENTRANT -D_THREAD_SAFE -pipe -Wunused -Winit-self -Wextra -Wno-long-long
 
 # Linux
 ifeq ($(shell uname | grep -c "Linux"),1)
