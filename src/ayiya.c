@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.27 2008-01-17 01:19:24 jeroen Exp $
- $Date: 2008-01-17 01:19:24 $
+ $Id: ayiya.c,v 1.28 2008-01-17 08:18:56 jeroen Exp $
+ $Date: 2008-01-17 08:18:56 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -655,7 +655,7 @@ bool ayiya_stop(struct sixxs_interface *iface)
 	os_int_rename(iface, true);
 #endif
 
-#ifdef _BSD
+#ifndef _BSD
 	close(iface->ayiya_fd);
 	iface->ayiya_fd = -1;
 #endif
