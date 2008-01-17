@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: thread.c,v 1.5 2006-03-02 13:53:33 jeroen Exp $
- $Date: 2006-03-02 13:53:33 $
+ $Id: thread.c,v 1.6 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd Thread Management 
 **************************************/
@@ -44,12 +44,12 @@ void thread_remove(struct sixxs_thread *thread)
 
 	if (t && t->thread_id == thread->thread_id)
 	{
-		mddolog("Thread 0x%x (%s) stopped\n", t->thread, t->description);
+		mddolog("Thread 0x%p (%s) stopped\n", (void *)t->thread, t->description);
 		free(t->description);
 		t->description = NULL;
 		free(t);
 	}
-	else mdolog(LOG_WARNING, "Thread 0x%x not found\n", thread);
+	else mdolog(LOG_WARNING, "Thread 0x%p not found\n", (void *)thread);
 
 	OS_Mutex_Release(&g_conf->mutex_thread, "thread_remove");
 }
@@ -116,7 +116,7 @@ void thread_add(const char *description, void *(*start_routine)(void *), void *a
 		g_conf->threads = t;
 	}
 
-	mddolog("Thread 0x%x (%s) started\n", t->thread, t->description);
+	mddolog("Thread 0x%p (%s) started\n", (void *)t->thread, t->description);
 
 	OS_Mutex_Release(&g_conf->mutex_thread, "thread_add");
 

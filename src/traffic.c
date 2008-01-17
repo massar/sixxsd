@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: traffic.c,v 1.6 2006-03-27 20:20:35 jeroen Exp $
- $Date: 2006-03-27 20:20:35 $
+ $Id: traffic.c,v 1.7 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd Traffic Handler
 **************************************/
@@ -286,7 +286,7 @@ void traffic_collect(void)
 void *traffic_thread(void UNUSED *arg);
 void *traffic_thread(void UNUSED *arg)
 {
-	time_t		tee;
+	time_t		t;
 	struct tm	teem;
 
 	/* Show that we have started */
@@ -305,8 +305,8 @@ void *traffic_thread(void UNUSED *arg)
 		}
 
 		/* Get the current time */
-		tee = time(NULL);
-		gmtime_r(&tee, &teem);
+		t = time(NULL);
+		gmtime_r(&t, &teem);
 
 		/* Sleep for the remaining time */
 		/* and thus run every 5 mins */

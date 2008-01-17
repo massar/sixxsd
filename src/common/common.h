@@ -2,12 +2,22 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.h,v 1.4 2006-12-21 12:40:47 jeroen Exp $
- $Date: 2006-12-21 12:40:47 $
+ $Id: common.h,v 1.5 2008-01-17 01:19:25 jeroen Exp $
+ $Date: 2008-01-17 01:19:25 $
 *****************************************************/
 
-void dologA(int level, const char *mod, const char *fmt, va_list ap);
-void dolog(int level, const char *mod, const char *fmt, ...);
+#ifndef ATTR_FORMAT
+#if defined(__GNUC__)
+#define ATTR_RESTRICT __restrict
+#define ATTR_FORMAT(type, x, y) __attribute__ ((format(type, x, y)))
+#else
+#define ATTR_FORMAT(type, x, y) /* nothing */
+#define ATTR_RESTRICT           /* nothing */
+#endif
+#endif
+
+void dologA(int level, const char *mod, const char *fmt, va_list ap) ATTR_FORMAT(printf, 3, 0);
+void dolog(int level, const char *mod, const char *fmt, ...) ATTR_FORMAT(printf, 3, 4);
 int huprunning(void);
 
 /* Module Logging shortcuts */
@@ -186,6 +196,6 @@ void socket_setnonblock(SOCKET sock);
 void socket_setblock(SOCKET sock);
 int use_uri(const char *mod, const char *uri, const char *defaultservice, struct socketpool *pool, unsigned int tag);
 int listen_server(const char *mod, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, unsigned int tag);
-void sock_printf(SOCKET sock, const char *fmt, ...);
+void sock_printf(SOCKET sock, const char *fmt, ...) ATTR_FORMAT(printf, 2, 3);
 int sock_getline(SOCKET sockfd, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen);
 

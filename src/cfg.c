@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.35 2006-12-21 12:47:53 jeroen Exp $
- $Date: 2006-12-21 12:47:53 $
+ $Id: cfg.c,v 1.36 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -26,7 +26,7 @@ struct cfg_client
 	SOCKET		socket;				/* Remote */
 };
 
-void cfg_log(int level, const char *fmt, ...);
+void cfg_log(int level, const char *fmt, ...) ATTR_FORMAT(printf, 2, 3);
 void cfg_log(int level, const char *fmt, ...)
 {
 	char	buf[1024];
@@ -41,7 +41,7 @@ void cfg_log(int level, const char *fmt, ...)
 	va_end(ap);
 	
 	/* Actually Log it */
-	mdolog(level, buf);
+	mdolog(level, "%s", buf);
 }
 
 /********************************************************************
@@ -167,7 +167,7 @@ bool cfg_pop_prefix_add(int sock, const char *args)
 		struct sixxs_interface *iface = int_get(0);
 		if (!iface)
 		{
-			sock_printf(sock, "-ERR Couldn't find the NULL interface for route %s\n", 0, args);
+			sock_printf(sock, "-ERR Couldn't find the NULL interface for route %s\n", args);
 			return false;
 		}
 
@@ -550,9 +550,9 @@ bool cfg_cmd_uptimeA(int sock, bool ok);
 bool cfg_cmd_uptimeA(int sock, bool ok)
 {
 	unsigned int	uptime_s, uptime_m, uptime_h, uptime_d;
-	time_t		tee = time(NULL);
+	time_t		t = time(NULL);
 
-	uptime_s  = tee - g_conf->starttime;
+	uptime_s  = t - g_conf->starttime;
 	uptime_d  = uptime_s / (24*60*60);
 	uptime_s -= uptime_d *  24*60*60;
 	uptime_h  = uptime_s / (60*60);
@@ -574,7 +574,7 @@ bool cfg_cmd_timeinfo(int sock, const char UNUSED *args);
 bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
 {
 	struct tm	teem;
-	time_t		tee = time(NULL);
+	time_t		t = time(NULL);
 	char		buf[128];
 
 	sock_printf(sock, "+OK Time Information following\n");
@@ -583,7 +583,7 @@ bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
 	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &teem);
 	sock_printf(sock, "Started: %s GMT\n", buf);
 
-	gmtime_r(&tee, &teem);
+	gmtime_r(&t, &teem);
 	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &teem);
 	sock_printf(sock, "Current: %s GMT\n", buf);
 
@@ -695,7 +695,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				c++;
 				continue;
 			}
-			sock_printf(sock, "Thread 0x%x : %s%s\n",
+			sock_printf(sock, "Thread 0x%p : %s%s\n",
 				(void *)t->thread, t->description,
 				OS_Thread_Equal(t->thread, thread) ? " (this)" : "");
 		}
@@ -780,7 +780,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 					gmtime_r(&iface->hb_lastbeat, &teem);
 					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
 					sock_printf(sock, "Last Beat             : %s (%u seconds ago)\n", buf1,
-										(now - iface->hb_lastbeat));
+										(unsigned int)(now - iface->hb_lastbeat));
 				}
 				else	sock_printf(sock, "Last Beat             : never\n");
 			}
@@ -792,7 +792,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				{
 					gmtime_r(&iface->lastalive, &teem);
 					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
-					sock_printf(sock, "Last Alive            : %s (%u seconds ago)\n", buf1, (now - iface->lastalive));
+					sock_printf(sock, "Last Alive            : %s (%u seconds ago)\n", buf1, (unsigned int)(now - iface->lastalive));
 				}
 				else	sock_printf(sock, "Last Alive            : never\n");
 
@@ -800,7 +800,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 				{
 					gmtime_r(&iface->prevdead, &teem);
 					strftime(buf1, sizeof(buf1), "%Y-%m-%d %H:%M:%S", &teem);
-					sock_printf(sock, "Previously Dead       : %s (%u seconds ago)\n", buf1, (now - iface->prevdead));
+					sock_printf(sock, "Previously Dead       : %s (%u seconds ago)\n", buf1, (unsigned int)(now - iface->prevdead));
 				}
 				else	sock_printf(sock, "Previously Dead       : never\n");
 
@@ -815,8 +815,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 					iface->synced_addr	? "ADDRESS"	: "address",
 					iface->synced_local	? "LOCAL"	: "local",
 					iface->synced_remote	? "REMOTE"	: "remote",
-					iface->synced_subnet	? "SUBNET"	: "subnet",
-					buf2);
+					iface->synced_subnet	? "SUBNET"	: "subnet");
 
 				sock_printf(sock, "\n");
 				sock_printf(sock, "Latency               : %.2f\n", iface->latency);
@@ -830,7 +829,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		}
 		else
 		{
-			sock_printf(sock, "No interface %u\n");
+			sock_printf(sock, "No interface %u\n", i);
 		}
 	}
 
@@ -981,7 +980,7 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 		}
 		OS_Mutex_Release(&g_conf->mutex_interfaces, "cfg_cmd_status");
 
-		sock_printf(sock, "Interfaces       : %u/%u\n", c, g_conf->max_interfaces, c);
+		sock_printf(sock, "Interfaces       : %u/%u\n", c, g_conf->max_interfaces);
 
 		c = 0;
 		OS_Mutex_Lock(&g_conf->mutex_prefixes, "cfg_cmd_status");

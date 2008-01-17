@@ -2,8 +2,8 @@
  SixXSd - Common Functions
 ******************************************************
  $Author: jeroen $
- $Id: common.c,v 1.8 2006-12-21 12:40:47 jeroen Exp $
- $Date: 2006-12-21 12:40:47 $
+ $Id: common.c,v 1.9 2008-01-17 01:19:25 jeroen Exp $
+ $Date: 2008-01-17 01:19:25 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -54,7 +54,7 @@ void dologA(int level, const char *mod, const char *fmt, va_list ap)
 
 #ifndef _WIN32
 	/* When daemonized and no logfile, log to syslog */
-	if (g_conf && g_conf->daemonize && !g_conf->logfile) syslog(LOG_LOCAL7|level, buf);
+	if (g_conf && g_conf->daemonize && !g_conf->logfile) syslog(LOG_LOCAL7|level, "%s", buf);
 	/* Otherwise, log to the logfile or stdout/stderr */
 	else
 	{
@@ -65,15 +65,15 @@ void dologA(int level, const char *mod, const char *fmt, va_list ap)
 		if (g_conf && g_conf->verbose)
 		{
 			fprintf(out, "[%6s : %9s] ",
-			level == LOG_DEBUG ?    "debug" :
-			(level == LOG_ERR ?     "error" :
-			(level == LOG_WARNING ? "warn" :
-			(level == LOG_NOTICE ?  "notice" :
-			(level == LOG_INFO ?    "info" : "(!?)")))),
-			mod);
+				level == LOG_DEBUG ?    "debug" :
+				(level == LOG_ERR ?     "error" :
+				(level == LOG_WARNING ? "warn" :
+				(level == LOG_NOTICE ?  "notice" :
+				(level == LOG_INFO ?    "info" : "(!?)")))),
+				mod);
 		}
 		else if (level == LOG_ERR) fprintf(out, "Error: ");
-		fprintf(out, buf);
+		fprintf(out, "%s", buf);
 #ifdef DEBUG
 		fflush(out);
 #endif

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: hb.c,v 1.13 2007-01-24 01:34:45 jeroen Exp $
- $Date: 2007-01-24 01:34:45 $
+ $Id: hb.c,v 1.14 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd Heartbeat code
 **************************************/
@@ -19,7 +19,7 @@ const char module_hb[] = "hb";
 #define CLOCK_OFF		120	/* The maximum time in seconds that the
 					   client clock is allowed to be off, thus use ntp synced clocks :) */
 
-void hb_log(int level, struct sockaddr_storage *ci, socklen_t cl, const char *fmt, ...);
+void hb_log(int level, struct sockaddr_storage *ci, socklen_t cl, const char *fmt, ...) ATTR_FORMAT(printf, 4, 5);
 void hb_log(int level, struct sockaddr_storage *ci, socklen_t cl, const char *fmt, ...)
 {
 	char	buf[1024];
@@ -46,7 +46,7 @@ void hb_log(int level, struct sockaddr_storage *ci, socklen_t cl, const char *fm
 	va_end(ap);
 	
 	/* Actually Log it */
-	mdolog(level, buf);
+	mdolog(level, "%s", buf);
 }
 
 void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl);
@@ -117,7 +117,7 @@ void hb_checkhb(char *buf, struct sockaddr_storage *ci, socklen_t cl)
 	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
-		hb_log(LOG_WARNING, ci, cl, "No IPv4 Endpoint found in \"%s\" from %s for %s\n", buf, ipv6_them);
+		hb_log(LOG_WARNING, ci, cl, "No IPv4 Endpoint found in \"%s\" from %s\n", buf, ipv6_them);
 		free(ipv6_them);
 		OS_Mutex_Release(&iface->mutex, "hb_checkhb");
 		return;
@@ -315,8 +315,7 @@ void *hb_thread(void UNUSED *arg)
 				))
 			{
 				buf[i] = 0;
-				hb_log(LOG_WARNING, &ci, cl,
-					"ignoring due to odd chars after \"%s\"\n", buf);
+				hb_log(LOG_WARNING, &ci, cl, "Ignoring packet due to odd chars after\n");
 				i = 0;
 				break;
 			}

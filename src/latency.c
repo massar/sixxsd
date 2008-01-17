@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: latency.c,v 1.1 2006-07-23 18:41:35 jeroen Exp $
- $Date: 2006-07-23 18:41:35 $
+ $Id: latency.c,v 1.2 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd Latency Handler
 **************************************/
@@ -177,7 +177,7 @@ void latency_collect(void)
 void *latency_thread(void UNUSED *arg);
 void *latency_thread(void UNUSED *arg)
 {
-	time_t		tee;
+	time_t		t;
 	struct tm	teem;
 
 	/* Show that we have started */
@@ -196,8 +196,8 @@ void *latency_thread(void UNUSED *arg)
 		}
 
 		/* Get the current time */
-		tee = time(NULL);
-		gmtime_r(&tee, &teem);
+		t = time(NULL);
+		gmtime_r(&t, &teem);
 
 		/* Sleep for the remaining time */
 		/* and thus run every 15 mins */

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.11 2008-01-16 17:30:34 jeroen Exp $
- $Date: 2008-01-16 17:30:34 $
+ $Id: os_bsd.c,v 1.12 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -23,14 +23,14 @@ int os_kernelsocket;
 bool os_initialized = false;
 
 /* OS Helper functions */
-void os_exec(const char *fmt, ...);
+void os_exec(const char *fmt, ...) ATTR_FORMAT(printf, 1, 2);
 void os_exec(const char *fmt, ...)
 {
 	char buf[1024];
 	va_list ap;
 	va_start(ap, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, ap);
-	mddolog("#### os_exec(\"%s\")\n", buf);
+	dolog(LOG_ERR, "os_bsd", "#### os_exec(\"%s\") ###\n", buf);
 	system(buf);
 	va_end(ap);
 }
@@ -825,7 +825,7 @@ void os_update_linkchange(struct if_announcemsghdr *ifan)
 	}
 
 	/* Unknown IFAN_* message */
-	mddolog("os_update_linkchange() called with unknown what %u with interface %p, ifan %u/%s\n", ifan->ifan_what, iface, ifan->ifan_index, ifan->ifan_name);
+	mddolog("os_update_linkchange() called with unknown what %u with interface %p, ifan %u/%s\n", ifan->ifan_what, (void *)iface, ifan->ifan_index, ifan->ifan_name);
 
 	if (iface) OS_Mutex_Release(&iface->mutex, "os_update_linkchange");
 	return;
@@ -1277,7 +1277,7 @@ void os_update_route(struct rt_msghdr *rtm)
 	flags = os_rtm_read(rtm, &dest, &dst_len, &gate);
 
 	/* Ignore IPv4 */
-	if (dest->sin6_family == AF_INET) return;
+	if (dest->sin6_family != AF_INET6) return;
 
 #ifdef RTF_CLONED
 	if (flags & RTF_CLONED) return;

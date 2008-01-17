@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.19 2007-01-24 01:35:02 jeroen Exp $
- $Date: 2007-01-24 01:35:02 $
+ $Id: interface.c,v 1.20 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd Interface Management 
 **************************************/
@@ -103,10 +103,10 @@ bool int_set_port(struct sixxs_interface *iface, unsigned int port)
 
 bool int_beat(struct sixxs_interface *iface)
 {
-	time_t tee = time(NULL);
+	time_t t = time(NULL);
 
 	/* Update the last heartbeat */
-	iface->hb_lastbeat = mktime(gmtime(&tee));
+	iface->hb_lastbeat = mktime(gmtime(&t));
 
 	/* Make it go up? (unless it is disabled) */
 	if (iface->state != IFSTATE_DISABLED)

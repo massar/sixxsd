@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.37 2007-01-24 01:35:57 jeroen Exp $
- $Date: 2007-01-24 01:35:57 $
+ $Id: os_linux.c,v 1.38 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -14,8 +14,10 @@
 const char module_os[] = "os_linux";
 #define module module_os
 
-#include <asm/types.h>
-#include <linux/netlink.h>
+#include <sys/types.h>
+
+typedef unsigned long long __u64;
+
 #include <linux/rtnetlink.h>
 #include <linux/if_tunnel.h>
 
@@ -33,7 +35,7 @@ struct nlsock os_netlink, os_netlink_cmd;
 bool os_initialized = false;
 
 /* OS Helper functions */
-void os_exec(const char *fmt, ...);
+void os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
 void os_exec(const char *fmt, ...)
 {
 	char buf[1024];

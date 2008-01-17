@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.26 2008-01-16 17:30:33 jeroen Exp $
- $Date: 2008-01-16 17:30:33 $
+ $Id: ayiya.c,v 1.27 2008-01-17 01:19:24 jeroen Exp $
+ $Date: 2008-01-17 01:19:24 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -45,19 +45,22 @@ struct ayiya_socket
 struct sockaddr_storage lastlogs[10];
 int log_last = 0;
 */
-void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen, const char *fmt, ...);
+void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen, const char *fmt, ...) ATTR_FORMAT(printf, 4, 5);
 void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen, const char *fmt, ...)
 {
-	char	buf[1024];
-	char	clienthost[NI_MAXHOST];
-	char	clientservice[NI_MAXSERV];
-	va_list	ap;
+	char		buf[1024];
+	char		clienthost[NI_MAXHOST];
+	char		clientservice[NI_MAXSERV];
+	va_list		ap;
+	unsigned int	i;
 
 	/* First check for ratelimiting */
 	if (level == LOG_ERR || level == LOG_WARNING)
 	{
 
 	}
+
+	return;
 
 	/* Clear them just in case */
 	memset(buf, 0, sizeof(buf));
@@ -77,14 +80,15 @@ void ayiya_log(int level, struct sockaddr_storage *clientaddr, socklen_t addrlen
 	
 	/* Print the host+port this is coming from */
 	snprintf(buf, sizeof(buf), "[%s]:%s : ", clienthost, clientservice);
+	i = strlen(buf);
 
 	/* Print the log message behind it */
 	va_start(ap, fmt);
-	vsnprintf(buf+strlen(buf), sizeof(buf)-strlen(buf), fmt, ap);
+	vsnprintf(&buf[i], sizeof(buf)-i, fmt, ap);
 	va_end(ap);
 	
 	/* Actually Log it */
-	mdolog(level, buf);
+	mdolog(level, "%s", buf);
 
 #if 0
 	/* Add this one */
