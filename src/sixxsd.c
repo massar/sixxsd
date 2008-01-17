@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.c,v 1.22 2007-05-27 16:56:30 jeroen Exp $
- $Date: 2007-05-27 16:56:30 $
+ $Id: sixxsd.c,v 1.23 2008-01-17 08:18:34 jeroen Exp $
+ $Date: 2008-01-17 08:18:34 $
 
  SixXSd main code
 **************************************/
@@ -321,7 +321,7 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[]);
 int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 #endif
 {
-	unsigned int loops = 0;
+	unsigned int loops = 0, i;
 
 	if (	!init() ||
 		!parse_arguments(argc,argv)) return -1;
@@ -343,8 +343,16 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 		mdolog(LOG_ERR, "Couldn't allocate memory for interfaces or prefixes");
 		return false;
 	}
+
 	memset(g_conf->interfaces, 0, g_conf->max_interfaces * sizeof(struct sixxs_interface));
 	memset(g_conf->prefixes, 0, g_conf->max_prefixes * sizeof(struct sixxs_prefix));
+
+	/* Init */
+	for (i=0; i < g_conf->max_interfaces; i++)
+	{
+		g_conf->interfaces[i].type = IFACE_UNSPEC;
+		g_conf->interfaces[i].ayiya_fd = -1;
+	}
 
 	/* Initialize the NULL interface */
 	strncpy(g_conf->interfaces[0].name, "null0", 5);
@@ -358,14 +366,14 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 	/* Daemonize */
 	if (g_conf->daemonize)
 	{
-		int i = fork();
-		if (i < 0)
+		int j = fork();
+		if (j < 0)
 		{
 			fprintf(stderr, "Couldn't fork\n");
 			return -1;
 		}
 		/* Exit the mother fork */
-		if (i != 0) return 0;
+		if (j != 0) return 0;
 
 		/* Child fork */
 		setsid();
