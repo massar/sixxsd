@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_linux.c,v 1.39 2008-01-17 01:24:19 jeroen Exp $
- $Date: 2008-01-17 01:24:19 $
+ $Id: os_linux.c,v 1.40 2008-02-18 21:32:37 jeroen Exp $
+ $Date: 2008-02-18 21:32:37 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -589,7 +589,6 @@ void netlink_update_link(struct nlmsghdr *h)
 	{
 		if (h->nlmsg_type == RTM_NEWLINK && (ifi->ifi_flags & IFF_UP))
 		{
-			
 			/* XXX - Remove interfaces we don't want to know about */
 			mddolog("%s interface %u/%s, remove it!\n", iface->type == IFACE_UNSPEC ? "Unknown" : "Down-marked", i, name);
 
