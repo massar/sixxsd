@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.13 2008-01-17 01:24:19 jeroen Exp $
- $Date: 2008-01-17 01:24:19 $
+ $Id: os_bsd.c,v 1.14 2008-02-18 21:33:11 jeroen Exp $
+ $Date: 2008-02-18 21:33:11 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -35,6 +35,58 @@ void os_exec(const char *fmt, ...)
 	va_end(ap);
 }
 
+/* call ioctl system call */
+int if_ioctl(int family, u_long request, caddr_t buffer);
+int if_ioctl(int family, u_long request, caddr_t buffer)
+{
+	int sock = 0;
+	int ret = 0;
+	int err = 0;
+
+	sock = socket(family, SOCK_DGRAM, 0);
+	if (sock < 0)
+	{
+		char buf[128];
+		memset(buf, 0, sizeof(buf));
+		strerror_r(errno, buf, sizeof(buf));
+		mdolog(LOG_ERR, "Couldn't create a socket for IOCTL's: %s (%d)\n", buf, errno);
+		exit(-1);
+	}
+
+	if ((ret = ioctl(sock, request, buffer)) < 0)
+	{
+		err = errno;
+	}
+	close (sock);
+
+	if (ret < 0)
+	{
+		errno = err;
+		return ret;
+	}
+	return 0;
+}
+
+
+/* get interface index number */
+unsigned int if_get_ifindex_byname(const char *iface);
+unsigned int if_get_ifindex_byname(const char *iface)
+{
+	struct ifreq ifreq;
+
+	memset(&ifreq, 0, sizeof(struct ifreq));
+	strncpy(ifreq.ifr_name, iface, IFNAMSIZ);
+
+	if (if_ioctl(AF_INET, SIOCGIFINDEX, (caddr_t)&ifreq) < 0)
+	{
+		mdolog(LOG_WARNING, "Can't lookup index of %s by ioctl(SIOCGIFINDEX)\n", iface);
+		return 0;
+	}
+
+	return ifreq.ifr_index;
+}
+
+
 /* Note: OpenBSD doesn't support renames */
 bool os_int_rename(struct sixxs_interface *iface, bool back)
 {
@@ -64,11 +116,18 @@ bool os_int_rename(struct sixxs_interface *iface, bool back)
 
 		if (ioctl(s, SIOCSIFNAME, &ifr) != 0)
 		{
-			memset(desc, 0, sizeof(desc));
-			strerror_r(errno, desc, sizeof(desc));
-			mdolog(LOG_ERR, "Couldn't set %sinterface name of tun%u to %s/%u: %s (%d)\n", back ? "back " : "", iface->interface_id, iface->name, iface->kernel_ifindex, desc, errno);
-			close(s);
-			return false;
+			if (back) snprintf(tmp, sizeof(tmp), "tun%u", iface->interface_id);
+			else snprintf(tmp, sizeof(tmp), "gif%u", iface->interface_id);
+
+			/* Check if the name is already correct */
+			if (if_get_ifindex_byname(tmp) == 0)
+			{
+				memset(desc, 0, sizeof(desc));
+				strerror_r(errno, desc, sizeof(desc));
+				mdolog(LOG_ERR, "Couldn't set %sinterface name of tun%u to %s/%u: %s (%d)\n", back ? "back " : "", iface->interface_id, iface->name, iface->kernel_ifindex, desc, errno);
+				close(s);
+				return false;
+			}
 		}
 	}
 	else
@@ -79,6 +138,7 @@ bool os_int_rename(struct sixxs_interface *iface, bool back)
 		close(s);
 		return false;
 	}
+
 	close(s);
 #endif
 
@@ -119,38 +179,6 @@ void ifreq_set_name(struct ifreq *ifreq, struct sixxs_interface *iface)
 	else mddolog("ifreq_set_name() got passed a NULL iface\n");
 }
 
-/* call ioctl system call */
-int if_ioctl(int family, u_long request, caddr_t buffer);
-int if_ioctl(int family, u_long request, caddr_t buffer)
-{
-	int sock = 0;
-	int ret = 0;
-	int err = 0;
-
-	sock = socket(family, SOCK_DGRAM, 0);
-	if (sock < 0)
-	{
-		char buf[128];
-		memset(buf, 0, sizeof(buf));
-		strerror_r(errno, buf, sizeof(buf));
-		mdolog(LOG_ERR, "Couldn't create a socket for IOCTL's: %s (%d)\n", buf, errno);
-		exit(-1);
-	}
-
-	if ((ret = ioctl(sock, request, buffer)) < 0)
-	{
-		err = errno;
-	}
-	close (sock);
-
-	if (ret < 0)
-	{
-		errno = err;
-		return ret;
-	}
-	return 0;
-}
-
 /* get interface flags */
 void if_get_flags(struct sixxs_interface *iface);
 void if_get_flags(struct sixxs_interface *iface)
@@ -177,23 +205,6 @@ void if_get_flags(struct sixxs_interface *iface)
 		return;
 	}
 	iface->kernel_flags = ifreq.ifr_flags & 0x0000ffff;
-}
-
-/* get interface index number */
-unsigned int if_get_ifindex_byname(const char *iface);
-unsigned int if_get_ifindex_byname(const char *iface)
-{
-	struct ifreq ifreq;
-
-	memset(&ifreq, 0, sizeof(struct ifreq));
-	strncpy(ifreq.ifr_name, iface, IFNAMSIZ);
-
-	if (if_ioctl(AF_INET, SIOCGIFMTU, (caddr_t)&ifreq) < 0)
-	{
-		mdolog(LOG_WARNING, "Can't lookup mtu by ioctl(SIOCGIFMTU)\n");
-		return 0;
-	}
-	return ifreq.ifr_mtu;
 }
 
 /* get interface index number */
@@ -844,6 +855,8 @@ void os_update_link(struct if_msghdr *ifm)
 	unsigned int		i, kernel_mtu = 0;
 	char			ifname[IFNAMSIZ];
 	unsigned char		*cp;
+
+	ifname[0] = '\0';
 
 	/* paranoia: sanity check structure */
 	if (ifm->ifm_msglen < sizeof(struct if_msghdr))
