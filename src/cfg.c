@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: cfg.c,v 1.37 2008-02-12 10:55:20 jeroen Exp $
- $Date: 2008-02-12 10:55:20 $
+ $Id: cfg.c,v 1.38 2008-02-18 21:33:42 jeroen Exp $
+ $Date: 2008-02-18 21:33:42 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -188,7 +188,7 @@ bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length)
 	bool			ret = false;
 
 	/* We don't manage the PoP address */
-	if (pfx_issubnet(prefix, length, &g_conf->pop_ipv6, 128)) return false; 
+	if (pfx_issubnet(prefix, length, &g_conf->pop_ipv6, 64)) return false; 
 
 	OS_Mutex_Lock(&g_conf->mutex_pop_prefixes, "cfg_pop_prefix_check");
 
