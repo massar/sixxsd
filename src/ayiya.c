@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.30 2008-01-17 09:19:44 jeroen Exp $
- $Date: 2008-01-17 09:19:44 $
+ $Id: ayiya.c,v 1.31 2008-03-06 23:13:51 jeroen Exp $
+ $Date: 2008-03-06 23:13:51 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -370,6 +370,13 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		return;
 	}
 
+	if (s->ayh.ayh_nextheader == IPPROTO_IPV6 && ((s->payload[0] >> 4) != 0x6))
+	{
+		ayiya_log(LOG_ERR, ci, cl, "[incoming] Received an AYIYA packet on %s/%u claiming to carry IPv6 traffic, but actually transmitting something else (IPv%u %02x)\n", iface->name, iface->interface_id, s->payload[0] >> 4, s->payload[0]);
+		return;
+	}
+
+
 	/* Verify the epochtime */
 	i = ayiya_checktime(ntohl(s->ayh.ayh_epochtime));
 	if (i != 0)
@@ -457,10 +464,10 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 			dat[0].iov_len  = sizeof(type);
 			dat[1].iov_base = s->payload;
 			dat[1].iov_len  = payloadlen;
+#endif
 
 			/* Forward the packet to the kernel */
 			i = writev(iface->ayiya_fd, dat, 2);
-#endif
 		}
 		else
 		{
