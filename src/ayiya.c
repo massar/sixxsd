@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.31 2008-03-06 23:13:51 jeroen Exp $
- $Date: 2008-03-06 23:13:51 $
+ $Id: ayiya.c,v 1.32 2008-03-07 12:27:02 jeroen Exp $
+ $Date: 2008-03-07 12:27:02 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -373,6 +373,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 	if (s->ayh.ayh_nextheader == IPPROTO_IPV6 && ((s->payload[0] >> 4) != 0x6))
 	{
 		ayiya_log(LOG_ERR, ci, cl, "[incoming] Received an AYIYA packet on %s/%u claiming to carry IPv6 traffic, but actually transmitting something else (IPv%u %02x)\n", iface->name, iface->interface_id, s->payload[0] >> 4, s->payload[0]);
+		OS_Mutex_Release(&iface->mutex, "ayiya_process_incoming");
 		return;
 	}
 
