@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.32 2008-03-07 12:27:02 jeroen Exp $
- $Date: 2008-03-07 12:27:02 $
+ $Id: ayiya.c,v 1.33 2008-03-15 18:28:08 jeroen Exp $
+ $Date: 2008-03-15 18:28:08 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -325,7 +325,8 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		s->ayh.ayh_siglen != 5 ||
 		s->ayh.ayh_hshmeth != ayiya_hash_sha1 ||
 		s->ayh.ayh_autmeth != ayiya_auth_sharedsecret ||
-		(s->ayh.ayh_nextheader != IPPROTO_IPV6 &&
+		(s->ayh.ayh_nextheader != IPPROTO_IPV4 &&
+		 s->ayh.ayh_nextheader != IPPROTO_IPV6 &&
 		 s->ayh.ayh_nextheader != IPPROTO_NONE) ||
 		(s->ayh.ayh_opcode != ayiya_op_noop &&
 		 s->ayh.ayh_opcode != ayiya_op_forward &&
@@ -377,6 +378,12 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 		return;
 	}
 
+	if (s->ayh.ayh_nextheader == IPPROTO_IPV4 && ((s->payload[0] >> 4) != 0x4))
+	{
+		ayiya_log(LOG_ERR, ci, cl, "[incoming] Received an AYIYA packet on %s/%u claiming to carry IPv4 traffic, but actually transmitting something else (IPv%u %02x)\n", iface->name, iface->interface_id, s->payload[0] >> 4, s->payload[0]);
+		OS_Mutex_Release(&iface->mutex, "ayiya_process_incoming");
+		return;
+	}
 
 	/* Verify the epochtime */
 	i = ayiya_checktime(ntohl(s->ayh.ayh_epochtime));
