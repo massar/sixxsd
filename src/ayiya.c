@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.34 2008-03-16 15:33:08 jeroen Exp $
- $Date: 2008-03-16 15:33:08 $
+ $Id: ayiya.c,v 1.35 2008-03-16 15:42:45 jeroen Exp $
+ $Date: 2008-03-16 15:42:45 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -512,8 +512,10 @@ void *ayiya_thread(void *arg)
 	/* Clear the lastlog table */
 /*	memset(&lastlogs, 0, sizeof(lastlogs)); */
 
+	inet_ntop(AF_INET, &g_conf->pop_ipv4, buf, sizeof(buf));
+
 	/* Setup listening socket */
-	s = listen_server("ayiya", NULL, as->sport, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
+	s = listen_server("ayiya", buf, as->sport, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
 	if (s < 0)
 	{
 		mdolog(LOG_ERR, "listen_server error:: could not create listening socket\n");
