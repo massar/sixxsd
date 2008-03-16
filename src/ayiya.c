@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.33 2008-03-15 18:28:08 jeroen Exp $
- $Date: 2008-03-15 18:28:08 $
+ $Id: ayiya.c,v 1.34 2008-03-16 15:33:08 jeroen Exp $
+ $Date: 2008-03-16 15:33:08 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -449,13 +449,14 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 
 	if (s->ayh.ayh_opcode == ayiya_op_forward)
 	{
-		if (s->ayh.ayh_nextheader == IPPROTO_IPV6)
+		if (	s->ayh.ayh_nextheader == IPPROTO_IPV6 ||
+			s->ayh.ayh_nextheader == IPPROTO_IPV4)
 		{
 #ifdef _LINUX
 			struct iovec	dat[2];
 			struct tun_pi	pi;
 
-			pi.proto = htons(ETH_P_IPV6);
+			pi.proto = htons(s->ayh.ayh_nextheader == IPPROTO_IPV6 ? ETH_P_IPV6 : ETH_P_IPV4);
 
 			dat[0].iov_base = &pi;
 			dat[0].iov_len  = sizeof(pi);
@@ -465,7 +466,7 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 			/* Forward the packet to the kernel */
 			i = writev(iface->ayiya_fd, dat, 2);
 #else
-			uint32_t	type = htonl(AF_INET6);
+			uint32_t	type = htonl(s->ayh.ayh_nextheader == IPPROTO_IPV6 ? AF_INET6 : AF_INET);
 			struct iovec	dat[2];
 
 			dat[0].iov_base = &type;
@@ -473,6 +474,8 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 			dat[1].iov_base = s->payload;
 			dat[1].iov_len  = payloadlen;
 #endif
+
+			ayiya_log(LOG_DEBUG, ci, cl, "[incoming] Forwarding %u bytes with nextheader %u\n", payloadlen, s->ayh.ayh_nextheader);
 
 			/* Forward the packet to the kernel */
 			i = writev(iface->ayiya_fd, dat, 2);

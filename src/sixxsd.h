@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: sixxsd.h,v 1.25 2008-03-15 18:28:08 jeroen Exp $
- $Date: 2008-03-15 18:28:08 $
+ $Id: sixxsd.h,v 1.26 2008-03-16 15:33:08 jeroen Exp $
+ $Date: 2008-03-16 15:33:08 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -122,6 +122,10 @@
 #endif
 #ifndef IPPROTO_IPV4
 #define IPPROTO_IPV4		IPPROTO_IP
+#endif
+
+#ifndef ETH_P_IPV4
+#define ETH_P_IPV4		ETH_P_IP
 #endif
 
 #ifndef SOL_IPV6
