@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.35 2008-03-16 15:42:45 jeroen Exp $
- $Date: 2008-03-16 15:42:45 $
+ $Id: ayiya.c,v 1.36 2008-03-17 14:50:18 jeroen Exp $
+ $Date: 2008-03-17 14:50:18 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -463,8 +463,6 @@ void ayiya_process_incoming(char *header, unsigned int length, struct sockaddr_s
 			dat[1].iov_base = s->payload;
 			dat[1].iov_len  = payloadlen;
 
-			/* Forward the packet to the kernel */
-			i = writev(iface->ayiya_fd, dat, 2);
 #else
 			uint32_t	type = htonl(s->ayh.ayh_nextheader == IPPROTO_IPV6 ? AF_INET6 : AF_INET);
 			struct iovec	dat[2];
