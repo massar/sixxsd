@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: ayiya.c,v 1.36 2008-03-17 14:50:18 jeroen Exp $
- $Date: 2008-03-17 14:50:18 $
+ $Id: ayiya.c,v 1.37 2008-05-15 15:17:33 jeroen Exp $
+ $Date: 2008-05-15 15:17:33 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -178,9 +178,41 @@ void *ayiya_process_outgoing(void *arg)
 			continue;
 		}
 
-		/* tun_pi struct */
+#ifdef _LINUX
+		s.ayh.ayh_nextheader = ((struct tun_pi *)&(s.payload))->proto;
+		if (s.ayh.ayh_nextheader != IPPROTO_IPV6 && s.ayh.ayh_nextheader != IPPROTO_IPV4)
+		{
+			mdolog(LOG_ERR, "[outgoing] Not forwarding IP protocol %u over %s/%u\n", s.ayh.ayh_nextheader, iface->name, iface->interface_id);
+			continue;
+		}
+
+#else
+		s.ayh.ayh_nextheader = ntohl(*(uint32_t *)&(s.payload));
+		if (s.ayh.ayh_nextheader == AF_INET) s.ayh.ayh_nextheader = IPPROTO_IPV4;
+		else if (s.ayh.ayh_nextheader == AF_INET6) s.ayh.ayh_nextheader = IPPROTO_IPV6;
+		else
+		{
+			mdolog(LOG_ERR, "[outgoing] Not forwarding unknown AF protocol %u over %s/%u\n", s.ayh.ayh_nextheader, iface->name, iface->interface_id);
+			continue;
+		}
+#endif
+
+		/* Get the "struct tun_pi" out of the way */
 		memmove(&s.payload, &s.payload[4], lenin-4);
 		lenin-=4;
+
+		/* Check if the protocol is correct */
+		if (s.ayh.ayh_nextheader == IPPROTO_IPV6 && ((s.payload[0] >> 4) != 0x6))
+		{
+			mdolog(LOG_ERR, "[outgoing] Trying to forward an AYIYA packet on %s/%u claiming to carry IPv6 traffic, but actually transmitting something else (IPv%u %02x)\n", iface->name, iface->interface_id, s.payload[0] >> 4, s.payload[0]);
+			continue;
+		}
+
+		if (s.ayh.ayh_nextheader == IPPROTO_IPV4 && ((s.payload[0] >> 4) != 0x4))
+		{
+			mdolog(LOG_ERR, "[outgoing] Trying to forward an AYIYA packet on %s/%u claiming to carry IPv4 traffic, but actually transmitting something else (IPv%u %02x)\n", iface->name, iface->interface_id, s.payload[0] >> 4, s.payload[0]);
+			continue;
+		}
 
 		/*
 		 * Check if the tunnel has a remote address
@@ -222,7 +254,7 @@ void *ayiya_process_outgoing(void *arg)
 		target.sin_port = htons(iface->ayiya_port);
 		memcpy(&target.sin_addr, &iface->ipv4_them, sizeof(target.sin_addr));
 
-		/* Send it onto the network */
+		/* Figure out the right socket to send from */
 		lenin = sizeof(s)-sizeof(s.payload)+lenin;
 		for (i=0; ayiya_socket[i].title; i++)
 		{
@@ -230,6 +262,7 @@ void *ayiya_process_outgoing(void *arg)
 			break;
 		}
 
+		/* Do we have a source socket? */
 		if (!ayiya_socket[i].title)
 		{
 			/* No such interface!? */
@@ -237,6 +270,7 @@ void *ayiya_process_outgoing(void *arg)
 			break;
 		}
 
+		/* Send it to the network */
 		lenout = sendto(ayiya_socket[i].socket, &s, lenin, 0, (struct sockaddr *)&target, sizeof(target));
 		if (lenout < 0)
 		{
@@ -251,6 +285,7 @@ void *ayiya_process_outgoing(void *arg)
 			mdolog(LOG_ERR, "[outgoing] %s/%u Only %u of %u bytes sent to network: %s (%d)\n", iface->name, iface->interface_id, lenout, lenin, (char *)hash, errno);
 		}
 	}
+
 	return NULL;
 }
 
