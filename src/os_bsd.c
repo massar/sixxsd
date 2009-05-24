@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: os_bsd.c,v 1.14 2008-02-18 21:33:11 jeroen Exp $
- $Date: 2008-02-18 21:33:11 $
+ $Id: os_bsd.c,v 1.15 2009-05-24 10:51:27 jeroen Exp $
+ $Date: 2009-05-24 10:51:27 $
 
  SixXSd - BSD specific code
 **************************************/
@@ -1528,7 +1528,7 @@ int os_socket(void)
 		return -1;
 	}
 
-	socket_setblock(sock);
+	socket_setblockA(sock);
 
 	return sock;
 }
