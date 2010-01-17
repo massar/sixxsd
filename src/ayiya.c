@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: jeroen $
- $Id: ayiya.c,v 1.37 2008-05-15 15:17:33 jeroen Exp $
- $Date: 2008-05-15 15:17:33 $
+ $Author: pim $
+ $Id: ayiya.c,v 1.38 2010-01-17 23:09:28 pim Exp $
+ $Date: 2010-01-17 23:09:28 $
 
  SixXSd AYIYA (Anything in Anything) code
 **************************************/
@@ -179,10 +179,12 @@ void *ayiya_process_outgoing(void *arg)
 		}
 
 #ifdef _LINUX
-		s.ayh.ayh_nextheader = ((struct tun_pi *)&(s.payload))->proto;
-		if (s.ayh.ayh_nextheader != IPPROTO_IPV6 && s.ayh.ayh_nextheader != IPPROTO_IPV4)
+		i = ntohs(((struct tun_pi *)&(s.payload))->proto);
+		if (i == ETH_P_IP) s.ayh.ayh_nextheader = IPPROTO_IPV4;
+		else if (i == ETH_P_IPV6) s.ayh.ayh_nextheader = IPPROTO_IPV6;
+		else
 		{
-			mdolog(LOG_ERR, "[outgoing] Not forwarding IP protocol %u over %s/%u\n", s.ayh.ayh_nextheader, iface->name, iface->interface_id);
+			mdolog(LOG_ERR, "[outgoing] Not forwarding IP protocol 0x%04x over %s/%u\n", i, iface->name, iface->interface_id);
 			continue;
 		}
 
@@ -192,7 +194,7 @@ void *ayiya_process_outgoing(void *arg)
 		else if (s.ayh.ayh_nextheader == AF_INET6) s.ayh.ayh_nextheader = IPPROTO_IPV6;
 		else
 		{
-			mdolog(LOG_ERR, "[outgoing] Not forwarding unknown AF protocol %u over %s/%u\n", s.ayh.ayh_nextheader, iface->name, iface->interface_id);
+			mdolog(LOG_ERR, "[outgoing] Not forwarding unknown AF protocol 0%04x over %s/%u\n", s.ayh.ayh_nextheader, iface->name, iface->interface_id);
 			continue;
 		}
 #endif

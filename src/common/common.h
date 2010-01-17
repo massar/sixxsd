@@ -1,9 +1,9 @@
 /*****************************************************
  SixXSd - Common Functions
 ******************************************************
- $Author: jeroen $
- $Id: common.h,v 1.5 2008-01-17 01:19:25 jeroen Exp $
- $Date: 2008-01-17 01:19:25 $
+ $Author: pim $
+ $Id: common.h,v 1.6 2010-01-17 23:09:31 pim Exp $
+ $Date: 2010-01-17 23:09:31 $
 *****************************************************/
 
 #ifndef ATTR_FORMAT
@@ -29,7 +29,7 @@ int huprunning(void);
 #define ddolog(level, ...) {}
 #define mddolog(...) {}
 #endif
-bool openlogfile(const char *name);
+bool openlogfile(const char *module, const char *name);
 void closelogfile(void);
 
 /* Parsing functions */
@@ -159,7 +159,7 @@ const char *inet_ntop(int af, const void *src, char *dst, socklen_t cnt);
 struct socketnode
 {
 	struct hnode		node;
-	SOCKET			socket;				/* The socket(tm) */
+	TLSSOCKET		socket;				/* The socket(tm) */
 	unsigned int		tag;				/* Tag for identification */
 	char			buf[8192];			/* 8kb of bufferspace */
 	unsigned int		filled;				/* How far the buffer has been filled */
@@ -192,10 +192,15 @@ int sn_getline(struct socketnode *sn, char *ubuf, unsigned int ubuflen);
 
 /* Networking functions */
 void socket_cleanss(struct sockaddr_storage *addr);
-void socket_setnonblock(SOCKET sock);
-void socket_setblock(SOCKET sock);
+
+void socket_setnonblock(TLSSOCKET *sock);
+void socket_setblock(TLSSOCKET *sock);
+void socket_setnonblockA(SOCKET sock);
+void socket_setblockA(SOCKET sock);
+
 int use_uri(const char *mod, const char *uri, const char *defaultservice, struct socketpool *pool, unsigned int tag);
+TLSSOCKET *connect_client(const char *module, const char *hostname, const char *service, int family, int socktype);
 int listen_server(const char *mod, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, unsigned int tag);
-void sock_printf(SOCKET sock, const char *fmt, ...) ATTR_FORMAT(printf, 2, 3);
-int sock_getline(SOCKET sockfd, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen);
+void sock_printf(TLSSOCKET *sock, const char *fmt, ...) ATTR_FORMAT(printf, 2, 3);
+int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen);
 

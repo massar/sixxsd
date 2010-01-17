@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: jeroen $
- $Id: sixxsd.h,v 1.26 2008-03-16 15:33:08 jeroen Exp $
- $Date: 2008-03-16 15:33:08 $
+ $Author: pim $
+ $Id: sixxsd.h,v 1.27 2010-01-17 23:09:28 pim Exp $
+ $Date: 2010-01-17 23:09:28 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -151,6 +151,17 @@
 #ifndef _WIN32
 
 #define SOCKET			int
+
+struct tlssocket
+{
+	SOCKET			socket;
+#ifdef SIXXSD_GNUTLS
+	bool			tls_active;	/* TLS active? */
+	gnutls_session		session;	/* The GnuTLS sesision */
+#endif
+};
+
+typedef struct tlssocket	TLSSOCKET;
 #define closesocket(s)		close(s)
 
 typedef pthread_t		os_thread;

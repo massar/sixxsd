@@ -2,9 +2,9 @@
 #  SixXSd - The SixXS PoP Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
 # *******************************************
-# $Author: jeroen $
-# $Id: Makefile,v 1.32 2008-05-15 15:17:31 jeroen Exp $
-# $Date: 2008-05-15 15:17:31 $
+# $Author: pim $
+# $Id: Makefile,v 1.33 2010-01-17 23:09:27 pim Exp $
+# $Date: 2010-01-17 23:09:27 $
 # ******************************************/
 #
 # Toplevel Makefile allowing easy distribution.
@@ -46,7 +46,7 @@ HOSTNAME:=$(shell hostname)
 endif
 
 # Pass the buildinfo so we can show that in the executable
-PROJECT_OPTIONS+=-D'BUILDINFO="$(PROJECT) version $(PROJECT_VERSION) ($(shell whoami)@$(HOSTNAME) ($(shell $(CC) -v 2>&1 | grep version)) \#1 $(shell date)"'
+PROJECT_OPTIONS+=-D'BUILDINFO="$(PROJECT) version $(PROJECT_VERSION) ($(shell id | cut -f2 -d'(' | cut -f1 -d')')@$(HOSTNAME) ($(shell $(CC) -v 2>&1 | grep "gcc version" | tr -d \')) \#1 $(shell date)"'
 
 # Do not print "Entering directory ..."
 MAKEFLAGS += --no-print-directory

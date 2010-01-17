@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: jeroen $
- $Id: cfg.c,v 1.38 2008-02-18 21:33:42 jeroen Exp $
- $Date: 2008-02-18 21:33:42 $
+ $Author: pim $
+ $Id: cfg.c,v 1.39 2010-01-17 23:09:28 pim Exp $
+ $Date: 2010-01-17 23:09:28 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -23,7 +23,7 @@ struct cfg_client
 	char		clientservice[NI_MAXSERV];
 	uint8_t		family;
 	char		__pad[2];
-	SOCKET		socket;				/* Remote */
+	TLSSOCKET	socket;				/* Remote */
 };
 
 void cfg_log(int level, const char *fmt, ...) ATTR_FORMAT(printf, 2, 3);
@@ -47,15 +47,15 @@ void cfg_log(int level, const char *fmt, ...)
 /********************************************************************
   PoP Commands
 ********************************************************************/
-bool cfg_cmd_pop(int sock, const char UNUSED *args);
-bool cfg_cmd_pop(int sock, const char UNUSED *args)
+bool cfg_cmd_pop(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_pop(TLSSOCKET *sock, const char UNUSED *args)
 {
 	sock_printf(sock, "+OK PoP Configuration accepted\n");
 	return true;
 }
 
-bool cfg_cmd_pop_name(int sock, const char *args);
-bool cfg_cmd_pop_name(int sock, const char *args)
+bool cfg_cmd_pop_name(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_name(TLSSOCKET *sock, const char *args)
 {
 	if (g_conf->pop_name) free(g_conf->pop_name);
 	g_conf->pop_name = strdup(args);
@@ -63,8 +63,8 @@ bool cfg_cmd_pop_name(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_ipv4(int sock, const char *args);
-bool cfg_cmd_pop_ipv4(int sock, const char *args)
+bool cfg_cmd_pop_ipv4(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_ipv4(TLSSOCKET *sock, const char *args)
 {
 	if (!inet_pton(AF_INET, args, &g_conf->pop_ipv4))
 	{
@@ -75,8 +75,8 @@ bool cfg_cmd_pop_ipv4(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_ipv6(int sock, const char *args);
-bool cfg_cmd_pop_ipv6(int sock, const char *args)
+bool cfg_cmd_pop_ipv6(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_ipv6(TLSSOCKET *sock, const char *args)
 {
 	if (!inet_pton(AF_INET6, args, &g_conf->pop_ipv6))
 	{
@@ -117,8 +117,8 @@ bool cfg_stringtoprefix(const char *string, struct in6_addr *prefix, unsigned in
 	return ret;
 }
 
-bool cfg_pop_prefix_add(int sock, const char *args);
-bool cfg_pop_prefix_add(int sock, const char *args)
+bool cfg_pop_prefix_add(TLSSOCKET *sock, const char *args);
+bool cfg_pop_prefix_add(TLSSOCKET *sock, const char *args)
 {
 	struct sixxs_pop_prefix	*pp, *pn;
 	bool			found = false;
@@ -206,20 +206,20 @@ bool cfg_pop_prefix_check(struct in6_addr *prefix, unsigned int length)
 	return ret;
 }
 
-bool cfg_cmd_pop_tunnelprefix(int sock, const char *args);
-bool cfg_cmd_pop_tunnelprefix(int sock, const char *args)
+bool cfg_cmd_pop_tunnelprefix(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_tunnelprefix(TLSSOCKET *sock, const char *args)
 {
 	return cfg_pop_prefix_add(sock, args);
 }
 
-bool cfg_cmd_pop_subnetprefix(int sock, const char *args);
-bool cfg_cmd_pop_subnetprefix(int sock, const char *args)
+bool cfg_cmd_pop_subnetprefix(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_subnetprefix(TLSSOCKET *sock, const char *args)
 {
 	return cfg_pop_prefix_add(sock, args);
 }
 
-bool cfg_cmd_pop_tunneldevice(int sock, const char *args);
-bool cfg_cmd_pop_tunneldevice(int sock, const char *args)
+bool cfg_cmd_pop_tunneldevice(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_tunneldevice(TLSSOCKET *sock, const char *args)
 {
 	if (g_conf->pop_tunneldevice) free(g_conf->pop_tunneldevice);
 	g_conf->pop_tunneldevice = strdup(args);
@@ -227,8 +227,8 @@ bool cfg_cmd_pop_tunneldevice(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_ignoredevices(int sock, const char *args);
-bool cfg_cmd_pop_ignoredevices(int sock, const char *args)
+bool cfg_cmd_pop_ignoredevices(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_ignoredevices(TLSSOCKET *sock, const char *args)
 {
 	if (g_conf->pop_ignoredevices) free(g_conf->pop_ignoredevices);
 	g_conf->pop_ignoredevices = strdup(args);
@@ -236,8 +236,8 @@ bool cfg_cmd_pop_ignoredevices(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_hb_supported(int sock, const char *args);
-bool cfg_cmd_pop_hb_supported(int sock, const char *args)
+bool cfg_cmd_pop_hb_supported(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_hb_supported(TLSSOCKET *sock, const char *args)
 {
 	if (strcmp(args, "Y") == 0) g_conf->pop_hb_supported = true;
 	else g_conf->pop_hb_supported = false;
@@ -245,24 +245,24 @@ bool cfg_cmd_pop_hb_supported(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_hb_sendinterval(int sock, const char *args);
-bool cfg_cmd_pop_hb_sendinterval(int sock, const char *args)
+bool cfg_cmd_pop_hb_sendinterval(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_hb_sendinterval(TLSSOCKET *sock, const char *args)
 {
 	g_conf->pop_hb_sendinterval = atoi(args);
 	sock_printf(sock, "+OK PoP Heartbeat Send Interval now %d\n",  g_conf->pop_hb_sendinterval);
 	return true;
 }
 
-bool cfg_cmd_pop_hb_timeout(int sock, const char *args);
-bool cfg_cmd_pop_hb_timeout(int sock, const char *args)
+bool cfg_cmd_pop_hb_timeout(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_hb_timeout(TLSSOCKET *sock, const char *args)
 {
 	g_conf->pop_hb_timeout = atoi(args);
 	sock_printf(sock, "+OK PoP Heartbeat Timeout now %u\n",  g_conf->pop_hb_timeout);
 	return true;
 }
 
-bool cfg_cmd_pop_tinc_supported(int sock, const char *args);
-bool cfg_cmd_pop_tinc_supported(int sock, const char *args)
+bool cfg_cmd_pop_tinc_supported(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_tinc_supported(TLSSOCKET *sock, const char *args)
 {
 	if (strcmp(args, "Y") == 0) g_conf->pop_tinc_supported = true;
 	else g_conf->pop_tinc_supported = false;
@@ -270,8 +270,8 @@ bool cfg_cmd_pop_tinc_supported(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_tinc_device(int sock, const char *args);
-bool cfg_cmd_pop_tinc_device(int sock, const char *args)
+bool cfg_cmd_pop_tinc_device(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_tinc_device(TLSSOCKET *sock, const char *args)
 {
 	if (g_conf->pop_tinc_device) free(g_conf->pop_tinc_device);
 	g_conf->pop_tinc_device = strdup(args);
@@ -279,8 +279,8 @@ bool cfg_cmd_pop_tinc_device(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_tinc_config(int sock, const char *args);
-bool cfg_cmd_pop_tinc_config(int sock, const char *args)
+bool cfg_cmd_pop_tinc_config(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_tinc_config(TLSSOCKET *sock, const char *args)
 {
 	if (g_conf->pop_tinc_config) free(g_conf->pop_tinc_config);
 	g_conf->pop_tinc_config = strdup(args);
@@ -293,8 +293,8 @@ bool cfg_cmd_pop_tinc_config(int sock, const char *args)
  * "tunnel <devicenumber> <ipv6_us> <ipv6_them> <ipv6_prefixlen> <ipv4_us> <ipv4_them|heartbeat|tinc|ayiya> <up|disabled|down> <mtu> [<heartbeatpassword>]"
  * Note: ipv4_us is ignored, should be the same everywhere
  */
-bool cfg_cmd_tunnel(int sock, const char *args);
-bool cfg_cmd_tunnel(int sock, const char *args)
+bool cfg_cmd_tunnel(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_tunnel(TLSSOCKET *sock, const char *args)
 {
 	unsigned int		fields = countfields(args);
 	char			buf[1024];
@@ -441,8 +441,8 @@ bool cfg_cmd_tunnel(int sock, const char *args)
  * ROUTE
  * "route <prefix>/<prefixlen> <nexthop> <up|disabled|down> <static|bgp>"
  */
-bool cfg_cmd_route(int sock, const char *args);
-bool cfg_cmd_route(int sock, const char *args)
+bool cfg_cmd_route(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_route(TLSSOCKET *sock, const char *args)
 {
 	char			buf[1024], pfix[64];
 	unsigned int		fields = countfields(args), length = 128, id;
@@ -536,11 +536,11 @@ bool cfg_cmd_route(int sock, const char *args)
 }
 
 /* MISC */
-bool cfg_cmd_help(int sock, const char *args);
+bool cfg_cmd_help(TLSSOCKET *sock, const char *args);
 /* Defined after cfg_cmds */
 
-bool cfg_cmd_version(int sock, const char UNUSED *args);
-bool cfg_cmd_version(int sock, const char UNUSED *args)
+bool cfg_cmd_version(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_version(TLSSOCKET *sock, const char UNUSED *args)
 {
 	struct utsname uts_name;
 
@@ -549,8 +549,8 @@ bool cfg_cmd_version(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_cmd_uptimeA(int sock, bool ok);
-bool cfg_cmd_uptimeA(int sock, bool ok)
+bool cfg_cmd_uptimeA(TLSSOCKET *sock, bool ok);
+bool cfg_cmd_uptimeA(TLSSOCKET *sock, bool ok)
 {
 	unsigned int	uptime_s, uptime_m, uptime_h, uptime_d;
 	time_t		t = time(NULL);
@@ -567,14 +567,14 @@ bool cfg_cmd_uptimeA(int sock, bool ok)
 	return true;
 }
 
-bool cfg_cmd_uptime(int sock, const char UNUSED *args);
-bool cfg_cmd_uptime(int sock, const char UNUSED *args)
+bool cfg_cmd_uptime(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_uptime(TLSSOCKET *sock, const char UNUSED *args)
 {
 	return cfg_cmd_uptimeA(sock, true);
 }
 
-bool cfg_cmd_timeinfo(int sock, const char UNUSED *args);
-bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
+bool cfg_cmd_timeinfo(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_timeinfo(TLSSOCKET *sock, const char UNUSED *args)
 {
 	struct tm	teem;
 	time_t		t = time(NULL);
@@ -595,8 +595,8 @@ bool cfg_cmd_timeinfo(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_cmd_verbosity(int sock, const char *args);
-bool cfg_cmd_verbosity(int sock, const char *args)
+bool cfg_cmd_verbosity(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_verbosity(TLSSOCKET *sock, const char *args)
 {
 	char buf[10];
 
@@ -613,8 +613,8 @@ bool cfg_cmd_verbosity(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_logfile(int sock, const char *args);
-bool cfg_cmd_logfile(int sock, const char *args)
+bool cfg_cmd_logfile(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_logfile(TLSSOCKET *sock, const char *args)
 {
 	char buf[1024];
 
@@ -633,7 +633,7 @@ bool cfg_cmd_logfile(int sock, const char *args)
 			return false;
 		}
 
-		if (openlogfile(buf))
+		if (openlogfile(module, buf))
 		{
 			sock_printf(sock, "+OK Now using logfile %s\n", buf);
 			return true;
@@ -658,15 +658,15 @@ bool cfg_cmd_logfile(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_reply(int sock, const char *args);
-bool cfg_cmd_reply(int sock, const char *args)
+bool cfg_cmd_reply(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_reply(TLSSOCKET *sock, const char *args)
 {
 	sock_printf(sock, "+OK You mentioned: %s\n", args);
 	return true;
 }
 
-bool cfg_cmd_status(int sock, const char UNUSED *args);
-bool cfg_cmd_status(int sock, const char UNUSED *args)
+bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 {
 	struct sixxs_thread 	*t = NULL;
 	os_thread		thread = OS_GetThisThread();
@@ -1005,15 +1005,15 @@ bool cfg_cmd_status(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_cmd_quit(int sock, const char UNUSED *args);
-bool cfg_cmd_quit(int sock, const char UNUSED *args)
+bool cfg_cmd_quit(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_quit(TLSSOCKET *sock, const char UNUSED *args)
 {
 	sock_printf(sock, "+OK Thank you for using this SixXS Service\n");
 	return false;
 }
 
-bool cfg_cmd_sync(int sock, const char UNUSED *args);
-bool cfg_cmd_sync(int sock, const char UNUSED *args)
+bool cfg_cmd_sync(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_sync(TLSSOCKET *sock, const char UNUSED *args)
 {
 	sock_printf(sock, "+OK Syncing\n");
 	sync_complete();
@@ -1021,8 +1021,8 @@ bool cfg_cmd_sync(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_cmd_down(int sock, const char UNUSED *args);
-bool cfg_cmd_down(int sock, const char UNUSED *args)
+bool cfg_cmd_down(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_down(TLSSOCKET *sock, const char UNUSED *args)
 {
 	unsigned int		iid;
 	struct sixxs_interface	*iface;
@@ -1057,8 +1057,8 @@ bool cfg_cmd_down(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_cmd_beat(int sock, const char UNUSED *args);
-bool cfg_cmd_beat(int sock, const char UNUSED *args)
+bool cfg_cmd_beat(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_beat(TLSSOCKET *sock, const char UNUSED *args)
 {
 	unsigned int		iid;
 	struct sixxs_interface	*iface;
@@ -1113,8 +1113,8 @@ bool cfg_cmd_beat(int sock, const char UNUSED *args)
 	return true;
 }
 
-void cfg_cmd_getstatA(int sock, struct sixxs_interface *iface);
-void cfg_cmd_getstatA(int sock, struct sixxs_interface *iface)
+void cfg_cmd_getstatA(TLSSOCKET *sock, struct sixxs_interface *iface);
+void cfg_cmd_getstatA(TLSSOCKET *sock, struct sixxs_interface *iface)
 {
 	if (!iface || iface->type == IFACE_UNSPEC) return;
 
@@ -1126,8 +1126,8 @@ void cfg_cmd_getstatA(int sock, struct sixxs_interface *iface)
 }
 
 
-bool cfg_cmd_getstat(int sock, const char *args);
-bool cfg_cmd_getstat(int sock, const char *args)
+bool cfg_cmd_getstat(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_getstat(TLSSOCKET *sock, const char *args)
 {
 	struct sixxs_interface	*iface = NULL;
 	unsigned int		i;
@@ -1164,15 +1164,15 @@ bool cfg_cmd_getstat(int sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_ping4(int sock, const char UNUSED *args);
-bool cfg_cmd_ping4(int sock, const char UNUSED *args)
+bool cfg_cmd_ping4(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_ping4(TLSSOCKET *sock, const char UNUSED *args)
 {
 	sock_printf(sock, "+OK Not Implemented yet (ping4)\n");
 	return true;
 }
 
-bool cfg_cmd_ping6(int sock, const char UNUSED *args);
-bool cfg_cmd_ping6(int sock, const char UNUSED *args)
+bool cfg_cmd_ping6(TLSSOCKET *sock, const char UNUSED *args);
+bool cfg_cmd_ping6(TLSSOCKET *sock, const char UNUSED *args)
 {
 	sock_printf(sock, "+OK Not Implemented yet (ping6)\n");
 	return true;
@@ -1181,7 +1181,7 @@ bool cfg_cmd_ping6(int sock, const char UNUSED *args)
 /* Commands as seen above */
 struct {
 	const char	*cmd;
-	bool		(*func)(int sock, const char *args);
+	bool		(*func)(TLSSOCKET *sock, const char *args);
 	const char	*comment;
 } cfg_cmds[] = 
 {
@@ -1236,7 +1236,7 @@ struct {
 	{NULL,			NULL,				NULL},
 };
 
-bool cfg_cmd_help(int sock, const char UNUSED *args)
+bool cfg_cmd_help(TLSSOCKET *sock, const char UNUSED *args)
 {
 	int i=0;
 
@@ -1250,8 +1250,8 @@ bool cfg_cmd_help(int sock, const char UNUSED *args)
 	return true;
 }
 
-bool cfg_handlecommand(int sock, const char *cmd);
-bool cfg_handlecommand(int sock, const char *cmd)
+bool cfg_handlecommand(TLSSOCKET *sock, const char *cmd);
+bool cfg_handlecommand(TLSSOCKET *sock, const char *cmd)
 {
 	int i=0, len;
 
@@ -1267,6 +1267,7 @@ bool cfg_handlecommand(int sock, const char *cmd)
 		}
 		else return cfg_cmds[i].func(sock, &cmd[len+1]);
 	}
+
 	sock_printf(sock, "-ERR Command unknown '%s'\n", cmd);
 	return true;
 }
@@ -1300,7 +1301,8 @@ bool cfg_fromfile(const char *filename)
 
 		if (buf[n] == '\n') {buf[n] = '\0'; n--;}
 		if (buf[n] == '\r') {buf[n] = '\0'; n--;}
-		cfg_handlecommand(-1, buf);
+
+		cfg_handlecommand(NULL, buf);
 	}
 
 	/* Close the file */
@@ -1318,21 +1320,22 @@ void *cfg_thread_client(void *arg)
 
 	memset(buf, 0, sizeof(buf));
 
-	socket_setblock(lc->socket);
+	socket_setblock(&lc->socket);
 
-	sock_printf(lc->socket, "+OK SixXS PoP Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
+	sock_printf(&lc->socket, "+OK SixXS PoP Service on %s ready (http://www.sixxs.net)\n", g_conf->pop_name);
 
 	while (	!quit && g_conf && g_conf->running &&
-		sock_getline(lc->socket, rbuf, (unsigned int)sizeof(rbuf), &filled, buf, (unsigned int)sizeof(buf)) > 0)
+		sock_getline(&lc->socket, rbuf, (unsigned int)sizeof(rbuf), &filled, buf, (unsigned int)sizeof(buf)) > 0)
 	{
 		cfg_log(LOG_INFO, "Client sent '%s'\n", buf);
-		quit = !cfg_handlecommand(lc->socket, buf);
+		quit = !cfg_handlecommand(&lc->socket, buf);
 	}
 	
 	D(cfg_log(LOG_DEBUG, "Client Finished %s%s%s:%s\n", lc->family == AF_INET6 ? "[" : "", lc->clienthost, lc->family == AF_INET6 ? "]" : "", lc->clientservice);)
 
 	/* End this conversation */
-	close(lc->socket);
+	close(lc->socket.socket);
+	lc->socket.socket = -1;
 
 	free(lc);
 	return NULL;
@@ -1379,7 +1382,7 @@ void *cfg_thread(void UNUSED *arg)
 				/* Make all the sockets nonblocking */
 				List_For (&pool.sockets, sn, sn2, struct socketnode *)
 				{
-					socket_setnonblock(sn->socket);
+					socket_setnonblock(&sn->socket);
 				}
 
 				needpool = false;
@@ -1409,7 +1412,7 @@ void *cfg_thread(void UNUSED *arg)
 
 		List_For (&pool.sockets, sn, sn2, struct socketnode *)
 		{
-			if (!FD_ISSET(sn->socket, &fd_read)) continue;
+			if (!FD_ISSET(sn->socket.socket, &fd_read)) continue;
 
 			lc = malloc(sizeof(*lc));
 			if (!lc)
@@ -1426,8 +1429,8 @@ void *cfg_thread(void UNUSED *arg)
 			memset(&sa, 0, sa_len);
 
 			/* Incoming connection */
-			lc->socket = accept(sn->socket, (struct sockaddr *)&sa, &sa_len);
-			if (lc->socket == -1)
+			lc->socket.socket = accept(sn->socket.socket, (struct sockaddr *)&sa, &sa_len);
+			if (lc->socket.socket == -1)
 			{
 				char buf[256];
 				memset(buf, 0, sizeof(buf));
@@ -1443,10 +1446,11 @@ void *cfg_thread(void UNUSED *arg)
 					NI_NUMERICHOST|NI_NUMERICSERV);
 				if (i != 0)
 				{
-					sock_printf(lc->socket, "-ERR I couldn't find out who you are.. go away!\n");
+					sock_printf(&lc->socket, "-ERR I couldn't find out who you are.. go away!\n");
 					/* Error on resolve */
 					cfg_log(LOG_ERR, "Error %d : %s (family: %d)\n", i, gai_strerror(i), sa.ss_family);
-					close(lc->socket);
+					close(lc->socket.socket);
+					lc->socket.socket = -1;
 				}
 
 				D(cfg_log(LOG_DEBUG, "Accepted %s%s%s:%s\n", lc->family == AF_INET6 ? "[" : "", lc->clienthost, lc->family == AF_INET6 ? "]" : "", lc->clientservice);)
@@ -1462,14 +1466,15 @@ void *cfg_thread(void UNUSED *arg)
 				}
 				else
 				{
-					sock_printf(lc->socket, "HTTP/1.1 301 Content Moved\n");
-					sock_printf(lc->socket, "Date: Sat, 25 Feb 1978 06:06:06\n");
-					sock_printf(lc->socket, "Server: SixXS\n");
-					sock_printf(lc->socket, "Location: http://www.sixxs.net/\n");
-					sock_printf(lc->socket, "Content-Type: text/html\n");
-					sock_printf(lc->socket, "\n");
-					sock_printf(lc->socket, "Information about SixXS can be found on the <a href=\"http://www.sixxs.net/\">SixXS website</a>.\n");
-					close(lc->socket);
+					sock_printf(&lc->socket, "HTTP/1.1 301 Content Moved\n");
+					sock_printf(&lc->socket, "Date: Sat, 25 Feb 1978 06:06:06\n");
+					sock_printf(&lc->socket, "Server: SixXS\n");
+					sock_printf(&lc->socket, "Location: http://www.sixxs.net/\n");
+					sock_printf(&lc->socket, "Content-Type: text/html\n");
+					sock_printf(&lc->socket, "\n");
+					sock_printf(&lc->socket, "Information about SixXS can be found on the <a href=\"http://www.sixxs.net/\">SixXS website</a>.\n");
+					close(lc->socket.socket);
+					lc->socket.socket = -1;
 				}
 			}
 

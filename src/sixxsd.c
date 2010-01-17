@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: jeroen $
- $Id: sixxsd.c,v 1.23 2008-01-17 08:18:34 jeroen Exp $
- $Date: 2008-01-17 08:18:34 $
+ $Author: pim $
+ $Id: sixxsd.c,v 1.24 2010-01-17 23:09:28 pim Exp $
+ $Date: 2010-01-17 23:09:28 $
 
  SixXSd main code
 **************************************/
@@ -271,7 +271,7 @@ int parse_arguments(int argc, char *argv[])
 			break;
 
 		case 'l': /* logfile */
-			openlogfile(optarg);
+			openlogfile(module, optarg);
 			break;
 
 		case 'v': /* verbose */

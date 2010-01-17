@@ -1,9 +1,9 @@
 /*****************************************************
  SixXSd - Common Functions
 ******************************************************
- $Author: jeroen $
- $Id: common.c,v 1.9 2008-01-17 01:19:25 jeroen Exp $
- $Date: 2008-01-17 01:19:25 $
+ $Author: pim $
+ $Id: common.c,v 1.10 2010-01-17 23:09:30 pim Exp $
+ $Date: 2010-01-17 23:09:30 $
 *****************************************************/
 
 #include "../sixxsd.h"
@@ -99,7 +99,7 @@ void dolog(int level, const char *mod, const char *fmt, ...)
 	va_end(ap);
 }
 
-bool openlogfile(const char *name)
+bool openlogfile(const char *module, const char *name)
 {
 	if (!g_conf) return false;
 
@@ -108,12 +108,12 @@ bool openlogfile(const char *name)
 	g_conf->logfile = fopen(name, "w+");
 	if (g_conf->logfile)
 	{
-		dolog(LOG_INFO, "common", "Using %s as a logfile\n", name);
+		mdolog(LOG_INFO, "Using %s as a logfile\n", name);
 		return true;
 	}
 	else
 	{
-		dolog(LOG_WARNING, "common", "Couldn't open logfile %s\n", name);
+		mdolog(LOG_WARNING, "Couldn't open logfile %s\n", name);
 		return false;
 	}
 }
@@ -123,6 +123,173 @@ void closelogfile(void)
 	if (!g_conf) return;
 	if (g_conf->logfile) fclose(g_conf->logfile);
 	g_conf->logfile = NULL;
+}
+
+bool sock_init(TLSSOCKET *sock);
+bool sock_init(TLSSOCKET *sock)
+{
+#ifdef SIXXSD_GNUTLS
+	/* Allow connections to servers that have OpenPGP keys as well */
+	const int       cert_type_priority[3] = { GNUTLS_CRT_X509, GNUTLS_CRT_OPENPGP, 0 };
+	int             ret;
+#endif /* SIXXSD_GNUTLS */
+
+	sock->socket = -1;
+
+#ifdef SIXXSD_GNUTLS
+	/* TLS is not active yet (use sock_gotls() for that) */
+	sock->tls_active = false;
+
+	/* Initialize TLS session */
+	ret = gnutls_init(&sock->session, GNUTLS_CLIENT);
+	if (ret != 0)
+	{
+		mdolog(LOG_ERR, "TLS Init failed: %s (%d)\n", gnutls_strerror(ret), ret);
+		return false;
+	}
+
+	/* Use default priorities */
+	gnutls_set_default_priority(sock->session);
+	/* XXX: Return value is not documented in GNUTLS documentation! */
+
+	gnutls_certificate_type_set_priority(sock->session, cert_type_priority);
+	/* XXX: Return value is not documented in GNUTLS documentation! */
+
+	/* Configure the x509 credentials for the current session */
+	gnutls_credentials_set(sock->session, GNUTLS_CRD_CERTIFICATE, g_aiccu->tls_cred);
+	/* XXX: Return value is not documented in GNUTLS documentation! */
+
+#endif /* SIXXSD_GNUTLS*/
+
+	return true;
+}
+
+TLSSOCKET *sock_alloc(void);
+TLSSOCKET *sock_alloc(void)
+{
+	TLSSOCKET       *sock;
+
+	sock = (TLSSOCKET *)malloc(sizeof(*sock));
+	if (!sock) return NULL;
+
+	if (!sock_init(sock))
+	{
+		free(sock);
+		return NULL;
+	}
+
+	return sock;
+}
+
+void sock_free(TLSSOCKET *sock);
+void sock_free(TLSSOCKET *sock)
+{
+	if (!sock) return;
+
+#ifdef SIXXSD_GNUTLS
+	if (sock->tls_active)
+	{
+		sock->tls_active = false;
+		gnutls_bye(sock->session, GNUTLS_SHUT_RDWR);
+	}
+#endif /* SIXXSD_GNUTLS*/
+
+	if (sock->socket >= 0)
+	{
+		/* Stop communications */
+		shutdown(sock->socket, SHUT_RDWR);
+		closesocket(sock->socket);
+		sock->socket = -1;
+	}
+
+#ifdef SIXXSD_GNUTLS
+	gnutls_deinit(sock->session);
+#endif /* SIXXSD_GNUTLS*/
+
+	free(sock);
+}
+
+/*
+ * Put a socket into TLS mode
+ */
+#ifdef SIXXSD_GNUTLS
+bool sock_gotls(TLSSOCKET *sock)
+{
+	int ret = 0;
+
+	if (!sock) return false;
+
+	if (sock->tls_active)
+	{
+		mdolog(LOG_ERR, "Can't go into TLS mode twice!?\n");
+		return false;
+	}
+
+	/* Set the transport */
+	gnutls_transport_set_ptr(sock->session, (gnutls_transport_ptr)sock->socket);
+
+	/* Perform the TLS handshake */
+	ret = gnutls_handshake(sock->session);
+	if (ret < 0)
+	{
+		mdolog(LOG_ERR, "TLS Handshake failed: %s (%d)\n", gnutls_strerror(ret), ret);
+		return false;
+	}
+
+	mdolog(LOG_DEBUG, "TLS Handshake completed succesfully\n");
+
+	sock->tls_active = true;
+
+	return true;
+}
+#endif
+
+/* Connect this client to a server */
+TLSSOCKET *connect_client(const char *module, const char *hostname, const char *service, int family, int socktype)
+{
+	TLSSOCKET       *sock;
+	struct addrinfo hints, *res, *ressave;
+
+	sock = sock_alloc();
+	if (!sock) return NULL;
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family   = family;
+	hints.ai_socktype = socktype;
+	hints.ai_flags    = AI_ADDRCONFIG;
+
+	if (getaddrinfo(hostname, service, &hints, &res) != 0)
+	{
+		mdolog(LOG_ERR, "Couldn't resolve host %s, service %s\n", hostname, service);
+		sock_free(sock);
+		return NULL;
+	}
+
+	ressave = res;
+
+	while (res)
+	{
+		sock->socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+		if (sock->socket != -1)
+		{
+			if (connect(sock->socket, res->ai_addr, (unsigned int)res->ai_addrlen) == 0) break;
+
+			closesocket(sock->socket);
+			sock->socket = -1;
+		}
+
+		res = res->ai_next;
+	}
+
+	freeaddrinfo(ressave);
+
+	if (sock->socket == -1)
+	{
+		sock_free(sock);
+		sock = NULL;
+	}
+
+	return sock;
 }
 
 int listen_server(const char *module, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, unsigned int tag)
@@ -558,22 +725,34 @@ int use_uri(const char *module, const char *uri, const char *defaultservice, str
 	return ret;
 }
 
-void sock_printf(SOCKET sock, const char *fmt, ...)
+void sock_printf(TLSSOCKET *sock, const char *fmt, ...)
 {
 	char		buf[2048];
-	unsigned int	len = 0;
+	unsigned int	len = 0, done = 0;
+	int		ret;
 
 	va_list ap;
 	va_start(ap, fmt);
+
 	/* When not a socket send it to the logs */
-	if (sock == -1) dologA(LOG_INFO, "common", fmt, ap);
+	if (sock == NULL || sock->socket == -1) dologA(LOG_INFO, "common", fmt, ap);
 	else
 	{
 		/* Format the string */
 		len = vsnprintf(buf, sizeof(buf), fmt, ap);
 
 		/* Send the line(s) over the network */
-		send(sock, buf, len, MSG_NOSIGNAL);
+		while (done < len)
+		{
+#ifdef SIXXSD_GNUTLS
+			if (sock->tls_active) ret = gnutls_record_send(sock->session, &buf[done], len-done);
+			else
+#endif
+			ret = send(sock->socket, buf, len, MSG_NOSIGNAL);
+
+			if (ret > 0) done += ret;
+			else break;
+		}
 
 #if 0
 		/* Show this as debug output */
@@ -642,13 +821,15 @@ bool parse_userpass(const char *uri, char *username, unsigned int username_len, 
  * Note: uses internal caching, this should be the only function
  * used to read from the sock! The internal cache is rbuf.
  */
-int sock_getline(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen)
+int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen)
 {
 	unsigned int j;
 	int i;
 
+	if (!sock) return -1;
+
 	/* A closed socket? -> clear the buffer */
-	if (sock == -1)
+	if (sock->socket == -1)
 	{
 		memset(rbuf, 0, rbuflen);
 		*filled = 0;
@@ -712,7 +893,11 @@ int sock_getline(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *fi
 		DD(ddolog("common", "gl() - Trying to receive...\n");)
 
 		/* Fill the rest of the buffer */
-		i = recv(sock, &rbuf[*filled], rbuflen-*filled-128, 0);
+#ifdef SIXXSD_GNUTLS
+		if (sock->tls_active) i = gnutls_record_recv(sock->session, &rbuf[*filled], rbuflen-*filled-10);
+		else
+#endif
+		i = recv(sock->socket, &rbuf[*filled], rbuflen-*filled-128, 0);
 
 		DD(ddolog("common", "gl() - Received %d, errno: %s (%d)\n", i, strerror(errno), errno);)
 
@@ -926,7 +1111,7 @@ struct socketnode *socketpool_accept(struct socketpool *pool, struct socketnode 
 	socklen_t		addrlen = sizeof(sa);
 	struct socketnode	*sn;
 
-	SOCKET sock = accept(sn_a->socket, (struct sockaddr *)&sa, &addrlen);
+	SOCKET sock = accept(sn_a->socket.socket, (struct sockaddr *)&sa, &addrlen);
 
 	/* Directly return on failures */
 	if (sock == -1)
@@ -939,7 +1124,7 @@ struct socketnode *socketpool_accept(struct socketpool *pool, struct socketnode 
 	sn = socketpool_add(pool, sock, tag, sn_a->family, sn_a->protocol, sn_a->socktype);
 
 	/* XXX record some information into the socketnode (remote host etc) */
-	ddolog("common", "Accepted %u with tag %u\n", sn->socket, tag);
+	ddolog("common", "Accepted %u with tag %u\n", sn->socket.socket, tag);
 	sn->lastrecv = time(NULL);
 	return sn;
 }
@@ -958,12 +1143,18 @@ struct socketnode *socketpool_add(struct socketpool *pool, SOCKET sock, unsigned
 	/* Clear it out */
 	memset(sn, 0, sizeof(*sn));
 
+	if (!sock_init(&sn->socket))
+	{
+		free(sn);
+		return NULL;
+	}
+
 	/* Socketnode */
-	sn->socket = sock;
-	sn->tag = tag;
-	sn->family = family;
-	sn->protocol = protocol;
-	sn->socktype = socktype;
+	sn->socket.socket = sock;
+	sn->tag		= tag;
+	sn->family	= family;
+	sn->protocol	= protocol;
+	sn->socktype	= socktype;
 
 	/* Add the socket to the pool */
 	List_AddTail(&pool->sockets, sn);
@@ -977,11 +1168,11 @@ struct socketnode *socketpool_add(struct socketpool *pool, SOCKET sock, unsigned
 
 void socketpool_remove(struct socketpool *pool, struct socketnode *sn)
 {
-	if (sn->socket != -1)
+	if (sn->socket.socket != -1)
 	{
-		shutdown(sn->socket, SHUT_RDWR);
-		closesocket(sn->socket);
-		FD_CLR(sn->socket, &pool->fds);
+		shutdown(sn->socket.socket, SHUT_RDWR);
+		closesocket(sn->socket.socket);
+		FD_CLR(sn->socket.socket, &pool->fds);
 	}
 
 	/* Remove it from the socket list */
@@ -1044,20 +1235,20 @@ int sn_dataleft(struct socketnode *sn)
 
 int sn_getdata(struct socketnode *sn)
 {
-	return sock_getdata(sn->socket, sn->buf, sizeof(sn->buf), &sn->filled);
+	return sock_getdata(sn->socket.socket, sn->buf, sizeof(sn->buf), &sn->filled);
 }
 
 int sn_done(struct socketnode *sn, unsigned int amount)
 {
-	return sock_done(sn->socket, sn->buf, sizeof(sn->buf), &sn->filled, amount);
+	return sock_done(sn->socket.socket, sn->buf, sizeof(sn->buf), &sn->filled, amount);
 }
 
 int sn_getline(struct socketnode *sn, char *ubuf, unsigned int ubuflen)
 {
-	return sock_getline(sn->socket, sn->buf, sizeof(sn->buf), &sn->filled, ubuf, ubuflen);
+	return sock_getline(&sn->socket, sn->buf, sizeof(sn->buf), &sn->filled, ubuf, ubuflen);
 }
 
-void socket_setnonblock(SOCKET sock)
+void socket_setnonblockA(SOCKET sock)
 {
 	int flags;
 
@@ -1071,7 +1262,7 @@ void socket_setnonblock(SOCKET sock)
 #endif
 }
 
-void socket_setblock(SOCKET sock)
+void socket_setblockA(SOCKET sock)
 {
 	int flags;
 
@@ -1085,3 +1276,12 @@ void socket_setblock(SOCKET sock)
 #endif
 }
 
+void socket_setnonblock(TLSSOCKET *sock)
+{
+	socket_setnonblockA(sock->socket);
+}
+
+void socket_setblock(TLSSOCKET *sock)
+{
+	socket_setblockA(sock->socket);
+}

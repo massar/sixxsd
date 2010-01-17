@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: jeroen $
- $Id: os_linux.c,v 1.40 2008-02-18 21:32:37 jeroen Exp $
- $Date: 2008-02-18 21:32:37 $
+ $Author: pim $
+ $Id: os_linux.c,v 1.41 2010-01-17 23:09:28 pim Exp $
+ $Date: 2010-01-17 23:09:28 $
 
  SixXSd - Linux specific code
 **************************************/
@@ -1292,7 +1292,7 @@ int os_socket(struct nlsock *nl, unsigned long groups, const char *name)
 	nl->snl = snl;
 	nl->sock = sock;
 
-	socket_setblock(sock);
+	socket_setblockA(sock);
 
 	return ret;
 }
