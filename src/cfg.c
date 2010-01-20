@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: pim $
- $Id: cfg.c,v 1.39 2010-01-17 23:09:28 pim Exp $
- $Date: 2010-01-17 23:09:28 $
+ $Author: jeroen $
+ $Id: cfg.c,v 1.40 2010-01-20 13:15:17 jeroen Exp $
+ $Date: 2010-01-20 13:15:17 $
 
  SixXSd Configuration Handler
 **************************************/
@@ -261,36 +261,9 @@ bool cfg_cmd_pop_hb_timeout(TLSSOCKET *sock, const char *args)
 	return true;
 }
 
-bool cfg_cmd_pop_tinc_supported(TLSSOCKET *sock, const char *args);
-bool cfg_cmd_pop_tinc_supported(TLSSOCKET *sock, const char *args)
-{
-	if (strcmp(args, "Y") == 0) g_conf->pop_tinc_supported = true;
-	else g_conf->pop_tinc_supported = false;
-	sock_printf(sock, "+OK PoP %s tinc\n",  g_conf->pop_tinc_supported ? "supports" : "doesn't support");
-	return true;
-}
-
-bool cfg_cmd_pop_tinc_device(TLSSOCKET *sock, const char *args);
-bool cfg_cmd_pop_tinc_device(TLSSOCKET *sock, const char *args)
-{
-	if (g_conf->pop_tinc_device) free(g_conf->pop_tinc_device);
-	g_conf->pop_tinc_device = strdup(args);
-	sock_printf(sock, "+OK Accepted tinc Device %s\n", args);
-	return true;
-}
-
-bool cfg_cmd_pop_tinc_config(TLSSOCKET *sock, const char *args);
-bool cfg_cmd_pop_tinc_config(TLSSOCKET *sock, const char *args)
-{
-	if (g_conf->pop_tinc_config) free(g_conf->pop_tinc_config);
-	g_conf->pop_tinc_config = strdup(args);
-	sock_printf(sock, "+OK Accepted tinc config %s\n", args);
-	return true;
-}
-
 /*
  * TUNNEL
- * "tunnel <devicenumber> <ipv6_us> <ipv6_them> <ipv6_prefixlen> <ipv4_us> <ipv4_them|heartbeat|tinc|ayiya> <up|disabled|down> <mtu> [<heartbeatpassword>]"
+ * "tunnel <devicenumber> <ipv6_us> <ipv6_them> <ipv6_prefixlen> <ipv4_us> <ipv4_them|heartbeat|ayiya> <up|disabled|down> <mtu> [<heartbeatpassword>]"
  * Note: ipv4_us is ignored, should be the same everywhere
  */
 bool cfg_cmd_tunnel(TLSSOCKET *sock, const char *args);
@@ -376,7 +349,6 @@ bool cfg_cmd_tunnel(TLSSOCKET *sock, const char *args)
 		return false;
 	}
 	if (strcasecmp(buf, "heartbeat") == 0) type = IFACE_PROTO41_HB;
-	else if (strcasecmp(buf, "tinc") == 0) type = IFACE_TINC;
 	else if (strcasecmp(buf, "ayiya") == 0) type = IFACE_AYIYA;
 	else if (inet_pton(AF_INET, buf, &ipv4_them)) type = IFACE_PROTO41;
 	else
@@ -768,10 +740,6 @@ bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 				sock_printf(sock, "Password              : %s\n", iface->password);
 				break;
 
-			case IFACE_TINC:
-				sock_printf(sock, "Type                  : tinc\n");
-				break;
-
 			default:
 				sock_printf(sock, "unknown - WARNING!!!\n");
 			}
@@ -875,9 +843,6 @@ bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 			case IFACE_PROTO41_HB:
 				snprintf(buf2, sizeof(buf2), "proto41_hb %s %s", buf1, iface->password);
 				break;
-			case IFACE_TINC:
-				snprintf(buf2, sizeof(buf2), "tinc");
-				break;
 			case IFACE_AYIYA:
 				snprintf(buf2, sizeof(buf2), "ayiya %s %s %u %u %s",
 					buf1,
@@ -970,9 +935,6 @@ bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 		sock_printf(sock, "HB Send Interval : %u\n", g_conf->pop_hb_sendinterval);
 		sock_printf(sock, "HB Timeout       : %u\n", g_conf->pop_hb_timeout);
 		sock_printf(sock, "HB Supported     : %s\n", g_conf->pop_hb_supported ? "yes" : "no");
-		sock_printf(sock, "tinc Supported   : %s\n", g_conf->pop_tinc_supported ? "yes" : "no");
-		sock_printf(sock, "PoP tinc Device  : %s\n", g_conf->pop_tinc_device);
-		sock_printf(sock, "PoP tinc Config  : %s\n", g_conf->pop_tinc_config);
 
 		c = 0;
 		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_status");
@@ -1196,9 +1158,6 @@ struct {
 	{"pop_hb_supported",	cfg_cmd_pop_hb_supported,	"Y|N"},
 	{"pop_hb_sendinterval",	cfg_cmd_pop_hb_sendinterval,	"<number>"},
 	{"pop_hb_timeout",	cfg_cmd_pop_hb_timeout,		"<number>"},
-	{"pop_tinc_supported",	cfg_cmd_pop_tinc_supported,	"Y|N"},
-	{"pop_tinc_device",	cfg_cmd_pop_tinc_device,	"<devicename>"},
-	{"pop_tinc_config",	cfg_cmd_pop_tinc_config,	"<configfilename>"},
 	{"pop",			cfg_cmd_pop,			"OK|ERR"},
 	{"tunnel",		cfg_cmd_tunnel,			"<opts>"},
 	{"route",		cfg_cmd_route,			"<opts>"},

@@ -3,8 +3,8 @@
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
  $Author: jeroen $
- $Id: interface.c,v 1.21 2008-01-17 08:19:12 jeroen Exp $
- $Date: 2008-01-17 08:19:12 $
+ $Id: interface.c,v 1.22 2010-01-20 13:15:18 jeroen Exp $
+ $Date: 2010-01-20 13:15:18 $
 
  SixXSd Interface Management 
 **************************************/
@@ -349,7 +349,6 @@ bool int_reconfig(unsigned int id, struct in6_addr *ipv6_us, struct in6_addr *ip
 			type == IFACE_IGNORE		? "ignore" :
 			type == IFACE_PROTO41		? "proto-41" :
 			type == IFACE_PROTO41_HB	? "proto-41-HB" :
-			type == IFACE_TINC		? "tinc" :
 			type == IFACE_AYIYA		? "AYIYA" : "?"),
 
 			(state == IFSTATE_DISABLED	? "disabled" :

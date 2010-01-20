@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: pim $
- $Id: sixxsd.c,v 1.24 2010-01-17 23:09:28 pim Exp $
- $Date: 2010-01-17 23:09:28 $
+ $Author: jeroen $
+ $Id: sixxsd.c,v 1.25 2010-01-20 13:15:18 jeroen Exp $
+ $Date: 2010-01-20 13:15:18 $
 
  SixXSd main code
 **************************************/
@@ -140,8 +140,6 @@ void cleanup(void)
 	if (g_conf->pop_name)		free(g_conf->pop_name);
 	if (g_conf->pop_tunneldevice)	free(g_conf->pop_tunneldevice);
 	if (g_conf->pop_ignoredevices)	free(g_conf->pop_ignoredevices);
-	if (g_conf->pop_tinc_device)	free(g_conf->pop_tinc_device);
-	if (g_conf->pop_tinc_config)	free(g_conf->pop_tinc_config);
 	if (g_conf->homedir) free(g_conf->homedir);
 
 	for (pp = g_conf->pop_prefixes; pp; pp = pp2)

@@ -2,9 +2,9 @@
  SixXSd - SixXS PoP Daemon
  by Jeroen Massar <jeroen@sixxs.net>
 ***************************************
- $Author: pim $
- $Id: sixxsd.h,v 1.27 2010-01-17 23:09:28 pim Exp $
- $Date: 2010-01-17 23:09:28 $
+ $Author: jeroen $
+ $Id: sixxsd.h,v 1.28 2010-01-20 13:15:19 jeroen Exp $
+ $Date: 2010-01-20 13:15:19 $
 **************************************/
 
 #ifndef SIXXSD_H
@@ -238,7 +238,6 @@ enum iface_type {
 	IFACE_NULL,						/* NULL interface */
 	IFACE_PROTO41,						/* Protocol-41 (SIT/6in4) */
 	IFACE_PROTO41_HB,					/* Normal proto-41 but with heartbeats */
-	IFACE_TINC,						/* tinc tunnel */
 	IFACE_AYIYA						/* Anything In Anything */
 };
 
@@ -390,10 +389,7 @@ struct conf
 	unsigned int		pop_hb_sendinterval;		/* Heartbeat Send Interval */
 	unsigned int		pop_hb_timeout;			/* Heartbeat Timeout */
 	bool			pop_hb_supported;		/* Is heartbeat are supported? */
-	bool			pop_tinc_supported;		/* Is tinc are supported? */
 	char			__padding2[2];
-	char			*pop_tinc_device;		/* tinc device */
-	char			*pop_tinc_config;		/* tinc configuration */
 
 	char			*homedir;			/* Homedir */
 
