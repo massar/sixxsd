@@ -2,9 +2,7 @@
 #  SixXSd - The SixXS PoP Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
 # *******************************************
-# $Author: pim $
-# $Id: Makefile,v 1.33 2010-01-17 23:09:27 pim Exp $
-# $Date: 2010-01-17 23:09:27 $
+# $Id$
 # ******************************************/
 #
 # Toplevel Makefile allowing easy distribution.

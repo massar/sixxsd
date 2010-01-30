@@ -2,9 +2,7 @@
 #  SixXSd - SixXS PoP Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
 # ***************************************
-# $Author: jeroen $
-# $Id: Makefile,v 1.9 2008-01-17 09:03:26 jeroen Exp $
-# $Date: 2008-01-17 09:03:26 $
+# $Id$
 # **************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
