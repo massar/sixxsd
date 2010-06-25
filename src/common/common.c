@@ -236,7 +236,7 @@ bool sock_gotls(TLSSOCKET *sock)
 		return false;
 	}
 
-	mdolog(LOG_DEBUG, "TLS Handshake completed succesfully\n");
+	mdolog(LOG_DEBUG, "TLS Handshake completed successfully\n");
 
 	sock->tls_active = true;
 
