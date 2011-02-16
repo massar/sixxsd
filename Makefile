@@ -13,8 +13,8 @@
 # Make these variables generic
 PROJECT:=sixxsd
 PROJECT_DESC:="SixXS PoP Daemon"
-PROJECT_VERSION:=2008.05.15-cvs
-PROJECT_COPYRIGHT:="(C) Copyright SixXS. 2001-2008 All Rights Reserved"
+PROJECT_VERSION:=2011.02.16-svn
+PROJECT_COPYRIGHT:="(C) Copyright SixXS. 2001-2011 All Rights Reserved"
 
 # Compile Time Options
 # Append one of the following option on wish to
@@ -66,7 +66,6 @@ SOURCEDIR := $(shell pwd)
 RM=rm -f
 
 # Paths
-sbindir=/usr/sbin/
 srcdir=src/
 
 all:	Makefile ${srcdir}
@@ -89,10 +88,6 @@ help:
 	@echo "debsrc   : Make Debian source packages"
 	@echo "rpm      : Make RPM package (.rpm)"
 	@echo "rpmsrc   : Make RPM source packages"
-
-install: all
-	mkdir -p ${DESTDIR}${sbindir}
-	cp bin/${PROJECT} ${DESTDIR}${sbindir}
 
 # Clean all the output files etc
 distclean: clean

@@ -18,13 +18,13 @@ endif
 SIXXSD_VERSION = ${PROJECT_VERSION}
 SIXXSD_OPTIONS = ${PROJECT_OPTIONS}
 
-BINS	= ../bin/sixxsd
+BIN 	= sixxsd
 SRCS	= sixxsd.c common/common.c common/md5.c common/sha1.c thread.c interface.c prefix.c cfg.c hb.c ayiya.c traffic.c latency.c
 INCS	= sixxsd.h common/common.h common/md5.h common/sha1.h
 OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o latency.o
 DEPS    := ../Makefile Makefile
 CFLAGS	+= -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
-LDFLAGS	= -lpthread -lrrd
+LDFLAGS	= -lpthread -lrrd 
 CC      = gcc
 RM      = rm
 
@@ -85,9 +85,9 @@ CFLAGS += -pg -g
 # -fprofile-arcs
 endif
 
-all: ${BINS}
+all: ${BIN}
 
-../bin/sixxsd: $(OBJS) $(INCS) $(DEPS)
+$(BIN): $(OBJS) $(INCS) $(DEPS)
 	$(LINK) -o $@ $(OBJS) $(LDFLAGS)
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "DEBUG"),0)
 	strip $@;
