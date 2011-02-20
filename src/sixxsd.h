@@ -338,7 +338,7 @@ struct sixxs_pop_prefix
 {
 	struct sixxs_pop_prefix	*next;				/* Next in the chain */
 	struct in6_addr		prefix;				/* Prefix */
-	unsigned int		length;				/* Lenght of the prefix (/48 etc) */
+	unsigned int		length;				/* Length of the prefix (/48 etc) */
 };
 
 struct sixxs_pop_ignores
