@@ -7,7 +7,7 @@ Protocol Handlers
 ~~~~~~~~~~~~~~~~~
 AYIYA		Anything In Anything
 		AYIYA support ;)
-		(port 42666 [TBD])
+		(port 5072)
 
 HB		Heartbeat Handler
 		Handles the Heartbeat protocol for realigning proto-41 tunnels
@@ -16,12 +16,8 @@ HB		Heartbeat Handler
 SixXS Interface (facing noc.sixxs.net)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Cfg		Configuration Handler
-		Handles all the reconfiguration commands
+		Handles all the reconfiguration commands + traffic stats
 		(port 42003)
-
-Traffic		Traffic Handler
-		Handles all the traffic commands
-		(port 42002)
 
 Latency		Latency Handler
 		(port 42001)
