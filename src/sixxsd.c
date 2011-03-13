@@ -187,6 +187,9 @@ bool init(void)
 	/* Don't sync yet as we are not configured */
 	g_conf->do_sync			= false;
 
+	/* Don't do RRDs per default, we still collect these on noc */
+	g_conf->do_rrd			= false;
+
 	/* Defaults */
 	g_conf->max_interfaces		= 1024*4;
 	g_conf->max_prefixes		= 1024*64;

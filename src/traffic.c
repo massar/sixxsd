@@ -79,6 +79,9 @@ void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t ou
 		OS_Mutex_Release(&iface->mutex, "traffic_update_interface");
 	}
 
+	/* Don't update RRDs? Then we are done */
+	if (!g_conf->do_rrd) return;
+
 	args[0] = (char *)"update";
 	args[1] = filename;
 	args[2] = values;

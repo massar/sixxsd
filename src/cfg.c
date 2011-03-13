@@ -236,14 +236,22 @@ bool cfg_cmd_pop_ignoredevices(TLSSOCKET *sock, const char *args)
 	return true;
 }
 
+bool cfg_cmd_pop_do_rrd(TLSSOCKET *sock, const char *args);
+bool cfg_cmd_pop_do_rrd(TLSSOCKET *sock, const char *args)
+{
+	if (strcmp(args, "Y") == 0) g_conf->do_rrd = true;
+	else g_conf->do_rrd = false;
+	sock_printf(sock, "+OK PoP %s RRD\n",  g_conf->do_rrd ? "updates" : "doesn't update");
+	return true;
+}
+
 bool cfg_cmd_pop_hb_supported(TLSSOCKET *sock, const char *args);
 bool cfg_cmd_pop_hb_supported(TLSSOCKET *sock, const char *args)
 {
-	if (strcmp(args, "Y") == 0) g_conf->pop_hb_supported = true;
-	else g_conf->pop_hb_supported = false;
-	sock_printf(sock, "+OK PoP %s Heartbeats\n",  g_conf->pop_hb_supported ? "supports" : "doesn't support");
+	sock_printf(sock, "+OK Ignoring old heartbeat option: %s\n", args);
 	return true;
 }
+
 
 bool cfg_cmd_pop_hb_sendinterval(TLSSOCKET *sock, const char *args);
 bool cfg_cmd_pop_hb_sendinterval(TLSSOCKET *sock, const char *args)
@@ -928,13 +936,13 @@ bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 		sock_printf(sock, "Daemonize        : %s\n", g_conf->daemonize ? "yes" : "no");
 		sock_printf(sock, "Running          : %s\n", g_conf->running ? "yes" : "no");
 		sock_printf(sock, "Do Sync          : %s\n", g_conf->do_sync ? "yes" : "no");
+		sock_printf(sock, "Do RRD           : %s\n", g_conf->do_rrd ? "yes" : "no");
 		sock_printf(sock, "Verbosity        : %u\n", g_conf->verbose);
 		sock_printf(sock, "PoP Name         : %s\n", g_conf->pop_name);
 		sock_printf(sock, "PoP TunnelDevice : %s\n", g_conf->pop_tunneldevice);
 		sock_printf(sock, "PoP IgnoreDevice : %s\n", g_conf->pop_ignoredevices);
 		sock_printf(sock, "HB Send Interval : %u\n", g_conf->pop_hb_sendinterval);
 		sock_printf(sock, "HB Timeout       : %u\n", g_conf->pop_hb_timeout);
-		sock_printf(sock, "HB Supported     : %s\n", g_conf->pop_hb_supported ? "yes" : "no");
 
 		c = 0;
 		OS_Mutex_Lock(&g_conf->mutex_interfaces, "cfg_cmd_status");
@@ -1155,7 +1163,8 @@ struct {
 	{"pop_subnetprefix",	cfg_cmd_pop_subnetprefix,	"<prefix>"},
 	{"pop_tunneldevice",	cfg_cmd_pop_tunneldevice,	"<devicename>"},
 	{"pop_ignoredevices",	cfg_cmd_pop_ignoredevices,	"<ignores>"},
-	{"pop_hb_supported",	cfg_cmd_pop_hb_supported,	"Y|N"},
+	{"pop_do_rrd",		cfg_cmd_pop_do_rrd,		"Y|N"},
+	{"pop_hb_supported",	cfg_cmd_pop_hb_supported,	"Ignored"},
 	{"pop_hb_sendinterval",	cfg_cmd_pop_hb_sendinterval,	"<number>"},
 	{"pop_hb_timeout",	cfg_cmd_pop_hb_timeout,		"<number>"},
 	{"pop",			cfg_cmd_pop,			"OK|ERR"},

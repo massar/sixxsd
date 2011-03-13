@@ -366,7 +366,7 @@ struct conf
 	bool			daemonize;			/* To Daemonize or to not to Daemonize */
 	bool			running;			/* If we are running or not */
 	bool			do_sync;			/* To synchronize or to not to synchronize */
-	char			__padding[1];
+	bool			do_rrd;				/* Create RRDs? */
 	unsigned int		verbose;			/* Verbosity level */
 	FILE			*logfile;			/* logfile */
 	time_t			starttime;			/* Time that we started running */
@@ -388,8 +388,6 @@ struct conf
 	char			*pop_ignoredevices;		/* Interface names to ignore */
 	unsigned int		pop_hb_sendinterval;		/* Heartbeat Send Interval */
 	unsigned int		pop_hb_timeout;			/* Heartbeat Timeout */
-	bool			pop_hb_supported;		/* Is heartbeat are supported? */
-	char			__padding2[2];
 
 	char			*homedir;			/* Homedir */
 
