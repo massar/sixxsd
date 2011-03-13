@@ -30,7 +30,6 @@ struct ayiya_socket
 	int		socket;
 } ayiya_socket[] = {
 	{"AYIYA",	0,	"5072",	-1},
-	{"AYIYA 8374",	0,	"8374",	-1},
 	{NULL,		0,	NULL,	-1}
 };
 
