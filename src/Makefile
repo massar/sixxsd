@@ -24,13 +24,22 @@ INCS	= sixxsd.h common/common.h common/md5.h common/sha1.h
 OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o latency.o
 DEPS    := ../Makefile Makefile
 CFLAGS	+= -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
-LDFLAGS	= -lpthread -lrrd 
+LDFLAGS	= -lpthread
 CC      = gcc
 RM      = rm
 
 COMPILE = @echo "* Compiling to $@"; $(CC) -c $(CFLAGS)
 LINK    = @echo "* Linking $@"; $(CC) $(CFLAGS)
 RM      = @echo "* Removing $@"; rm
+
+ifdef BITS
+CFLAGS	+= -m${BITS} -DM${BITS}
+endif
+
+ifdef WITH_RRD
+LDFLAGS	+= -lrrd
+CFLAGS	+= -DWITH_RRD=1
+endif
 
 # Our very *bliep* set of options to make sure that these things can't cause any issues
 CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-packed -Wpadded -pedantic -Wall -Wswitch-default -Wformat=2 -Wformat-security -Wformat -Wmissing-format-attribute -D_REENTRANT -D_THREAD_SAFE -pipe -Wunused -Winit-self -Wextra -Wno-long-long

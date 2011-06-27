@@ -24,10 +24,11 @@ typedef unsigned long long __u64;
 /* Socket interface to kernel */
 struct nlsock
 {
-	int sock;
-	int seq;
-	struct sockaddr_nl snl;
-	const char *name;
+	const char		*name;
+	int			sock;
+	int			seq;
+	struct sockaddr_nl	snl;
+	uint8_t			__padding[4];
 };
 
 struct nlsock os_netlink, os_netlink_cmd;
@@ -425,8 +426,8 @@ bool os_int_set_ttl(struct sixxs_interface *iface, unsigned int ttl)
 /* Message structure. */
 struct message
 {
-	int key;
-	const char *str;
+	uint64_t	key;
+	const char	*str;
 };
 
 struct message nlmsg_str[] = {
@@ -523,8 +524,8 @@ struct message ifi_types[] = {
 };
 
 /* Message lookup function. */
-const char *lookup(struct message *mes, int key);
-const char *lookup(struct message *mes, int key)
+const char *lookup(struct message *mes, uint64_t key);
+const char *lookup(struct message *mes, uint64_t key)
 {
 	struct message *pnt;
 	
@@ -548,7 +549,7 @@ void netlink_parse_rtattr(struct rtattr **tb, int max, struct rtattr *rta, int l
 void netlink_update_link(struct nlmsghdr *h);
 void netlink_update_link(struct nlmsghdr *h)
 {
-	int			len, i;
+	int			len;
 	struct ifinfomsg	*ifi;
 	struct rtattr		*tb[IFLA_MAX + 1];
 	struct sixxs_interface	*iface;
@@ -590,7 +591,8 @@ void netlink_update_link(struct nlmsghdr *h)
 		if (h->nlmsg_type == RTM_NEWLINK && (ifi->ifi_flags & IFF_UP))
 		{
 			/* XXX - Remove interfaces we don't want to know about */
-			mddolog("%s interface %u/%s, remove it!\n", iface->type == IFACE_UNSPEC ? "Unknown" : "Down-marked", i, name);
+			mddolog("%s interface %s, remove it!\n",
+				iface->type == IFACE_UNSPEC ? "Unknown" : "Down-marked", name);
 
 			/* XXX - Ignore certain devices! */
 

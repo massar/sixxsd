@@ -10,6 +10,12 @@
 #ifndef SIXXSD_H
 #define SIXXSD_H "42LI"
 
+/* C99 (ISO 9899:1999) formatters */
+#define FMT_64                  PRIu64
+#define FMT_64X                 PRIx64
+#define FMT_64S                 PRId64
+#define FMT_TIME                FMT_64
+
 #ifndef _BSD
 #include <features.h>
 #endif
@@ -155,6 +161,7 @@
 struct tlssocket
 {
 	SOCKET			socket;
+
 #ifdef SIXXSD_GNUTLS
 	bool			tls_active;	/* TLS active? */
 	gnutls_session		session;	/* The GnuTLS sesision */
@@ -327,6 +334,8 @@ struct sixxs_interface
 	int			ayiya_fd;			/* File descriptor for the tun/tap device */
 	unsigned char		ayiya_hash[SHA1_DIGEST_LENGTH];	/* SHA1 Hash of the shared secret. */
 
+	uint8_t			__padding[4];
+
 	/* Statistics */
 	uint64_t		inoct,				/* Input Octets */
 				outoct,				/* Output Octets */
@@ -338,7 +347,8 @@ struct sixxs_pop_prefix
 {
 	struct sixxs_pop_prefix	*next;				/* Next in the chain */
 	struct in6_addr		prefix;				/* Prefix */
-	unsigned int		length;				/* Length of the prefix (/48 etc) */
+	uint32_t		length;				/* Length of the prefix (/48 etc) */
+	uint8_t			__padding[4];
 };
 
 struct sixxs_pop_ignores
@@ -382,6 +392,8 @@ struct conf
 	char			*pop_name;			/* Name of this PoP */
 	struct in_addr		pop_ipv4;			/* IPv4 address of this PoP */
 	struct in6_addr		pop_ipv6;			/* IPv6 address of this PoP */
+
+	uint8_t			__padding[4];
 	struct sixxs_pop_prefix	*pop_prefixes;			/* Prefixes handled by this PoP */
 	
 	char			*pop_tunneldevice;		/* Interface name prefix */
@@ -399,6 +411,8 @@ struct conf
 	unsigned int		max_prefixes;			/* Maximum number of routes */
 
 	unsigned int		loopback_ifindex;		/* Ifindex of the loopback device */
+
+	uint8_t			__padding2[4];
 
 	/* Statistics */
 	struct

@@ -25,12 +25,12 @@ struct pseudo_ayh
 struct ayiya_socket
 {
 	const char	*title;
-	unsigned int	port;
 	const char	*sport;
 	int		socket;
+	unsigned int	port;
 } ayiya_socket[] = {
-	{"AYIYA",	0,	"5072",	-1},
-	{NULL,		0,	NULL,	-1}
+	{"AYIYA",	"5072",	-1, 0},
+	{NULL,		NULL,	-1, 0}
 };
 
 /*
@@ -110,6 +110,9 @@ void *ayiya_process_outgoing(void *arg)
 	struct in_addr		in_any;
 	fd_set			readset;
 	struct timeval		timeout;
+#ifdef _LINUX
+	struct tun_pi		pi;
+#endif
 
 	struct pseudo_ayh	s;
 
@@ -173,34 +176,39 @@ void *ayiya_process_outgoing(void *arg)
 
 		if (((int)lenin) > ((int)sizeof(s.payload)))
 		{
-			mdolog(LOG_ERR, "[outgoing] Long packet of %d vs %u\n", lenin, sizeof(s.payload));
+			mdolog(LOG_ERR, "[outgoing] Long packet of %d vs %" FMT_64 "\n", lenin, sizeof(s.payload));
 			continue;
 		}
 
 #ifdef _LINUX
-		i = ntohs(((struct tun_pi *)&(s.payload))->proto);
+		/* Get tun_pi structure */
+		memcpy(&pi, s.payload, sizeof(pi));
+
+		/* Move it out of the way */
+		lenin -= sizeof(pi);
+		memmove(&s.payload, &s.payload[sizeof(pi)], lenin);
+
+		/* Map it to our version */
+		i = ntohs(pi.proto);
 		if (i == ETH_P_IP) s.ayh.ayh_nextheader = IPPROTO_IPV4;
 		else if (i == ETH_P_IPV6) s.ayh.ayh_nextheader = IPPROTO_IPV6;
+#else
+		i = ntohl(*(uint32_t *)&(s.payload));
+
+		/* Move it out of the way */
+		lenin -= sizeof(uint32_t);
+		memmove(&s.payload, &s.payload[sizeof(uint32_t)], sizeof(lenin));
+
+		/* Map it to our version */
+		if (i == AF_INET) s.ayh.ayh_nextheader = IPPROTO_IPV4;
+		else if (i == AF_INET6) s.ayh.ayh_nextheader = IPPROTO_IPV6;
+#endif
 		else
 		{
 			mdolog(LOG_ERR, "[outgoing] Not forwarding IP protocol 0x%04x over %s/%u\n", i, iface->name, iface->interface_id);
 			continue;
 		}
 
-#else
-		s.ayh.ayh_nextheader = ntohl(*(uint32_t *)&(s.payload));
-		if (s.ayh.ayh_nextheader == AF_INET) s.ayh.ayh_nextheader = IPPROTO_IPV4;
-		else if (s.ayh.ayh_nextheader == AF_INET6) s.ayh.ayh_nextheader = IPPROTO_IPV6;
-		else
-		{
-			mdolog(LOG_ERR, "[outgoing] Not forwarding unknown AF protocol 0%04x over %s/%u\n", s.ayh.ayh_nextheader, iface->name, iface->interface_id);
-			continue;
-		}
-#endif
-
-		/* Get the "struct tun_pi" out of the way */
-		memmove(&s.payload, &s.payload[4], lenin-4);
-		lenin-=4;
 
 		/* Check if the protocol is correct */
 		if (s.ayh.ayh_nextheader == IPPROTO_IPV6 && ((s.payload[0] >> 4) != 0x6))
@@ -549,6 +557,7 @@ void *ayiya_thread(void *arg)
 	inet_ntop(AF_INET, &g_conf->pop_ipv4, buf, sizeof(buf));
 
 	/* Setup listening socket */
+	fprintf(stderr, "BINDING on IP %s:%s\n", buf, as->sport);
 	s = listen_server("ayiya", buf, as->sport, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 0);
 	if (s < 0)
 	{

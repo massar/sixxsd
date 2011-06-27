@@ -14,6 +14,8 @@
 const char module_traffic[] = "traffic";
 #define module module_traffic
 
+#ifdef WITH_RRD
+
 void traffic_create_interface(const char *interface);
 void traffic_create_interface(const char *interface)
 {
@@ -60,12 +62,16 @@ void traffic_create_interface(const char *interface)
 	}
 }
 
+#endif /* WITH_RRD */
+
 void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt);
 void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt)
 {
+#ifdef WITH_RRD
 	char			*args[4], filename[2048], values[2048];
 	struct stat		stats;
 	unsigned int		i = strlen(g_conf->pop_tunneldevice);
+#endif
 	struct sixxs_interface	*iface = NULL;
 
 	iface = int_get_by_name(interface);
@@ -79,6 +85,7 @@ void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t ou
 		OS_Mutex_Release(&iface->mutex, "traffic_update_interface");
 	}
 
+#ifdef WITH_RRD
 	/* Don't update RRDs? Then we are done */
 	if (!g_conf->do_rrd) return;
 
@@ -158,6 +165,7 @@ void traffic_update_interface(const char *interface, uint64_t inoct, uint64_t ou
 	{
 		mdolog(LOG_ERR, "arg[%u]: \"%s\"\n", i, args[i]);
 	}
+#endif /* WITH_RRD */
 }
 
 #ifdef _BSD

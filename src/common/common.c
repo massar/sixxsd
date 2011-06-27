@@ -821,7 +821,7 @@ bool parse_userpass(const char *uri, char *username, unsigned int username_len, 
  * Note: uses internal caching, this should be the only function
  * used to read from the sock! The internal cache is rbuf.
  */
-int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen)
+int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, uint64_t *filled, char *ubuf, unsigned int ubuflen)
 {
 	unsigned int j;
 	int i;
@@ -923,7 +923,7 @@ int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, unsigned int
 		/* Buffer overflow? */
 		if (*filled >= (rbuflen-64))
 		{
-			dolog(LOG_ERR, "common", "Buffer almost flowed over without receiving a newline (filled=%u, rbuflen=%u)\n", *filled, rbuflen);
+			dolog(LOG_ERR, "common", "Buffer almost flowed over without receiving a newline\n");
 			return -1;
 		}
 
@@ -1184,8 +1184,8 @@ void socketpool_remove(struct socketpool *pool, struct socketnode *sn)
  * Note: uses internal caching, this should be the only function
  * used to read from the sock! The internal cache is rbuf.
  */
-int sock_getdata(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *filled);
-int sock_getdata(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *filled)
+int sock_getdata(SOCKET sock, char *rbuf, unsigned int rbuflen, uint64_t *filled);
+int sock_getdata(SOCKET sock, char *rbuf, unsigned int rbuflen, uint64_t *filled)
 {
 	int i;
 
@@ -1216,8 +1216,8 @@ int sock_getdata(SOCKET sock, char *rbuf, unsigned int rbuflen, unsigned int *fi
 	return *filled;
 }
 
-int sock_done(SOCKET UNUSED sock, char *rbuf, unsigned int UNUSED rbuflen, unsigned int *filled, unsigned int amount);
-int sock_done(SOCKET UNUSED sock, char *rbuf, unsigned int UNUSED rbuflen, unsigned int *filled, unsigned int amount)
+int sock_done(SOCKET UNUSED sock, char *rbuf, unsigned int UNUSED rbuflen, uint64_t *filled, uint64_t amount);
+int sock_done(SOCKET UNUSED sock, char *rbuf, unsigned int UNUSED rbuflen, uint64_t *filled, uint64_t amount)
 {
 	/* Done with this part */
 	*filled-=amount;
@@ -1238,12 +1238,12 @@ int sn_getdata(struct socketnode *sn)
 	return sock_getdata(sn->socket.socket, sn->buf, sizeof(sn->buf), &sn->filled);
 }
 
-int sn_done(struct socketnode *sn, unsigned int amount)
+int sn_done(struct socketnode *sn, uint64_t amount)
 {
 	return sock_done(sn->socket.socket, sn->buf, sizeof(sn->buf), &sn->filled, amount);
 }
 
-int sn_getline(struct socketnode *sn, char *ubuf, unsigned int ubuflen)
+int sn_getline(struct socketnode *sn, char *ubuf, uint64_t ubuflen)
 {
 	return sock_getline(&sn->socket, sn->buf, sizeof(sn->buf), &sn->filled, ubuf, ubuflen);
 }

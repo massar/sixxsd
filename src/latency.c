@@ -14,6 +14,8 @@
 const char module_latency[] = "latency";
 #define module module_latency
 
+#ifdef WITH_RRD
+
 void latency_create_interface(const char *interface);
 void latency_create_interface(const char *interface)
 {
@@ -59,11 +61,15 @@ void latency_create_interface(const char *interface)
 	}
 }
 
+#endif /* WITH_RRD */
+
 void latency_update_interface(const char *interface, float latency, float loss);
 void latency_update_interface(const char *interface, float latency, float loss)
 {
+#ifdef WITH_RRD
 	char			*args[4], filename[2048], values[2048];
 	struct stat		stats;
+#endif
 	unsigned int		i = strlen(g_conf->pop_tunneldevice);
 	struct sixxs_interface	*iface = NULL;
 
@@ -81,6 +87,9 @@ void latency_update_interface(const char *interface, float latency, float loss)
 			OS_Mutex_Release(&iface->mutex, "latency_update_interface");
 		}
 	}
+
+#ifdef WITH_RRD
+	if (!g_conf->do_rrd) continue;
 
 	args[0] = (char *)"update";
 	args[1] = filename;
@@ -158,6 +167,8 @@ void latency_update_interface(const char *interface, float latency, float loss)
 	{
 		mdolog(LOG_ERR, "arg[%u]: \"%s\"\n", i, args[i]);
 	}
+
+#endif /* WITH_RRD */
 }
 
 void latency_collect(void);
@@ -169,6 +180,8 @@ void latency_collect(void)
 	snprintf(cmd, sizeof(cmd), "fping6 -q -c %u -b %u", ping_count, ping_size);
 
 	/* "195.177.242.34 : xmt/rcv/%loss = 5/5/0%, min/avg/max = 2.34/2.37/2.44" */
+
+	/* XXX / TODO actually execute a ping */
 
 	/* latency_update_interface("boo", 0, 100); */
         return;
@@ -210,6 +223,7 @@ void *latency_thread(void UNUSED *arg)
 void latency_init(void)
 {
 	/* Create a thread for the Latency Statistics Handler */
-	thread_add("Latency", latency_thread, NULL, true);
+	/* thread_add("Latency", latency_thread, NULL, true); */
+	/* XXX: Currently disabled as it does not function anyway */
 }
 

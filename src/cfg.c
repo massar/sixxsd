@@ -799,10 +799,10 @@ bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 				sock_printf(sock, "\n");
 				sock_printf(sock, "Latency               : %.2f\n", iface->latency);
 				sock_printf(sock, "Loss                  : %2.2f\n", iface->loss);
-				sock_printf(sock, "Octets (in)           : %llu\n", iface->inoct);
-				sock_printf(sock, "Octets (out)          : %llu\n", iface->outoct);
-				sock_printf(sock, "Packets (in)          : %llu\n", iface->inpkt);
-				sock_printf(sock, "Packets (out)         : %llu\n", iface->outpkt);
+				sock_printf(sock, "Octets (in)           : %" PRIu64 "\n", iface->inoct);
+				sock_printf(sock, "Octets (out)          : %" PRIu64 "\n", iface->outoct);
+				sock_printf(sock, "Packets (in)          : %" PRIu64 "\n", iface->inpkt);
+				sock_printf(sock, "Packets (out)         : %" PRIu64 "\n", iface->outpkt);
 			}
 			OS_Mutex_Release(&iface->mutex, "cfg_cmd_status");
 		}
@@ -872,7 +872,7 @@ bool cfg_cmd_status(TLSSOCKET *sock, const char UNUSED *args)
 				continue;
 			}
 
-			sock_printf(sock, "%s %u %s %lld %lld %lld %lld %s%s%s%s%s %s\n",
+			sock_printf(sock, "%s %u %s %" FMT_64 " %" FMT_64 " %" FMT_64 " %" FMT_64 " %s%s%s%s%s %s\n",
 				iface->name, i,
 				iface->state == IFSTATE_DISABLED	? "disabled" :
 				iface->state == IFSTATE_UP		? "up" :
@@ -1088,7 +1088,7 @@ void cfg_cmd_getstatA(TLSSOCKET *sock, struct sixxs_interface *iface)
 {
 	if (!iface || iface->type == IFACE_UNSPEC) return;
 
-	sock_printf(sock, "%s%u %llu %llu %llu %llu\n",
+	sock_printf(sock, "%s%u %" FMT_64 " %" FMT_64 " %" FMT_64 " %" FMT_64 "\n",
 		g_conf->pop_tunneldevice,
 		iface->interface_id,
 		iface->inoct, iface->outoct,
@@ -1282,7 +1282,7 @@ void *cfg_thread_client(void *arg);
 void *cfg_thread_client(void *arg)
 {
 	struct cfg_client	*lc = (struct cfg_client *)arg;
-	unsigned int		filled = 0;
+	uint64_t		filled = 0;
 	char			buf[1024], rbuf[8192];
 	bool			quit = false;
 

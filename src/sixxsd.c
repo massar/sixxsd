@@ -329,7 +329,7 @@ int sixxsd_main(int argc, char *argv[], char UNUSED *envp[])
 
 	welcome();
 
-	mdolog(LOG_INFO, "Max Interfaces = %u x %u (%u bytes), Max Prefix = %u x %u (%u bytes)\n",
+	mdolog(LOG_INFO, "Max Interfaces = %u x %" FMT_64 " (%" FMT_64 " bytes), Max Prefix = %u x %" FMT_64 " (%" FMT_64 " bytes)\n",
 		g_conf->max_interfaces,	sizeof(struct sixxs_interface),
 		g_conf->max_interfaces * sizeof(struct sixxs_interface),
 		g_conf->max_prefixes, sizeof(struct sixxs_prefix),

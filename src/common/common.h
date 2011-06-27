@@ -160,9 +160,10 @@ struct socketnode
 {
 	struct hnode		node;
 	TLSSOCKET		socket;				/* The socket(tm) */
-	unsigned int		tag;				/* Tag for identification */
-	char			buf[8192];			/* 8kb of bufferspace */
-	unsigned int		filled;				/* How far the buffer has been filled */
+	char			buf[8196];			/* 8kb of bufferspace */
+
+	uint64_t		tag;				/* Tag for identification */
+	uint64_t		filled;				/* How far the buffer has been filled */
 	time_t			lastrecv;			/* Last time something was received */
 	void			*data;				/* User supplied data */
 
@@ -176,6 +177,7 @@ struct socketpool
 {
 	fd_set			fds;
 	SOCKET			hi;
+	uint8_t			__padding[4];
 	struct hlist		sockets;
 };
 
@@ -187,8 +189,8 @@ struct socketnode *socketpool_add(struct socketpool *pool, SOCKET sock, unsigned
 void socketpool_remove(struct socketpool *pool, struct socketnode *sn);
 int sn_dataleft(struct socketnode *sn);
 int sn_getdata(struct socketnode *sn);
-int sn_done(struct socketnode *sn, unsigned int amount);
-int sn_getline(struct socketnode *sn, char *ubuf, unsigned int ubuflen);
+int sn_done(struct socketnode *sn, uint64_t amount);
+int sn_getline(struct socketnode *sn, char *ubuf, uint64_t ubuflen);
 
 /* Networking functions */
 void socket_cleanss(struct sockaddr_storage *addr);
@@ -202,5 +204,5 @@ int use_uri(const char *mod, const char *uri, const char *defaultservice, struct
 TLSSOCKET *connect_client(const char *module, const char *hostname, const char *service, int family, int socktype);
 int listen_server(const char *mod, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, unsigned int tag);
 void sock_printf(TLSSOCKET *sock, const char *fmt, ...) ATTR_FORMAT(printf, 2, 3);
-int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, unsigned int *filled, char *ubuf, unsigned int ubuflen);
+int sock_getline(TLSSOCKET *sock, char *rbuf, unsigned int rbuflen, uint64_t *filled, char *ubuf, unsigned int ubuflen);
 
