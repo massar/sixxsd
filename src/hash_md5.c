@@ -23,16 +23,17 @@
 #include <string.h>		/* for memcpy() */
 #include <sys/types.h>		/* for stupid systems */
 
-#include "md5.h"
+#include "hash_md5.h"
 
-#ifdef WORDS_BIGENDIAN
-void
-byteSwap(UWORD32 *buf, unsigned words)
+#if BYTE_ORDER == BIG_ENDIAN
+#warning "Big Endian"
+void byteSwap(uint32_t *buf, unsigned int words);
+void byteSwap(uint32_t *buf, unsigned int words)
 {
 	md5byte *p = (md5byte *)buf;
 
 	do {
-		*buf++ = (UWORD32)((unsigned)p[3] << 8 | p[2]) << 16 |
+		*buf++ = (uint32_t)((unsigned)p[3] << 8 | p[2]) << 16 |
 			((unsigned)p[1] << 8 | p[0]);
 		p += 4;
 	} while (--words);
@@ -64,7 +65,7 @@ MD5Init(struct MD5Context *ctx)
 void
 MD5Update(struct MD5Context *ctx, md5byte const *buf, unsigned len)
 {
-	UWORD32 t;
+	uint32_t t;
 
 	/* Update byte count */
 
@@ -114,13 +115,13 @@ MD5Final(md5byte digest[16], struct MD5Context *ctx)
 	count = 56 - 1 - count;
 
 	if (count < 0) {	/* Padding forces an extra block */
-		memset(p, 0, count + 8);
+		memzero(p, count + 8);
 		byteSwap(ctx->in, 16);
 		MD5Transform(ctx->buf, ctx->in);
 		p = (md5byte *)ctx->in;
 		count = 56;
 	}
-	memset(p, 0, count);
+	memzero(p, count);
 	byteSwap(ctx->in, 14);
 
 	/* Append length in bits and transform */
@@ -130,7 +131,7 @@ MD5Final(md5byte digest[16], struct MD5Context *ctx)
 
 	byteSwap(ctx->buf, 4);
 	memcpy(digest, ctx->buf, 16);
-	memset(ctx, 0, sizeof(ctx));	/* In case it's sensitive */
+	memzero(ctx, sizeof(ctx));	/* In case it's sensitive */
 }
 
 #ifndef ASM_MD5
@@ -153,9 +154,9 @@ MD5Final(md5byte digest[16], struct MD5Context *ctx)
  * the data and converts bytes into longwords for this routine.
  */
 void
-MD5Transform(UWORD32 buf[4], UWORD32 const in[16])
+MD5Transform(uint32_t buf[4], uint32_t const in[16])
 {
-	register UWORD32 a, b, c, d;
+	register uint32_t a, b, c, d;
 
 	a = buf[0];
 	b = buf[1];

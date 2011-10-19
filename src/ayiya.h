@@ -1,6 +1,7 @@
 /**********************************************************
- AYIYA - Anything In Anything (with Authentication)
- by Jeroen Massar <jeroen@sixxs.net> / <jeroen@unfix.org>
+ SixXSd - SixXS PoP Daemon
+ by Jeroen Massar <jeroen@sixxs.net>
+ (C) Copyright SixXS 2000-2011 All Rights Reserved
 **********************************************************/
 
 #ifndef AYIYA_H
@@ -9,11 +10,9 @@
 #include "sixxsd.h"
 
 /*
- * Anything In Anything - AYIYA (uses UDP in our case)
- *
- * (The "Italian Beta" used port 8374)
+ * Anything In Anything - AYIYA
  */
-#define AYIYA_PORT	"5072"
+#define AYIYA_PORT	5072
 
 /*
  * AYIYA version (which document this should conform to)
@@ -77,6 +76,9 @@ struct ayiyahdr
 #endif
 	u_int32_t	ayh_epochtime;		/* Time in seconds since "00:00:00 1970-01-01 UTC" */
 };
+
+VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len);
+VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
 
 #endif
 

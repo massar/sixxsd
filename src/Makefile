@@ -1,112 +1,89 @@
-# /**************************************
-#  SixXSd - SixXS PoP Daemon
+# /*********************************************************
+#  SixXSd - The Daemon of SixXS
 #  by Jeroen Massar <jeroen@sixxs.net>
-# ***************************************
+#  (C) Copyright SixXS 2000-2008 All Rights Reserved
+# **********************************************************
+# $Author: $
 # $Id$
-# **************************************/
+# $Date: $
+# *********************************************************/
 #
 # Source Makefile for SixXSd - Jeroen Massar <jeroen@sixxs.net>
 #
-# PROJECT_VERSION and PROJECT_OPTIONS need to be defined, gets done by toplevel Makefile
+# SIXXSD_VERSION and SIXXSD_RELEASE and SIXXSD_OPTIONS need to be defined, gets done by toplevel Makefile
 #
 # One should make this using the main Makefile (thus one dir up)
 
-ifndef PROJECT_VERSION
-$(error Run this make from the root, aka one level up))
+ifndef SIXXSD_VERSION
+$(error Run this make from the root, aka one level up)
 endif
 
-SIXXSD_VERSION = ${PROJECT_VERSION}
-SIXXSD_OPTIONS = ${PROJECT_OPTIONS}
+EXED = sixxsd_$(OS_BITS)
 
-BIN 	= sixxsd
-SRCS	= sixxsd.c common/common.c common/md5.c common/sha1.c thread.c interface.c prefix.c cfg.c hb.c ayiya.c traffic.c latency.c
-INCS	= sixxsd.h common/common.h common/md5.h common/sha1.h
-OBJS	= sixxsd.o common/common.o common/md5.o common/sha1.o thread.o interface.o prefix.o cfg.o hb.o ayiya.o traffic.o latency.o
-DEPS    := ../Makefile Makefile
-CFLAGS	+= -D_GNU_SOURCE -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"' $(SIXXSD_OPTIONS)
-LDFLAGS	= -lpthread
-CC      = gcc
-RM      = rm
+BINS		= ../bin/${EXED}${EXT}
 
-COMPILE = @echo "* Compiling to $@"; $(CC) -c $(CFLAGS)
-LINK    = @echo "* Linking $@"; $(CC) $(CFLAGS)
-RM      = @echo "* Removing $@"; rm
+# Core Modules
+OBJS		=	sixxsd.o 							\
+			ayiya.o								\
+			checksum.o common.o common_extra.o config.o context.o 		\
+			decode.o							\
+			hash_md5.o hash_sha1.o						\
+			hb.o								\
+			iface.o								\
+			pop.o								\
+			proto41.o							\
+			rwl.o								\
+			subnet.o							\
+			thread.o tunnel.o
 
-ifdef BITS
-CFLAGS	+= -m${BITS} -DM${BITS}
-endif
+INCS		=	sixxsd.h 							\
+			ayiya.h								\
+			checksum.h common.h common_extra.h config.h context.h		\
+			hash_md5.h hash_sha1.h hb.h					\
+			iface.h								\
+			list.h								\
+			platform.h proto41.h						\
+			rwl.h								\
+			sixxsd.h stats.h subnet.h					\
+			thread.h tunnel.h
 
-ifdef WITH_RRD
-LDFLAGS	+= -lrrd
-CFLAGS	+= -DWITH_RRD=1
-endif
+# http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
+# Describes the various standard toggles (_LARGEFILE_SOURCE, _LARGEFILE64_SOURCE, _FILE_OFFSET_BITS=64)
+# See also http://www.suse.de/~aj/linux_lfs.html for Long File Support (LFS) / 64bit support documentation
+DEPS		:=	../Makefile Makefile
+CFLAGS		+=	-D_XOPEN_SOURCE=600 -D_BSD_SOURCE
+CFLAGS		+=	-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+CFLAGS		+=	-D_REENTRANT -D_THREAD_SAFE
+CFLAGS		+=	-D'SIXXSD_RELEASE="$(SIXXSD_RELEASE)"' -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"'
+CFLAGS		+=	-D'SIXXSD_DESC=$(SIXXSD_DESC)' -D'SIXXSD_COPYRIGHT=$(SIXXSD_COPYRIGHT)'
+CFLAGS		+=	$(SIXXSD_OPTIONS) -D'SIXXSD_OPTIONS="$(SIXXSD_OPTS)"'
+CFLAGS		+=	-DOS_BITS=$(OS_BITS)
+COMPILE		=	@echo "* Compiling to $@"; $(CC) -c $(CFLAGS)
+LINK		=	@echo "* Linking $@"; $(CC) $(CFLAGS)
+RM		=	@echo "* Removing $@"; rm
 
-# Our very *bliep* set of options to make sure that these things can't cause any issues
-CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-packed -Wpadded -pedantic -Wall -Wswitch-default -Wformat=2 -Wformat-security -Wformat -Wmissing-format-attribute -D_REENTRANT -D_THREAD_SAFE -pipe -Wunused -Winit-self -Wextra -Wno-long-long
+# The part of the Makefile which actually builds SixXSd
 
-# Linux
-ifeq ($(shell uname | grep -c "Linux"),1)
-CFLAGS += -D_LINUX -Wno-variadic-macros
-SRCS += os_linux.c
-OBJS += os_linux.o
-endif
+all: ${BINS}
 
-# FreeBSD
-ifeq ($(shell uname | grep -c "FreeBSD"),1)
-CFLAGS += -D_FREEBSD -D_BSD -I/usr/local/include/
-LDFLAGS += -L/usr/local/lib/
-SRCS += os_bsd.c
-OBJS += os_bsd.o
-endif
-
-# OpenBSD
-ifeq ($(shell uname | grep -c "OpenBSD"),1)
-CFLAGS += -D_OPENBSD -D_BSD -I/usr/local/include/
-LDFLAGS += -L/usr/local/lib/
-SRCS += os_bsd.c
-OBJS += os_bsd.o
-endif
-
-# Darwin
-ifeq ($(shell uname | grep -c "Darwin"),1)
-CFLAGS += -D_DARWIN -D_BSD
-SRCS += os_bsd.c
-OBJS += os_bsd.o
-endif
-
-# AIX
-ifeq ($(shell uname | grep -c "AIX"),1)
-CFLAGS += -DAIX
-#error No AIX configuration method (yet)
-endif
-
-# Add symbols for debugmode, but optimize fully otherwise
-ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "DEBUG"),1)
-CFLAGS += -g
-else
-ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "PROFILE"),0)
-CFLAGS += -O3
-endif
-endif
-
-ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "PROFILE"),1)
-CFLAGS += -pg -g
-# -fprofile-arcs
-endif
-
-all: ${BIN}
-
-$(BIN): $(OBJS) $(INCS) $(DEPS)
+../bin/${EXED}${EXT}: ${OBJS} ${INCS} ${DEPS}
 	$(LINK) -o $@ $(OBJS) $(LDFLAGS)
-ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "DEBUG"),0)
-	strip $@;
+ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "SYMBOLS"),0)
+	@echo [STRIP] $@; strip $@;
+endif
+
+../bin/${EXEW}${EXT}: ${OBJSW} ${INCSW} ${DEPS}
+	$(LINK) -o $@ $(OBJSW) $(LDFLAGSW)
+ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "SYMBOLS"),0)
+	@echo [STRIP] $@; strip $@;
 endif
 
 $(OBJS): %.o: %.c $(DEPS) ${INCS}
 	$(COMPILE) $< -o $@
 
 clean:
-	$(RM) -f $(OBJS) $(BINS)
+	$(RM) -f $(OBJS) *.o $(BINS)
 
 # Mark targets as phony
 .PHONY : all clean
+

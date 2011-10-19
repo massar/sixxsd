@@ -1,0 +1,133 @@
+/***********************************************************
+ SixXSd - The Daemon of SixXS
+ by Jeroen Massar <jeroen@sixxs.net>
+ (C) Copyright SixXS 2000-2011 All Rights Reserved
+************************************************************
+ $Author: $
+ $Id: $
+ $Date: $
+***********************************************************/
+
+#include "sixxsd.h"
+
+const char module_checksum[] = "checksum";
+#define module module_checksum
+
+uint16_t inchksum(const unsigned char *buf, uint16_t len);
+uint16_t inchksum(const unsigned char *buf, uint16_t len)
+{
+	int		odd, count;
+	unsigned long	result = 0;
+
+	if (len <= 0) return ~0;
+
+	odd = 1 & (addressnum_t)buf;
+	if (odd)
+	{
+#if BYTE_ORDER == LITTLE_ENDIAN
+		result = *buf;
+#else
+		result += (*buf << 8);
+#endif
+		len--;
+		buf++;
+	}
+
+	/* nr of 16-bit words.. */
+	count = len >> 1;
+	if (count)
+	{
+		if (2 & (addressnum_t)buf)
+		{
+			result += *(uint16_t *)buf;
+			count--;
+			len -= 2;
+			buf += 2;
+		}
+
+		/* nr of 32-bit words.. */
+		count >>= 1;
+
+		if (count)
+		{
+			uint64_t carry = 0;
+
+			do
+			{
+				uint64_t w = (*(uint16_t *)buf << 16) + (*(uint16_t *)&buf[2]);
+
+				count--;
+				buf += 4;
+				result += carry;
+				result += w;
+				carry = (w > result);
+			}
+			while (count);
+
+			result += carry;
+			result = (result & 0xffff) + (result >> 16);
+		}
+
+		if (len & 2)
+		{
+			result += *(uint16_t *)buf;
+			buf += 2;
+		}
+	}
+
+	if (len & 1)
+	{
+#if BYTE_ORDER == LITTLE_ENDIAN
+		result += *buf;
+#else
+		result += (*buf << 8);
+#endif
+	}
+
+	/* add up 16-bit and 16-bit for 16+c bit */
+	result = (result & 0xffff) + (result >> 16);
+
+	/* add up carry.. */
+	result = (result & 0xffff) + (result >> 16);
+
+	if (odd) result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
+
+	return result;
+}
+
+uint16_t in_checksum(const unsigned char *buf, uint16_t len)
+{
+	return inchksum(buf, len);
+}
+
+uint16_t ipv6_checksum(const struct ip6_hdr *ip6, const uint8_t protocol, const VOID *data, const uint16_t length)
+{
+	struct
+	{
+		uint16_t	length;
+		uint16_t	zero1;
+		uint8_t		zero2;
+		uint8_t		next;
+	} pseudo;
+	register uint32_t       chksum = 0UL;
+
+	pseudo.length   = htons(length);
+	pseudo.zero1    = 0;
+	pseudo.zero2    = 0;
+	pseudo.next     = protocol;
+
+	/* IPv6 Source + Dest */
+	chksum  = inchksum((const VOID *)&ip6->ip6_src, sizeof(ip6->ip6_src) + sizeof(ip6->ip6_dst));
+	chksum += inchksum((const VOID *)&pseudo, sizeof(pseudo));
+	chksum += inchksum(data, length);
+
+	/* Wrap in the carries to reduce chksum to 16 bits. */
+	chksum  = (chksum >> 16) + (chksum & 0xffff);
+	chksum += (chksum >> 16);
+
+	/* Take ones-complement and replace 0 with 0xFFFF. */
+	chksum = (uint16_t) ~chksum;
+	if (chksum == 0UL) chksum = 0xffffUL;
+	return (uint16_t)chksum;
+}
+

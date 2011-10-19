@@ -23,9 +23,10 @@
  * SUCH DAMAGE.
  */
 
-#include "sha1.h"
+#include "hash_sha1.h"
 #include <stdlib.h>
 #include <string.h>
+#include "platform.h"
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
@@ -159,9 +160,9 @@ void SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX *context) {
 	}
 	/* Wipe variables */
 	i = j = 0;
-	memset(context->buffer, 0, SHA1_BLOCK_LENGTH);
-	memset(context->state, 0, SHA1_DIGEST_LENGTH);
-	memset(context->count, 0, 8);
-	memset(&finalcount, 0, 8);
+	memzero(context->buffer, SHA1_BLOCK_LENGTH);
+	memzero(context->state, SHA1_DIGEST_LENGTH);
+	memzero(context->count, 8);
+	memzero(&finalcount, 8);
 }
 
