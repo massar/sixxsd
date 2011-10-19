@@ -747,6 +747,7 @@ int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const 
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
+	uint64_t		count = 0;
 	uint16_t		tid;
 	BOOL			reset = false;
 	char 			name[32];
@@ -768,6 +769,7 @@ int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const 
 
 	for (tid = 0; tid <= t->tunnel_hi; tid++)
 	{
+		count++;
 		tun = &t->tunnel[tid];
 
 		/* Name of the interface */
@@ -789,7 +791,12 @@ int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const 
 	/* Release it so that the pinger can do it's work */
 	mutex_release(g_conf->mutex_pinger);
 
-	return 200;
+	/* All okay */
+	if (count != 0) return 200;
+
+	/* Nothing there yet */
+	ctx_printf(ctx, "No tunnels are configured\n");
+	return 404;
 }
 
 int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
