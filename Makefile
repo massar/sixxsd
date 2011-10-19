@@ -47,6 +47,7 @@ endif
 
 ifeq ($(OS_BITS),)
 OS_BITS=64
+OS_PROC=x86_64
 else
 ifeq ($(OS_PROC),)
 ifeq ($(OS_BITS),64)
@@ -62,7 +63,6 @@ endif
 ifeq ($(OS_PROC),unknown)
 OS_PROC=$(shell uname -m)
 endif
-
 
 # Try to get the Compiler version (currently we assume gcc)
 CC_VERSION=$(shell $(CC) -v 2>&1 | grep "gcc version" | cut -f3 -d' ')
