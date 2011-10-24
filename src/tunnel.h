@@ -69,7 +69,7 @@ struct sixxsd_tunnel
 {
 	IPADDRESS			ip_them;			/* IP address of the remote end of the tunnel */
 	struct sixxsd_context		*debug_ctx;			/* Context to send debug output to */
-	uint16_t			tunnel_id;			/* The T<xxx> in the database */
+	uint32_t			tunnel_id;			/* The T<xxx> in the database */
 
 	uint16_t			mtu;				/* MTU of this tunnel */
 
@@ -84,7 +84,7 @@ struct sixxsd_tunnel
 	uint8_t				ayiya_sha1[SHA1_DIGEST_LENGTH];	/* SHA1 hash */
 
 	/* Heartbeat */
-	uint8_t				hb_password[135];		/* Heartbeat password */
+	uint8_t				hb_password[133];		/* Heartbeat password */
 
 	/* Heartbeat & AYIYA */
 	uint64_t			lastbeat;			/* Timestamp of last beat */

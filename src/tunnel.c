@@ -401,7 +401,7 @@ int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, c
 		SHA1_Final(tun->ayiya_sha1, &sha1);
 	}
 
-	ctx_printf(ctx, "Accepted Tunnel %s/T%s%s\n", args[0], args[1], argc == 5 ? " with password" : "");
+	ctx_printf(ctx, "Accepted Tunnel %x/T%u%s\n", tid, tun->tunnel_id, argc == 5 ? " with password" : "");
 	return 200;
 }
 
@@ -568,6 +568,7 @@ int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	if (tun->type == SIXXSD_TTYPE_AYIYA || tun->type == SIXXSD_TTYPE_PROTO41_HB)
 	{
 		tunnel_ago(ctx, tun->lastbeat, "Last Heartbeat          : ");
+		ctx_printf(ctx, "Heartbeat Password      : %s\n", tun->hb_password);
 	}
 
 	/* Show the packets in/out per IP version */
