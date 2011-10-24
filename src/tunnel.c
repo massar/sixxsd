@@ -382,7 +382,7 @@ int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, c
 		else if (tun->state != SIXXSD_TSTATE_DOWN && tun->state != SIXXSD_TSTATE_UP) tun->state = SIXXSD_TSTATE_DOWN;
 	}
 
-	if (argc == 7)
+	if (argc == 6)
 	{
 		i = strlen(args[5]);
 		if ((i+1) > sizeof(tun->hb_password))
