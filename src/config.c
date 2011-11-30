@@ -29,7 +29,9 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 	struct sixxsd_subnets	*subs;
 	unsigned int		i, j;
 
-	g_conf = (struct sixxsd_configuration *)mcalloc(sizeof(struct sixxsd_configuration), "g_conf");
+	i = sizeof(struct sixxsd_configuration);
+	ctx_printf(ctx, "Allocating a configuration structure of %u bytes\n", i);
+	g_conf = (struct sixxsd_configuration *)mcalloc(i, "g_conf");
 	if (!g_conf)
 	{
 		ctx_printef(ctx, errno, "Couldn't init()\n");
