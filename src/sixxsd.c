@@ -196,7 +196,7 @@ PTR *sixxsd_handleclient_thread(PTR *lc_)
 	closesocket(lc->ctx.socket);
 	lc->ctx.socket = -1;
 
-	ctx_exit(&lc->ctx, false);
+	ctx_exit(&lc->ctx);
 
 	mfree(lc, "sixxsd_client", sizeof(*lc));
 	return NULL;
@@ -270,7 +270,7 @@ VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 				mdoelog(LOG_WARNING, errno, "Socket Accept failed\n");
 
 				/* Close ctx */
-				ctx_exit(&lc->ctx, false);
+				ctx_exit(&lc->ctx);
 			}
 			else
 			{
@@ -318,8 +318,8 @@ VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					{
 						mdoelog(LOG_WARNING, errno, "Could not create a new thread\n");
 
-						/* Free the client memory */
-						ctx_exit(&lc->ctx, false);
+						/* CLose the context, reuse the lc in the next loop */
+						ctx_exit(&lc->ctx);
 						break;
 					}
 				}
@@ -349,7 +349,7 @@ VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					sock_printf(lc->ctx.socket, "<!-- Your IP: %s -->\n", hst);
 
 					/* Cleanup */
-					ctx_exit(&lc->ctx, false);
+					ctx_exit(&lc->ctx);
 				}
 			}
 		}
@@ -358,7 +358,7 @@ VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 
 	if (lc)
 	{
-		ctx_exit(&lc->ctx, false);
+		ctx_exit(&lc->ctx);
 		mfree(lc, sizeof(*lc), "sixxsd_client");
 		lc = NULL;
 	}
@@ -649,7 +649,7 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 	cfg_exit();
 
 	/* No more things to log */
-	ctx_exit(&ctx, false);
+	ctx_exit(&ctx);
 
 	return ret;
 }

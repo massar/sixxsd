@@ -53,11 +53,8 @@ struct ctx_menu ctx_menu_cmd[] =
 
 CONTEXT_CMD(cmd)
 
-VOID ctx_exit(struct sixxsd_context *ctx, BOOL iscopy)
+VOID ctx_exit(struct sixxsd_context *ctx)
 {
-	/* Nothing to cleanup, everything is a copy */
-	if (iscopy) return;
-
 	ctx_lock(ctx);
 
 	/* Cleanup tunnels that are debugging */

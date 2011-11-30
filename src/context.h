@@ -43,7 +43,7 @@ struct ctx_menu
 };
 
 VOID ctx_init(struct sixxsd_context *ctx);
-VOID ctx_exit(struct sixxsd_context *ctx, BOOL iscopy);
+VOID ctx_exit(struct sixxsd_context *ctx);
 
 #define ctx_lock(ctx) mutex_lock(ctx->mutex)
 #define ctx_release(ctx); mutex_release(ctx->mutex)
