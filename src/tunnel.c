@@ -384,6 +384,8 @@ int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, c
 
 	if (argc == 6)
 	{
+		sha1_byte shatmp[sizeof(tun->hb_password)];
+
 		i = strlen(args[5]);
 		if ((i+1) > sizeof(tun->hb_password))
 		{
@@ -397,7 +399,7 @@ int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, c
 
 		/* Pre-generate AYIYA SHA1 hash */
 		SHA1_Init(&sha1);
-		SHA1_Update(&sha1, tun->hb_password, i);
+		SHA1_Update(&sha1, tun->hb_password, i, shatmp);
 		SHA1_Final(tun->ayiya_sha1, &sha1);
 	}
 

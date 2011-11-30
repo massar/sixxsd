@@ -73,13 +73,14 @@ VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t prot
 {
 	struct sixxsd_tunnel		*tun;
 	SHA_CTX				sha1;
-	sha1_byte			hash[SHA1_DIGEST_LENGTH];
 	struct
 	{
 		struct ip		ip;
 		struct udphdr		udp;
 		struct pseudo_ayh	s;
 	} PACKED			pkt;
+	sha1_byte			hash[SHA1_DIGEST_LENGTH],
+					shatmp[sizeof(pkt.s)];
 
 	tun = tunnel_grab(out_tid);
 	if (!tun)
@@ -142,7 +143,7 @@ VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t prot
 	/* Generate a SHA1 */
 	SHA1_Init(&sha1);
 	/* Hash the complete AYIYA packet */
-	SHA1_Update(&sha1, (unsigned char *)&pkt.s, sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
+	SHA1_Update(&sha1, (unsigned char *)&pkt.s, sizeof(pkt.s) - sizeof(pkt.s.payload) + len, shatmp);
 
 	/* XXX: can we 'incrementally update' a SHA1 hash, as in sha1(header) + sha1(payload) ? */
 	/* Store the hash in the packets hash */
@@ -170,10 +171,11 @@ VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t prot
 VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
 {
 	SHA_CTX			sha1;
-	sha1_byte		their_hash[SHA1_DIGEST_LENGTH],
-				our_hash[SHA1_DIGEST_LENGTH];
-	int64_t			i;
 	struct pseudo_ayh	*s = (struct pseudo_ayh *)packet;
+	sha1_byte		their_hash[SHA1_DIGEST_LENGTH],
+				our_hash[SHA1_DIGEST_LENGTH],
+				shatmp[sizeof(*s)];
+	int64_t			i;
 	struct sixxsd_tunnel	*tun;
 	uint16_t		in_tid;
 	uint32_t		plen;
@@ -269,7 +271,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, co
 	/* Generate a SHA1 of the header + identity + shared secret */
 	SHA1_Init(&sha1);
 	/* Hash the Packet */
-	SHA1_Update(&sha1, (unsigned char *)s, len);
+	SHA1_Update(&sha1, (unsigned char *)s, len, shatmp);
 	/* Store the hash */
 	SHA1_Final(our_hash, &sha1);
 

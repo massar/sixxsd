@@ -112,48 +112,42 @@ void SHA1_Init(SHA_CTX* context) {
 }
 
 /* Run your data through this. */
-void SHA1_Update(SHA_CTX *context, sha1_byte *d, unsigned int len) {
+void SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte *t) {
 	unsigned int	i, j;
 
 	/* Make a temporary storage as Transform destroys it */
-	sha1_byte *data = (sha1_byte *)malloc(len);
-	if (!data) exit(-42);
-	memcpy(data, d, len);
+	memcpy(t, data, len);
 
 	j = (context->count[0] >> 3) & 63;
 	if ((context->count[0] += len << 3) < (len << 3)) context->count[1]++;
 	context->count[1] += (len >> 29);
 	if ((j + len) > 63) {
-	    memcpy(&context->buffer[j], data, (i = 64-j));
+	    memcpy(&context->buffer[j], t, (i = 64-j));
 	    SHA1_Transform(context->state, context->buffer);
 	    for ( ; i + 63 < len; i += 64) {
-	        SHA1_Transform(context->state, &data[i]);
+	        SHA1_Transform(context->state, &t[i]);
 	    }
 	    j = 0;
 	}
 	else i = 0;
-	memcpy(&context->buffer[j], &data[i], len - i);
-
-	/* Free the temporary buffer */
-	free(data);
+	memcpy(&context->buffer[j], &t[i], len - i);
 }
-
 
 /* Add padding and return the message digest. */
 void SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX *context) {
 	sha1_quadbyte	i, j;
-	sha1_byte	finalcount[8];
+	sha1_byte	finalcount[8], tmp[128];
 
 	for (i = 0; i < 8; i++) {
 	    finalcount[i] = (sha1_byte)((context->count[(i >= 4 ? 0 : 1)]
 	     >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
 	}
-	SHA1_Update(context, (sha1_byte *)"\200", 1);
+	SHA1_Update(context, (sha1_byte *)"\200", 1, tmp);
 	while ((context->count[0] & 504) != 448) {
-	    SHA1_Update(context, (sha1_byte *)"\0", 1);
+	    SHA1_Update(context, (sha1_byte *)"\0", 1, tmp);
 	}
 	/* Should cause a SHA1_Transform() */
-	SHA1_Update(context, finalcount, 8);
+	SHA1_Update(context, finalcount, 8, tmp);
 	for (i = 0; i < SHA1_DIGEST_LENGTH; i++) {
 	    digest[i] = (sha1_byte)
 	     ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
