@@ -92,28 +92,6 @@ VOID ctx_exit(struct sixxsd_context *ctx, BOOL iscopy)
 	ctx_release(ctx);
 }
 
-struct sixxsd_context *ctx_new(VOID)
-{
-	struct sixxsd_context *ctx;
-
-	ctx = mcalloc(sizeof(*ctx), "sixxsd_context");
-	if (!ctx)
-	{
-		mdoelog(LOG_ERR, errno, "Couldn't create a new ctx\n");
-		return NULL;
-	}
-
-	ctx_init(ctx);
-
-	return ctx;
-}
-
-VOID ctx_free(struct sixxsd_context *ctx, BOOL iscopy)
-{
-	ctx_exit(ctx, iscopy);
-	mfree(ctx, sizeof(*ctx), "sixxsd_context");
-}
-
 VOID ctx_init(struct sixxsd_context *ctx)
 {
 	assert(ctx);

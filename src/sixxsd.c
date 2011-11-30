@@ -437,7 +437,7 @@ int main(int argc, char *argv[], char UNUSED *envp[]);
 int main(int argc, char *argv[], char UNUSED *envp[])
 {
 	int			i, ret = 0;
-	struct sixxsd_context	*ctx;
+	struct sixxsd_context	ctx;
 #ifdef GOT_GETOPT_LONG
 	int			option_index = 0;
 #endif
@@ -594,15 +594,11 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 
 	while (true)
 	{
-		/* Create a new ctx, required as this is the very first one */
-		ctx = ctx_new();
-		if (!ctx)
-		{
-			fprintf(stderr, "Couldn't initialize initial ctx\n");
-			break;
-		}
+		/* Init our context */
+		ctx_init(&ctx);
 
-		ret = cfg_init(ctx, cfg_verbose);
+		/* Init our configuration */
+		ret = cfg_init(&ctx, cfg_verbose);
 		if (ret != 200) break;
 
 		if (cfg_daemonize) g_conf->daemonize = true;
@@ -612,36 +608,36 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 		welcome();
 
 		/* Load configuration from disk */
-		ret = ctx_exec(ctx, "sixxsd.conf", false, NULL);
+		ret = ctx_exec(&ctx, "sixxsd.conf", false, NULL);
 
-		if (ret != 200) ctx_printf(ctx, "Loading configuration failed\n");
-		ctx_flush(ctx, ret);
+		if (ret != 200) ctx_printf(&ctx, "Loading configuration failed\n");
+		ctx_flush(&ctx, ret);
 		if (ret != 200) break;
 
 		/* Fire up our packet capture */
-		ret = iface_init(ctx);
-		if (ret != 200) ctx_printf(ctx, "Starting Captures failed\n");
-		ctx_flush(ctx, ret);
+		ret = iface_init(&ctx);
+		if (ret != 200) ctx_printf(&ctx, "Starting Captures failed\n");
+		ctx_flush(&ctx, ret);
 		if (ret != 200) break;
 
-		ret = tunnel_init(ctx);
-		if (ret != 200) ctx_printf(ctx, "Tunnel Beat Check failed\n");
-		ctx_flush(ctx, ret);
+		ret = tunnel_init(&ctx);
+		if (ret != 200) ctx_printf(&ctx, "Tunnel Beat Check startup failed\n");
+		ctx_flush(&ctx, ret);
 		if (ret != 200) break;
 
 		/* Run SixXSd, Run! */
-		ret = sixxsd_run(ctx);
+		ret = sixxsd_run(&ctx);
 
 		/* Show the message in the log */
 
 		break;
 	}
 
-	if (ret != 0) ctx_flush(ctx, ret);
+	if (ret != 0) ctx_flush(&ctx, ret);
 
 	mddolog("Shutdown - Greetings from the Daemon of SixXS, Tschau!\n");
 
-	iface_exit(ctx);
+	iface_exit(&ctx);
 
 	/* Make sure we are going down */
 	g_conf->running = false;
@@ -653,7 +649,7 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 	cfg_exit();
 
 	/* No more things to log */
-	ctx_free(ctx, false);
+	ctx_exit(&ctx, false);
 
 	return ret;
 }
