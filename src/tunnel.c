@@ -895,34 +895,41 @@ static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int 
 	return 200;
 }
 
+#define CHECKTUN 83602
+
 static PTR *tunnel_beat_check(PTR UNUSED *arg);
 static PTR *tunnel_beat_check(PTR UNUSED *arg)
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid;
-	uint64_t		currtime = gettime();
+	uint64_t		currtime;
 
 	while (g_conf && g_conf->running)
 	{
+		/* Get the current time */
+		currtime = gettime();
+
+		/* Test all tunnels */
 		for (tid = 0; tid <= t->tunnel_hi; tid++)
 		{
 			tun = &t->tunnel[tid];
 
+			/* If it is not up we don't care about it */
 			if (tun->state != SIXXSD_TSTATE_UP) continue;
 
+			/* If it is not a dynamic tunnel skip it */
 			if (tun->type != SIXXSD_TTYPE_PROTO41_HB && tun->type != SIXXSD_TTYPE_AYIYA) continue;
 
 			/* It beat recently? */
-			if (tun->lastbeat > currtime) continue;
-			if ((currtime - tun->lastbeat) < MAX_CLOCK_OFF) continue;
+			if ((tun->lastbeat > currtime) || ((currtime - tun->lastbeat) < MAX_CLOCK_OFF)) continue;
 
 			/* Disable it */
 			tun->state = SIXXSD_TSTATE_DOWN;
 		}
 
-		/* Sleep for 10 seconds, then try again */
-		thread_sleep(10,0);
+		/* Sleep for a minute, then try again */
+		thread_sleep(60,0);
 	}
 
 	return NULL;
