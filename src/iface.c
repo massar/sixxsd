@@ -714,7 +714,7 @@ static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, con
 		pkt.icmp.icmp6_dataun.icmp6_un_data32[0] = htonl(param);
 	}
 
-	/* IP version 6 */
+	/* IPv6 */
 	pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);
 	pkt.ip.ip6_ctlun.ip6_un2_vfc = (6 << 4); 
 	pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(sizeof(pkt.icmp) + plen);

@@ -68,34 +68,60 @@ static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_
 #endif
 }
 
-/* From the interface (kernel) -> the other side of the tunnel */
-VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+VOID ayiya_out_pseudo(struct sixxsd_tunnel *tun, struct pseudo_ayh *s, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len);
+VOID ayiya_out_pseudo(struct sixxsd_tunnel *tun, struct pseudo_ayh *s, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len)
 {
-	struct sixxsd_tunnel		*tun;
-	SHA_CTX				sha1;
+	SHA_CTX		sha1;
+	sha1_byte	hash[SHA1_DIGEST_LENGTH], shatmp[sizeof(*s)];
+
+	/* Standard AYIYA values */
+	s->ayh.ayh_idlen = 4;			/* 2^4 = 16 bytes = 128 bits (IPv6 address) */
+	s->ayh.ayh_idtype = ayiya_id_integer;
+	s->ayh.ayh_siglen = 5;			/* 5*4 = 20 bytes = 160 bits (SHA1) */
+	s->ayh.ayh_hshmeth = ayiya_hash_sha1;
+	s->ayh.ayh_autmeth = ayiya_auth_sharedsecret;
+	s->ayh.ayh_opcode = ayiya_op_forward;
+	s->ayh.ayh_nextheader = protocol;
+
+	s->ayh.ayh_epochtime = htonl(gettime());
+
+	/* Our side of the tunnel */
+	memcpy(&s->identity, &g_conf->tunnels.prefix, (48/8));
+	s->identity.a16[(48/16)] = htons(out_tid);
+	memzero(&s->identity.a8[64/8], (56/8));
+	s->identity.a8[(128/8)-1] = 1;
+
+	/* The payload */
+	memcpy(s->payload, packet, len);
+
+	/*
+	 * The hash of the shared secret needs to be in the
+	 * spot where we later put the complete hash
+	 */
+	memcpy(&s->hash, &tun->ayiya_sha1, sizeof(s->hash));
+
+	/* Generate a SHA1 */
+	SHA1_Init(&sha1);
+	/* Hash the complete AYIYA packet */
+	SHA1_Update(&sha1, (unsigned char *)s, sizeof(*s) - sizeof(s->payload) + len, shatmp);
+
+	/* XXX: can we 'incrementally update' a SHA1 hash, as in sha1(header) + sha1(payload) ? */
+	/* Store the hash in the packets hash */
+	SHA1_Final(hash, &sha1);
+
+	/* Store the hash in the packet */
+	memcpy(&s->hash, &hash, sizeof(s->hash));
+}
+
+VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
+VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+{
 	struct
 	{
 		struct ip		ip;
 		struct udphdr		udp;
 		struct pseudo_ayh	s;
 	} PACKED			pkt;
-	sha1_byte			hash[SHA1_DIGEST_LENGTH],
-					shatmp[sizeof(pkt.s)];
-
-	tun = tunnel_grab(out_tid);
-	if (!tun)
-	{
-		if (!is_error) iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADMIN);
-		return;
-	}
-
-	if (len > sizeof(pkt.s.payload) || len > tun->mtu)
-	{
-		if (!is_error) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
-		return;
-	}
-
-	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_error)) return;
 
 	/* IPv4 */
 	pkt.ip.ip_v = 4;
@@ -113,50 +139,81 @@ VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t prot
 	pkt.udp.uh_sport = htons(tun->ayiya_port_us);
 	pkt.udp.uh_dport = htons(tun->ayiya_port_them);
 	pkt.udp.uh_ulen = htons(sizeof(pkt.udp) + sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
+
+	/* Fill in the pseudo header */
+	ayiya_out_pseudo(tun, &pkt.s, out_tid, protocol, packet, len);
 	
-	/* Standard AYIYA values */
-	pkt.s.ayh.ayh_idlen = 4;			/* 2^4 = 16 bytes = 128 bits (IPv6 address) */
-	pkt.s.ayh.ayh_idtype = ayiya_id_integer;
-	pkt.s.ayh.ayh_siglen = 5;			/* 5*4 = 20 bytes = 160 bits (SHA1) */
-	pkt.s.ayh.ayh_hshmeth = ayiya_hash_sha1;
-	pkt.s.ayh.ayh_autmeth = ayiya_auth_sharedsecret;
-	pkt.s.ayh.ayh_opcode = ayiya_op_forward;
-	pkt.s.ayh.ayh_nextheader = protocol;
-
-	pkt.s.ayh.ayh_epochtime = htonl(gettime());
-
-	/* Our side of the tunnel */
-	memcpy(&pkt.s.identity, &g_conf->tunnels.prefix, (48/8));
-	pkt.s.identity.a16[(48/16)] = htons(out_tid);
-	memzero(&pkt.s.identity.a8[64/8], (56/8));
-	pkt.s.identity.a8[(128/8)-1] = 1;
-
-	/* The payload */
-	memcpy(pkt.s.payload, packet, len);
-
-	/*
-	 * The hash of the shared secret needs to be in the
-	 * spot where we later put the complete hash
-	 */
-	memcpy(&pkt.s.hash, &tun->ayiya_sha1, sizeof(pkt.s.hash));
-
-	/* Generate a SHA1 */
-	SHA1_Init(&sha1);
-	/* Hash the complete AYIYA packet */
-	SHA1_Update(&sha1, (unsigned char *)&pkt.s, sizeof(pkt.s) - sizeof(pkt.s.payload) + len, shatmp);
-
-	/* XXX: can we 'incrementally update' a SHA1 hash, as in sha1(header) + sha1(payload) ? */
-	/* Store the hash in the packets hash */
-	SHA1_Final(hash, &sha1);
-
-	/* Store the hash in the packet */
-	memcpy(&pkt.s.hash, &hash, sizeof(pkt.s.hash));
-
 	/* We don't do checksums, they are optional for UDP anyway and there is already a hash in AYIYA anyway */
 	pkt.udp.uh_sum = htons(0);
 
 	/* Send the packet outbound */
 	iface_send4(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.s.payload) + len, NULL, 0, is_error, packet, len);
+}
+
+VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
+VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+{
+	struct
+	{
+		struct ip6_hdr		ip;
+		struct udphdr		udp;
+		struct pseudo_ayh	s;
+	} PACKED			pkt;
+
+        /* IPv6 */
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);
+        pkt.ip.ip6_ctlun.ip6_un2_vfc = (6 << 4);
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(sizeof(pkt.udp) + sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = 64;
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = IPPROTO_UDP;
+
+	memcpy(&pkt.ip.ip6_src, &g_conf->pop_ipv6,	sizeof(pkt.ip.ip6_src));
+	memcpy(&pkt.ip.ip6_dst, &tun->ip_them,		sizeof(pkt.ip.ip6_dst));
+
+	/* UDP */
+	pkt.udp.uh_sport = htons(tun->ayiya_port_us);
+	pkt.udp.uh_dport = htons(tun->ayiya_port_them);
+	pkt.udp.uh_ulen = htons(sizeof(pkt.udp) + sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
+
+	/* Fill in the pseudo header */
+	ayiya_out_pseudo(tun, &pkt.s, out_tid, protocol, packet, len);
+
+	/* In IPv6 a UDP checksum is mandatory */	
+	pkt.udp.uh_sum = htons(0);
+	pkt.udp.uh_sum = ipv6_checksum(&pkt.ip, IPPROTO_UDP, (uint8_t *)&pkt.udp, sizeof(pkt.udp) + sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
+
+	/* Send it off: maybe an error, don't decrease the TTL, don't check the source */
+	iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.s.payload) + len, is_error, false, true);
+}
+
+/* From the interface (kernel) -> the other side of the tunnel */
+VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+{
+	struct sixxsd_tunnel *tun;
+
+	tun = tunnel_grab(out_tid);
+	if (!tun)
+	{
+		if (!is_error) iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADMIN);
+		return;
+	}
+
+	if (len > sizeof(((struct pseudo_ayh *)NULL)->payload) || len > tun->mtu)
+	{
+		if (!is_error) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
+		return;
+	}
+
+	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_error)) return;
+
+	if (isipv4(&tun->ip_them))
+	{
+		ayiya_out_ipv4(tun, in_tid, out_tid, protocol, packet, len, is_error);
+	}
+	else
+	{
+		ayiya_out_ipv6(tun, in_tid, out_tid, protocol, packet, len, is_error);
+	}
 }
 
 /*
