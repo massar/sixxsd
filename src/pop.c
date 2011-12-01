@@ -242,22 +242,41 @@ static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UN
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	unsigned int		i;
-	uint64_t		tot = 0;
-	uint64_t		online[SIXXSD_TTYPE_MAX];
+	enum sixxsd_tunnel_type	type;
+	uint64_t		tot = 0, cfg = 0, act = 0;
+	uint64_t		online[SIXXSD_TTYPE_MAX], active[SIXXSD_TTYPE_MAX], configured[SIXXSD_TTYPE_MAX];
+	time_t			now = time(NULL);
 
 	/* Online */
 	memzero(online, sizeof(online));
+	memzero(active, sizeof(active));
+	memzero(configured, sizeof(configured));
 
-	/* Which ones are online? */
-	for (i = 0; i <= t->tunnel_hi; i++) online[t->tunnel[i].type]++;
+	/* Which ones are configured & online? */
+	for (i = 0; i <= t->tunnel_hi; i++)
+	{
+		type = t->tunnel[i].type;
+
+		/* Count the tunnels that are configured (should match tunnel_hi, unless we have ignored ones) */
+		configured[type]++;
+
+		/* Count the tunnels that are marked as being UP */
+		if (t->tunnel[i].state == SIXXSD_TSTATE_UP) online[type]++;
+
+		/* Count the tunnels that send a packet in the last 15 minutes */
+		if ((now - t->tunnel[i].stats.traffic[0].last) < (15*60)) active[type]++;
+	}
 
 	for (i = 1; i < lengthof(online); i++)
 	{
-		ctx_printdf(ctx, "Tunnels online %-10s: %" PRIu64 "\n", tunnel_type_name(i), online[i]);
+		ctx_printdf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", tunnel_type_name(i), online[i], active[i], configured[i]);
+
 		tot += online[i];
+		cfg += configured[i];
+		act += active[i];
 	}
 
-	ctx_printdf(ctx, "Tunnels online %-10s: %" PRIu64 "\n", "Total", tot);
+	ctx_printdf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", "total", tot, act, cfg);
 
 	return 200;
 }
