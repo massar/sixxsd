@@ -51,7 +51,7 @@ const char *tunnel_error_name(unsigned int err)
 		"Hash Fail",
 		"Encap.Pkt Too Big",
 		"Encap.Pkt Send Error",
-		"Same Input and Output Interface",
+		"Same In&Output Interface",
 		"Wrong Source IPv6",
 		"Wrong Source IPv4",
 		"Non-IPv6 Payload",
@@ -244,8 +244,8 @@ VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64
 	t->octets += packetlen;
 }
 
-VOID tunnel_account_pkt(const uint16_t tid, unsigned int a, unsigned int direction, unsigned int packetlen);
-VOID tunnel_account_pkt(const uint16_t tid, unsigned int a, unsigned int direction, unsigned int packetlen)
+VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen);
+VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen)
 {
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_stats	*s;
@@ -260,16 +260,18 @@ VOID tunnel_account_pkt(const uint16_t tid, unsigned int a, unsigned int directi
 	/* If it is not a tunnel, it must be the uplink */
 	s = tun ? &tun->stats : &g_conf->stats_uplink;
 
-	tunnel_update_stat(&s->traffic[a][direction], packetlen, currtime);
-	tunnel_update_stat(&g_conf->stats_total.traffic[a][direction], packetlen, currtime);
+	tunnel_update_stat(&s->traffic[direction], packetlen, currtime);
+	tunnel_update_stat(&g_conf->stats_total.traffic[direction], packetlen, currtime);
 }
 
-VOID tunnel_account_packet(const uint16_t in_tid, const uint16_t out_tid, unsigned int af, unsigned int packetlen)
+VOID tunnel_account_packet_in(const uint16_t in_tid, unsigned int packetlen)
 {
-	unsigned int	a = af == AF_INET ? 0 : 1;
+	tunnel_account_pkt(in_tid,	0, packetlen);
+}
 
-	tunnel_account_pkt(in_tid,	a, 0, packetlen);
-	tunnel_account_pkt(out_tid,	a, 1, packetlen);
+VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packetlen)
+{
+	tunnel_account_pkt(out_tid,	1, packetlen);
 }
 
 BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_error)
@@ -534,7 +536,6 @@ int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	struct sixxsd_tunnel	*tun;
 	char			buf[512];
 	unsigned int		a, d;
-	const char		as[2][5] = { "IPv4", "IPv6" };
 	const char		ds[2][5] = { "In", "Out" };
 
 	tun = tunnel_grab(tid);
@@ -577,27 +578,24 @@ int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 		ctx_printf(ctx, "Heartbeat Password      : %s\n", tun->hb_password);
 	}
 
-	/* Show the packets in/out per IP version */
-	for (a = 0; a < 2; a++)
+	/* Show the packets in/out */
+	for (d = 0; d < 2; d++)
 	{
-		for (d = 0; d < 2; d++)
-		{
-			tunnel_ago(ctx, tun->stats.traffic[a][d].last, "%4s Packet %-3s         : ", as[a], ds[d]);
-			ctx_printf(ctx, "%4s Packets %-3s        : %" PRIu64 "\n", as[a], ds[d], tun->stats.traffic[a][d].packets);
-			ctx_printf(ctx, "%4s Octets %-3s         : %" PRIu64 "\n", as[a], ds[d], tun->stats.traffic[a][d].octets);
-		}
+		tunnel_ago(ctx, tun->stats.traffic[d].last, "Packet %-3s              : ", ds[d]);
+		ctx_printf(ctx, "Packets %-3s             : %" PRIu64 "\n", ds[d], tun->stats.traffic[d].packets);
+		ctx_printf(ctx, "Octets %-3s              : %" PRIu64 "\n", ds[d], tun->stats.traffic[d].octets);
+	}
 
-		/* Current latency information */
-		ctx_printf(ctx, "%4s Latency Pkt Sent   : %u\n",	as[a], tun->stats.latency[a].num_sent);
-		ctx_printf(ctx, "%4s Latency Pkt Recv   : %u\n",	as[a], tun->stats.latency[a].num_recv);
+	/* Current latency information */
+	ctx_printf(ctx, "Latency Pkt Sent        : %u\n", tun->stats.latency.num_sent);
+	ctx_printf(ctx, "Latency Pkt Recv        : %u\n", tun->stats.latency.num_recv);
 
-		if (tun->stats.latency[a].num_sent > 0 && tun->stats.latency[a].num_recv > 0)
-		{
-			ctx_printf(ctx, "%4s Latency Loss       : %2.2f\n",	as[a], tun->stats.latency[a].num_sent == 0 ? 0 : (float)(tun->stats.latency[a].num_sent - tun->stats.latency[a].num_recv) * 100 / tun->stats.latency[a].num_sent);
-			ctx_printf(ctx, "%4s Latency Min        : %2.2f ms\n",	as[a], time_us_msec(tun->stats.latency[a].min));
-			ctx_printf(ctx, "%4s Latency Avg        : %2.2f ms\n",	as[a], time_us_msec(tun->stats.latency[a].tot / (tun->stats.latency[a].num_recv == 0 ? 1 : tun->stats.latency[a].num_recv)));
-			ctx_printf(ctx, "%4s Latency Max        : %2.2f ms\n",	as[a], time_us_msec(tun->stats.latency[a].max));
-		}
+	if (tun->stats.latency.num_sent > 0 && tun->stats.latency.num_recv > 0)
+	{
+		ctx_printf(ctx, "Latency Loss       : %2.2f\n",	tun->stats.latency.num_sent == 0 ? 0 : (float)(tun->stats.latency.num_sent - tun->stats.latency.num_recv) * 100 / tun->stats.latency.num_sent);
+		ctx_printf(ctx, "Latency Min        : %2.2f ms\n", time_us_msec(tun->stats.latency.min));
+		ctx_printf(ctx, "Latency Avg        : %2.2f ms\n", time_us_msec(tun->stats.latency.tot / (tun->stats.latency.num_recv == 0 ? 1 : tun->stats.latency.num_recv)));
+		ctx_printf(ctx, "Latency Max        : %2.2f ms\n", time_us_msec(tun->stats.latency.max));
 	}
 
 	/* Show the errors */
@@ -721,16 +719,15 @@ int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int
 	return 200;
 }
 
-VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, unsigned int version, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency);
-VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, unsigned int version, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency)
+VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency);
+VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency)
 {
 	/* Nothing counted then we don't need to show stats either */
 	if (in->packets == 0 && out->packets == 0) return;
 
-	/* Name | IPvX | InOct | OutOct | InPkt | OutPkt | PktSent | PktRecv | Loss | Min | Avg | Max */
-	ctx_printf(ctx, "%s %u %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "%s",
+	/* Name | InOct | OutOct | InPkt | OutPkt | PktSent | PktRecv | Loss | Min | Avg | Max */
+	ctx_printf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "%s",
 			name,
-			version,
 			in->octets,
 			out->octets,
 			in->packets,
@@ -762,13 +759,11 @@ int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const 
 	if (argc == 1 && strcmp(args[0], "RESET") == 0) reset = true;
 
 	snprintf(name, sizeof(name), "total");
-	tunnel_stats(ctx, name, 4, &g_conf->stats_total.traffic[stats_ipv4][stats_in], &g_conf->stats_total.traffic[stats_ipv4][stats_out], NULL);
-	tunnel_stats(ctx, name, 6, &g_conf->stats_total.traffic[stats_ipv6][stats_in], &g_conf->stats_total.traffic[stats_ipv6][stats_out], NULL);
+	tunnel_stats(ctx, name, &g_conf->stats_total.traffic[stats_in], &g_conf->stats_total.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_total, sizeof(g_conf->stats_total));
 
 	snprintf(name, sizeof(name), "uplink");
-	tunnel_stats(ctx, name, 4, &g_conf->stats_uplink.traffic[stats_ipv4][stats_in], &g_conf->stats_uplink.traffic[stats_ipv4][stats_out], NULL);
-	tunnel_stats(ctx, name, 6, &g_conf->stats_uplink.traffic[stats_ipv6][stats_in], &g_conf->stats_uplink.traffic[stats_ipv6][stats_out], NULL);
+	tunnel_stats(ctx, name, &g_conf->stats_uplink.traffic[stats_in], &g_conf->stats_uplink.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_uplink, sizeof(g_conf->stats_uplink));
 
 	/* Grab the write mutex, to avoid the pinger from pinging more and messing up our stats ;) */
@@ -782,16 +777,14 @@ int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const 
 		/* Name of the interface */
 		snprintf(name, sizeof(name), "T%u", tun->tunnel_id);
 
-		/* IPv4 + IPv6 statistics */
-		tunnel_stats(ctx, name, 4, &tun->stats.traffic[stats_ipv4][stats_in], &tun->stats.traffic[stats_ipv4][stats_out], &tun->stats.latency[stats_ipv4]);
-		tunnel_stats(ctx, name, 6, &tun->stats.traffic[stats_ipv6][stats_in], &tun->stats.traffic[stats_ipv6][stats_out], &tun->stats.latency[stats_ipv6]);
+		/* IP statistics */
+		tunnel_stats(ctx, name, &tun->stats.traffic[stats_in], &tun->stats.traffic[stats_out], &tun->stats.latency);
 
 		/* Reset them */
 		if (reset)
 		{
 			memzero(tun->stats.traffic, sizeof(tun->stats.traffic));
-			reset_latency(&tun->stats.latency[stats_ipv4]);
-			reset_latency(&tun->stats.latency[stats_ipv6]);
+			reset_latency(&tun->stats.latency);
 		}
 	}
 

@@ -82,8 +82,7 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 
 		/* Reset statistics */
 		memzero(tun->stats.traffic, sizeof(tun->stats.traffic));
-		reset_latency(&tun->stats.latency[stats_ipv4]);
-		reset_latency(&tun->stats.latency[stats_ipv6]);
+		reset_latency(&tun->stats.latency);
 	}
 
 	/* Initialize subnets */

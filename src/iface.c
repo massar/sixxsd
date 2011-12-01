@@ -69,7 +69,11 @@ VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t proto
 
 	/* Send the packet to our tun/tap device and let the kernel handle it for the rest */
 	n = writev(g_conf->tuntap, dat, payload ? 3 : 2);
-	if (n >= 0) return;
+	if (n >= 0)
+	{
+		tunnel_account_packet_out(out_tid, payload_len);
+		return;
+	}
 
 	switch (errno)
 	{
@@ -126,7 +130,11 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 
 	/* Send the packet to our tun/tap device and let the kernel handle it for the rest */
 	n = sendmsg(g_conf->rawsocket_ipv4, &msg, MSG_NOSIGNAL);
-	if (n >= 0) return;
+	if (n >= 0)
+	{
+		tunnel_account_packet_out(out_tid, payload_len);
+		return;
+	}
 
 	switch (errno)
 	{
@@ -343,7 +351,7 @@ VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, co
 	tun = tunnel_grab(tid);
 	if (!tun) return;
 
-	lat = &tun->stats.latency[stats_ipv6];
+	lat = &tun->stats.latency;
 
 	/* We expect at least this to come back */
 	if (len <= sizeof(*icmp) + sizeof(d->time_us) + 40)
@@ -506,9 +514,6 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
 		return;
 	}
-
-	/* Account that we routed this packet */
-	tunnel_account_packet(in_tid, out_tid, AF_INET6, len);
 
 	/* Prepare the packet for forwarding (MTU and TTL handling */
 	if (!iface_prepfwd6(in_tid, out_tid, packet, len, is_error, decrease_ttl)) return;
@@ -919,11 +924,11 @@ PTR *iface_pinger_thread(PTR UNUSED *arg)
 			payload.time_us = gettime_us();
 
 			/* Send the packet */
-			iface_send_icmpv6_echo_request(tid, &dst, (uint8_t *)&payload, plen, tun->stats.latency[stats_ipv6].seq);
+			iface_send_icmpv6_echo_request(tid, &dst, (uint8_t *)&payload, plen, tun->stats.latency.seq);
 
 			/* Another one out of the door */
-			tun->stats.latency[stats_ipv6].seq++;
-			tun->stats.latency[stats_ipv6].num_sent++;
+			tun->stats.latency.seq++;
+			tun->stats.latency.num_sent++;
 		}
 
 		/* Wait 5 seconds for all the answer */
@@ -972,6 +977,9 @@ PTR *iface_read_thread(PTR *__sock)
 
 			/* Ignore the tun_pi structure (which is why there is buffer[4] below) */
 			len -= 4;
+
+			/* Account this packet */
+			tunnel_account_packet_in(SIXXSD_TUNNEL_UPLINK, len);
 
 			/* Send it off: it is not an error, don't decrease the TTL, do check the source */
 			if (proto == ETH_P_IP) iface_route4(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);

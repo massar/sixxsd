@@ -13,9 +13,6 @@
 
 #include "sixxsd.h"
 
-#define stats_ipv4 0
-#define stats_ipv6 1
-
 #define stats_in 0
 #define stats_out 1
 
@@ -36,8 +33,8 @@ struct sixxsd_latency
 
 struct sixxsd_stats
 {
-	struct sixxsd_traffic		traffic[2][2];			/* Traffic: IPv4/IPv6 + in/out */
-	struct sixxsd_latency		latency[2];			/* Latency: IPv4/IPv6 */
+	struct sixxsd_traffic		traffic[2];			/* Traffic in/out */
+	struct sixxsd_latency		latency;			/* Latency */
 };
 
 #define reset_latency(l)		\
