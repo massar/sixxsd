@@ -167,7 +167,7 @@ HOSTNAME:=$(shell hostname)
 endif
 
 # Pass the buildinfo so we can show that in the executable
-SIXXSD_OPTIONS+=-D'BUILDINFO="$(SIXXSD_NAME) $(SIXXSD_VERSION) $(SIXXSD_RELEASE) ($(shell id | cut -f2 -d'(' | cut -f1 -d')')@$(HOSTNAME) ($(shell $(CC) -v 2>&1 | grep "gcc version" | tr -d \')) \#1 $(shell date)"'
+SIXXSD_OPTIONS+=-D'BUILDINFO="$(SIXXSD_NAME) $(SIXXSD_VERSION) $(SIXXSD_RELEASE)/r$(shell svnversion -n) ($(shell id | cut -f2 -d'(' | cut -f1 -d')')@$(HOSTNAME) ($(shell $(CC) -v 2>&1 | grep "gcc version" | tr -d \')) \#1 $(shell date)"'
 
 # Do not print "Entering directory ..."
 MAKEFLAGS += --no-print-directory
