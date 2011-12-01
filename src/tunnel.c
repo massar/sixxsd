@@ -40,8 +40,8 @@ const char *tunnel_state_name(enum sixxsd_tunnel_state state)
 	return state < lengthof(states) ? states[state] : "<unknown>";
 }
 
-const char *tunnel_error_name(unsigned int err);
-const char *tunnel_error_name(unsigned int err)
+static const char *tunnel_error_name(unsigned int err);
+static const char *tunnel_error_name(unsigned int err)
 {
 	const char *errs[] =
 	{
@@ -236,16 +236,16 @@ VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunn
 	tunnel_log(in_tid, out_tid, err, &ip);
 }
 
-VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64_t currtime);
-VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64_t currtime)
+static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64_t currtime);
+static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64_t currtime)
 {
 	t->last = currtime;
 	t->packets++;
 	t->octets += packetlen;
 }
 
-VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen);
-VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen)
+static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen);
+static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen)
 {
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_stats	*s;
@@ -317,8 +317,8 @@ BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uin
  * 4	<mtu>					=> tun->mtu
  * 5	[<password>]				=> hb_password + hashes
  */
-int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
-int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
+static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
+static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
 {
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid;
@@ -413,8 +413,8 @@ int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int argc, c
 	return 200;
 }
 
-int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
-int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
+static int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
+static int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
 {
 	struct sixxsd_tunnels	*tuns = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
@@ -491,8 +491,8 @@ int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, const c
 	return 200;
 }
 
-VOID tunnel_ago(struct sixxsd_context *ctx, uint64_t when, const char *fmt, ...) ATTR_FORMAT(printf, 3, 4);
-VOID tunnel_ago(struct sixxsd_context *ctx, uint64_t when, const char *fmt, ...)
+static VOID tunnel_ago(struct sixxsd_context *ctx, uint64_t when, const char *fmt, ...) ATTR_FORMAT(printf, 3, 4);
+static VOID tunnel_ago(struct sixxsd_context *ctx, uint64_t when, const char *fmt, ...)
 {
 	unsigned int	ago_s, ago_m, ago_h, ago_d;
 	uint64_t	now = gettime();
@@ -529,8 +529,8 @@ VOID tunnel_ago(struct sixxsd_context *ctx, uint64_t when, const char *fmt, ...)
 	ctx_printdf(ctx, "%s%s (%" PRIu64 "; %u days %02u:%02u:%02u ago)\n", prefix, buf, when, ago_d, ago_h, ago_m, ago_s);
 }
 
-int tunnel_show(struct sixxsd_context *ctx, uint16_t tid);
-int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
+static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid);
+static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 {
 	struct sixxsd_tunnels	*tuns = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
@@ -615,8 +615,8 @@ int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	return 200;
 }
 
-int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *tid_);
-int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *tid_)
+static int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *tid_);
+static int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *tid_)
 {
 	IPADDRESS	ip;
 	BOOL		is_tunnel;
@@ -671,8 +671,8 @@ int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *tid_)
 	return 200;
 }
 
-int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	uint16_t	tid;
 	int		ret;
@@ -689,8 +689,8 @@ int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, 
 	return tunnel_show(ctx, tid);
 }
 
-int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	uint16_t		tid;
 	int			ret;
@@ -719,8 +719,8 @@ int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int
 	return 200;
 }
 
-VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency);
-VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency)
+static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency);
+static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency)
 {
 	/* Nothing counted then we don't need to show stats either */
 	if (in->packets == 0 && out->packets == 0) return;
@@ -746,8 +746,8 @@ VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_tr
 	);
 }
 
-int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
-int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
+static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
+static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
@@ -799,8 +799,8 @@ int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const 
 	return 404;
 }
 
-int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid;
@@ -858,9 +858,8 @@ int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED a
 	return 200;
 }
 
-
-int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid;
@@ -896,8 +895,8 @@ int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int UNUSED 
 	return 200;
 }
 
-PTR *tunnel_beat_check(PTR UNUSED *arg);
-PTR *tunnel_beat_check(PTR UNUSED *arg)
+static PTR *tunnel_beat_check(PTR UNUSED *arg);
+static PTR *tunnel_beat_check(PTR UNUSED *arg)
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;

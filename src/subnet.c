@@ -47,8 +47,8 @@ struct sixxsd_subnet *subnet_get(IPADDRESS *addr)
  * 1	<tunnel-id>		The Tunnel-ID (tid)
  * 2	<type>			{bgp|static} (ignored at the moment)
  */
-int subnet_cmd_set_config(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int subnet_cmd_set_config(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int subnet_cmd_set_config(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int subnet_cmd_set_config(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	IPADDRESS		ip;
 	struct sixxsd_tunnel	*tun;

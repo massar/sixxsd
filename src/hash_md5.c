@@ -27,8 +27,8 @@
 
 #if BYTE_ORDER == BIG_ENDIAN
 #warning "Big Endian"
-void byteSwap(uint32_t *buf, unsigned int words);
-void byteSwap(uint32_t *buf, unsigned int words)
+static void byteSwap(uint32_t *buf, unsigned int words);
+static void byteSwap(uint32_t *buf, unsigned int words)
 {
 	md5byte *p = (md5byte *)buf;
 

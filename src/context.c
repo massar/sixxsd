@@ -226,8 +226,8 @@ VOID ctx_printdf(struct sixxsd_context *ctx, const char *fmt, ...)
 	va_end(ap);
 }
 
-VOID ctx_printxfA(struct sixxsd_context *ctx, BOOL data, const char *fmt, va_list ap);
-VOID ctx_printxfA(struct sixxsd_context *ctx, BOOL data, const char *fmt, va_list ap)
+static VOID ctx_printxfA(struct sixxsd_context *ctx, BOOL data, const char *fmt, va_list ap);
+static VOID ctx_printxfA(struct sixxsd_context *ctx, BOOL data, const char *fmt, va_list ap)
 {
 	const char	*s;
 	char		buf[2048], c;
@@ -497,8 +497,8 @@ int ctx_exec(struct sixxsd_context *ctx, const char *args, BOOL mainmenu, const 
 	return ret;
 }
 
-VOID ctx_where(struct sixxsd_context *ctx, char *buf, unsigned int buflen);
-VOID ctx_where(struct sixxsd_context *ctx, char *buf, unsigned int buflen)
+static VOID ctx_where(struct sixxsd_context *ctx, char *buf, unsigned int buflen);
+static VOID ctx_where(struct sixxsd_context *ctx, char *buf, unsigned int buflen)
 {
 	unsigned int	i, o = 0;
 	int		k;
@@ -523,9 +523,8 @@ VOID ctx_where(struct sixxsd_context *ctx, char *buf, unsigned int buflen)
 	if (k != 0) ctx_printf(ctx, "No buffer space available for determining menu location\n");
 }
 
-
-int ctx_fullhelp(struct sixxsd_context *ctx, struct ctx_menu *menu);
-int ctx_fullhelp(struct sixxsd_context *ctx, struct ctx_menu *menu)
+static int ctx_fullhelp(struct sixxsd_context *ctx, struct ctx_menu *menu);
+static int ctx_fullhelp(struct sixxsd_context *ctx, struct ctx_menu *menu)
 {
 	int			i = 0, c = 0;
 	static const char	fmt[] = "%-14s%-22s%4s %s\n";
@@ -575,8 +574,8 @@ int ctx_fullhelp(struct sixxsd_context *ctx, struct ctx_menu *menu)
 	return 200;
 }
 
-int ctx_help(struct sixxsd_context *ctx, struct ctx_menu *menu);
-int ctx_help(struct sixxsd_context *ctx, struct ctx_menu *menu)
+static int ctx_help(struct sixxsd_context *ctx, struct ctx_menu *menu);
+static int ctx_help(struct sixxsd_context *ctx, struct ctx_menu *menu)
 {
 	int			i = 0, count = 0;
 	static const char	fmt[] = "%-24s%-22s%4s %s\n";
@@ -732,8 +731,8 @@ int ctx_commandmenu(struct sixxsd_context *ctx, const unsigned int argc, const c
 	return 404; 
 }
 
-int ctx_commandA(struct sixxsd_context *ctx, const char *command);
-int ctx_commandA(struct sixxsd_context *ctx, const char *command)
+static int ctx_commandA(struct sixxsd_context *ctx, const char *command);
+static int ctx_commandA(struct sixxsd_context *ctx, const char *command)
 {
 	char		*buffer = NULL, buf[4096];
 	const char	*cmd = command;

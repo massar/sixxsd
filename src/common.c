@@ -70,8 +70,8 @@ VOID sock_setblock(SOCKET sock)
 #endif
 }
 
-int snprintef(char *str, size_t size, int errnum, const char *ATTR_RESTRICT format, ...) ATTR_FORMAT(printf, 4, 5);
-int snprintef(char *str, size_t size, int errnum, const char *format, ...)
+static int snprintef(char *str, size_t size, int errnum, const char *ATTR_RESTRICT format, ...) ATTR_FORMAT(printf, 4, 5);
+static int snprintef(char *str, size_t size, int errnum, const char *format, ...)
 {
 	va_list		ap;
 	unsigned int	i;
@@ -110,8 +110,8 @@ int snprintef(char *str, size_t size, int errnum, const char *format, ...)
 	return k;
 }
 
-SOCKET sock_connect_unix(char *buf, unsigned int buflen, const char *hostname, int family, int socktype, int protocol);
-SOCKET sock_connect_unix(char *buf, unsigned int buflen, const char *hostname, int family, int socktype, int protocol)
+static SOCKET sock_connect_unix(char *buf, unsigned int buflen, const char *hostname, int family, int socktype, int protocol);
+static SOCKET sock_connect_unix(char *buf, unsigned int buflen, const char *hostname, int family, int socktype, int protocol)
 {
 	SOCKET			sock;
 	struct sockaddr_un	addr;
@@ -269,8 +269,8 @@ SOCKET sock_connect(char *buf, unsigned int buflen, const char *hostname, const 
 	return sock;
 }
 
-int sock_listen(char *buf, unsigned int buflen, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, uint32_t tag);
-int sock_listen(char *buf, unsigned int buflen, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, uint32_t tag)
+static int sock_listen(char *buf, unsigned int buflen, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, uint32_t tag);
+static int sock_listen(char *buf, unsigned int buflen, const char *hostname, const char *service, int family, int socktype, int protocol, struct socketpool *pool, uint32_t tag)
 {
 	struct addrinfo	hints, *res = NULL, *ressave = NULL;
 	int		n, count = 0;
@@ -484,8 +484,8 @@ int sock_listen(char *buf, unsigned int buflen, const char *hostname, const char
 	return count;
 }
 
-BOOL uri_parse_host(char *buf, unsigned int buflen, const char *uri, char *host, size_t len);
-BOOL uri_parse_host(char *buf, unsigned int buflen, const char *uri, char *host, size_t len)
+static BOOL uri_parse_host(char *buf, unsigned int buflen, const char *uri, char *host, size_t len);
+static BOOL uri_parse_host(char *buf, unsigned int buflen, const char *uri, char *host, size_t len)
 {
 	const char	*u = uri, *s;
 	size_t		i;
@@ -541,8 +541,8 @@ BOOL uri_parse_host(char *buf, unsigned int buflen, const char *uri, char *host,
 	return true;
 }
 
-BOOL uri_parse_service(const char *uri, char *service, size_t len);
-BOOL uri_parse_service(const char *uri, char *service, size_t len)
+static BOOL uri_parse_service(const char *uri, char *service, size_t len);
+static BOOL uri_parse_service(const char *uri, char *service, size_t len)
 {
 	const char	*u = uri;
 	char 		*s;
@@ -637,8 +637,8 @@ BOOL parse_userpass(const char *uri, char *username, size_t username_len, char *
  *
  * unix:// is not supported on Win32 as it doesn't exist on that platform
  */
-SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const char *uri, const char *defaultservice, struct socketpool *pool, uint32_t tag);
-SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const char *uri, const char *defaultservice, struct socketpool *pool, uint32_t tag)
+static SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const char *uri, const char *defaultservice, struct socketpool *pool, uint32_t tag);
+static SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const char *uri, const char *defaultservice, struct socketpool *pool, uint32_t tag)
 {
 	char		host[NI_MAXHOST], service[NI_MAXSERV], *hostname = host,
 			bind_host[NI_MAXHOST], bind_service[NI_MAXSERV];
@@ -1387,8 +1387,8 @@ VOID socketpool_remove(struct socketpool *pool, struct socketnode *sn)
  * Note: uses internal caching, this should be the only function
  * used to read from the sock! The internal cache is rbuf.
  */
-int sock_getdata(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled);
-int sock_getdata(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled)
+static int sock_getdata(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled);
+static int sock_getdata(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled)
 {
 	int i;
 
@@ -1419,8 +1419,8 @@ int sock_getdata(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled)
 	return *filled;
 }
 
-size_t sock_done(SOCKET UNUSED sock, char *rbuf, size_t UNUSED rbuflen, uint64_t *filled, uint64_t amount);
-size_t sock_done(SOCKET UNUSED sock, char *rbuf, size_t UNUSED rbuflen, uint64_t *filled, uint64_t amount)
+static size_t sock_done(SOCKET UNUSED sock, char *rbuf, size_t UNUSED rbuflen, uint64_t *filled, uint64_t amount);
+static size_t sock_done(SOCKET UNUSED sock, char *rbuf, size_t UNUSED rbuflen, uint64_t *filled, uint64_t amount)
 {
 	/* Done with this part */
 	*filled -= amount;
@@ -1561,3 +1561,4 @@ VOID output_stacktrace(VOID)
 }
 #endif
 #endif
+

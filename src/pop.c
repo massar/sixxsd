@@ -13,8 +13,8 @@
 const char module_pop[] = "pop";
 #define module module_pop
 
-int pop_cmd_show_version(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_version(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_version(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_version(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	ctx_printdf(ctx, "%s %s\n", SIXXSD_DESC, SIXXSD_VERSION);
 	ctx_printdf(ctx, "SixXSd %s by Jeroen Massar <jeroen@sixxs.net>\n", SIXXSD_RELEASE);
@@ -27,8 +27,8 @@ int pop_cmd_show_version(struct sixxsd_context *ctx, const unsigned int UNUSED a
 	return 200;
 }
 
-VOID pop_uptimeA(struct sixxsd_context *ctx, const char *prefix, unsigned int uptime);
-VOID pop_uptimeA(struct sixxsd_context *ctx, const char *prefix, unsigned int uptime)
+static VOID pop_uptimeA(struct sixxsd_context *ctx, const char *prefix, unsigned int uptime);
+static VOID pop_uptimeA(struct sixxsd_context *ctx, const char *prefix, unsigned int uptime)
 {
 	unsigned int	uptime_s, uptime_m, uptime_h, uptime_d;
 
@@ -43,21 +43,21 @@ VOID pop_uptimeA(struct sixxsd_context *ctx, const char *prefix, unsigned int up
 	ctx_printdf(ctx, "%s%u days %02u:%02u:%02u\n", prefix, uptime_d, uptime_h, uptime_m, uptime_s);
 }
 
-VOID pop_uptime(struct sixxsd_context *ctx, const char *prefix);
-VOID pop_uptime(struct sixxsd_context *ctx, const char *prefix)
+static VOID pop_uptime(struct sixxsd_context *ctx, const char *prefix);
+static VOID pop_uptime(struct sixxsd_context *ctx, const char *prefix)
 {
 	pop_uptimeA(ctx, prefix, gettime() - g_conf->starttime);
 }
 
-int pop_cmd_show_uptime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_uptime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_uptime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_uptime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	pop_uptime(ctx, "");
 	return 200;
 }
 
-int pop_cmd_show_timeinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_timeinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_timeinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_timeinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	struct tm	teem;
 	time_t		t, te;
@@ -83,15 +83,15 @@ int pop_cmd_show_timeinfo(struct sixxsd_context *ctx, const unsigned int UNUSED 
 	return 200;
 }
 
-int pop_cmd_show_unixtime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_unixtime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_unixtime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_unixtime(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	ctx_printdf(ctx, "%" PRIu64 "\n", gettime());
 	return 200;
 }
 
-int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	/* Parsed by the UI */
 	ctx_printdf(ctx, "PoP Name                : %s\n", g_conf->pop_name);
@@ -108,8 +108,8 @@ int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUSED argc
 	return 200;
 }
 
-int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	const char	*platform = NULL, *version = NULL;
 	struct utsname	uts_name;
@@ -237,8 +237,8 @@ int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int UNUSED 
 	return 200;
 }
 
-int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	unsigned int		i;
@@ -262,8 +262,8 @@ int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED ar
 	return 200;
 }
 
-int pop_cmd_set_verbosity(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_set_verbosity(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_set_verbosity(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_verbosity(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	uint64_t i;
 
@@ -283,8 +283,8 @@ int pop_cmd_set_verbosity(struct sixxsd_context *ctx, const unsigned int UNUSED 
  * Configure the parts one wants to see
  * debug (sixxsd|common|prefix|thread) (on|off)
  */
-int pop_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	const char	*what;
 	BOOL		to = false;
@@ -308,8 +308,8 @@ int pop_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc
 	return 200;
 }
 
-int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	FILE			*f;
 	char			buf[128];
@@ -423,8 +423,8 @@ int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNUSED arg
 	return 200;
 }
 
-int pop_cmd_shutdown(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_shutdown(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_shutdown(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_shutdown(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	ctx_printf(ctx, "Tschau, shutting down\n");
 	mdolog(LOG_INFO, "Shutdown ordered\n");
@@ -432,23 +432,23 @@ int pop_cmd_shutdown(struct sixxsd_context *ctx, const unsigned int UNUSED argc,
 	return 666;
 }
 
-int pop_cmd_set_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_set_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_set_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	strncpy(g_conf->pop_name, args[0], sizeof(g_conf->pop_name));
 	ctx_printf(ctx, "Name updated\n");
 	return 200;
 }
 
-int pop_cmd_get_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_get_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_get_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_get_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	ctx_printf(ctx, "%s\n", g_conf->pop_name);
 	return 200;
 }
 
-int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	if (!inet_ptonA(args[0], &g_conf->pop_ipv4, NULL))
 	{
@@ -463,8 +463,8 @@ int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc,
 	return 200;
 }
 
-int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	if (!inet_ptonA(args[0], &g_conf->pop_ipv6, NULL))
 	{
@@ -479,8 +479,8 @@ int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc,
 	return 200;
 }
 
-int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	struct sixxsd_tunnels	*tuns = &g_conf->tunnels;
 
@@ -495,8 +495,8 @@ int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned int UNU
 	return 200;
 }
 
-int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	IPADDRESS		ip;
 	unsigned int		j;
@@ -537,8 +537,8 @@ int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned int UNUS
 	return 200;
 }
 
-int pop_cmd_subnetprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_subnetprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_subnetprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_subnetprefix_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	struct sixxsd_subnets	*subs;
 	unsigned int		i;
@@ -553,8 +553,8 @@ int pop_cmd_subnetprefix_list(struct sixxsd_context *ctx, const unsigned int UNU
 	return 200;
 }
 
-int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	IPADDRESS		ip;
 	unsigned int		i, j, prefixlen, rembytes;
@@ -641,8 +641,8 @@ int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned int UNUS
 	return 400;
 }
 
-int pop_cmd_cliacl_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-int pop_cmd_cliacl_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int pop_cmd_cliacl_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_cliacl_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	char		hst[NI_MAXHOST];
 	unsigned int	i, count = 0;
@@ -665,8 +665,8 @@ int pop_cmd_cliacl_list(struct sixxsd_context *ctx, const unsigned int UNUSED ar
 	return 200;
 }
 
-int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
-int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
+static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
+static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
 {
 	IPADDRESS		ip;
 	unsigned int		i;

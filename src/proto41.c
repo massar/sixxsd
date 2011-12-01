@@ -14,8 +14,8 @@
 const char module_proto41[] = "proto41";
 #define module module_proto41
 
-void p41_log(int level, const IPADDRESS *src, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 3, 4);
-void p41_log(int level, const IPADDRESS *src, const char *fmt, ...)
+static VOID p41_log(int level, const IPADDRESS *src, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 3, 4);
+static VOID p41_log(int level, const IPADDRESS *src, const char *fmt, ...)
 {
 	char	buf[1024];
 	char	srca[NI_MAXHOST];

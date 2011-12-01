@@ -34,8 +34,8 @@ struct pseudo_ayh
 struct sockaddr_storage lastlogs[10];
 int log_last = 0;
 */
-VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 7, 8);
-VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *fmt, ...)
+static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 7, 8);
+static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *fmt, ...)
 {
 	char		buf[1024];
 	char		srca[NI_MAXHOST], id[NI_MAXHOST];

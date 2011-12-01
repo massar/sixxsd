@@ -56,8 +56,8 @@ typedef union _BYTE64QUAD16 {
 } BYTE64QUAD16;
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
-void SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]);
-void SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]) {
+static VOID SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]);
+static VOID SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]) {
 	sha1_quadbyte	a, b, c, d, e;
 	BYTE64QUAD16	*block;
 
@@ -101,7 +101,7 @@ void SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]) {
 
 
 /* SHA1_Init - Initialize new context */
-void SHA1_Init(SHA_CTX* context) {
+VOID SHA1_Init(SHA_CTX* context) {
 	/* SHA1 initialization constants */
 	context->state[0] = 0x67452301;
 	context->state[1] = 0xEFCDAB89;
@@ -112,7 +112,7 @@ void SHA1_Init(SHA_CTX* context) {
 }
 
 /* Run your data through this. */
-void SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte *t) {
+VOID SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte *t) {
 	unsigned int	i, j;
 
 	/* Make a temporary storage as Transform destroys it */
@@ -134,7 +134,7 @@ void SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte 
 }
 
 /* Add padding and return the message digest. */
-void SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX *context) {
+VOID SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX *context) {
 	sha1_quadbyte	i, j;
 	sha1_byte	finalcount[8], tmp[128];
 

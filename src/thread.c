@@ -28,8 +28,8 @@ const char *ts_names[20] = {
 };
 
 /* Get & Lock current thread handle */
-struct sixxsd_thread *thread_getbyid(os_thread_id thread_id);
-struct sixxsd_thread *thread_getbyid(os_thread_id thread_id)
+static struct sixxsd_thread *thread_getbyid(os_thread_id thread_id);
+static struct sixxsd_thread *thread_getbyid(os_thread_id thread_id)
 {
 	struct sixxsd_thread	*tt = NULL, *t = NULL;
 
@@ -179,8 +179,8 @@ BOOL thread_sleep(unsigned int seconds, unsigned int nseconds)
 	return (rc == ETIMEDOUT ? true : false);
 }
 
-VOID *thread_autoremove(VOID *arg);
-VOID *thread_autoremove(VOID *arg)
+static VOID *thread_autoremove(VOID *arg);
+static VOID *thread_autoremove(VOID *arg)
 {
 	struct sixxsd_thread	*t =(struct sixxsd_thread *)arg;
 

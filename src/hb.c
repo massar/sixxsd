@@ -16,8 +16,8 @@ const char module_hb[] = "hb";
 
 static const char hb_prefix[] = "HEARTBEAT TUNNEL ";
 
-void hb_log(int level, const IPADDRESS *src, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 3, 4);
-void hb_log(int level, const IPADDRESS *src, const char *fmt, ...)
+static VOID hb_log(int level, const IPADDRESS *src, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 3, 4);
+static VOID hb_log(int level, const IPADDRESS *src, const char *fmt, ...)
 {
 	char	buf[1024];
 	char	srca[NI_MAXHOST];

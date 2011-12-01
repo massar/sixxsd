@@ -59,8 +59,8 @@ VOID rwl_destroy(rwl *l)
 }
 
 #ifdef DEBUG_LOCKS
-VOID rwl_lock(rwl *l, BOOL add, BOOL reader);
-VOID rwl_lock(rwl *l, BOOL add, BOOL reader)
+static VOID rwl_lock(rwl *l, BOOL add, BOOL reader);
+static VOID rwl_lock(rwl *l, BOOL add, BOOL reader)
 {
 	unsigned int	i, k = (lengthof(l->locks) + 128);
 	os_thread_id	tid;

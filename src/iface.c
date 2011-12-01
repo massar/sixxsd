@@ -19,8 +19,8 @@ struct pingtest
 	uint8_t		message[1000];
 };
 
-const char *iface_socket_name(enum sixxsd_sockets type);
-const char *iface_socket_name(enum sixxsd_sockets type)
+static const char *iface_socket_name(enum sixxsd_sockets type);
+static const char *iface_socket_name(enum sixxsd_sockets type)
 {
 	switch (type)
 	{
@@ -44,8 +44,8 @@ const char *iface_socket_name(enum sixxsd_sockets type)
 	return "unknown";
 }
 
-VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen);
-VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen)
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen);
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen)
 {
 	struct iovec	dat[3];
 	struct tun_pi	pi;
@@ -149,8 +149,8 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 	if (!is_error) iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, orglen, ICMP_PKT_FILTERED);
 }
 
-BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
-BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl)
+static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
+static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl)
 {
 	struct ip		*ip = (struct ip *)packet;
 	struct sixxsd_tunnel	*outtun = (out_tid != SIXXSD_TUNNEL_NONE && out_tid != SIXXSD_TUNNEL_UPLINK) ? tunnel_grab(out_tid) : NULL;
@@ -184,8 +184,8 @@ BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *pack
 	return true;
 }
 
-BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
-BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl)
+static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
+static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
 	struct sixxsd_tunnel	*outtun = (out_tid != SIXXSD_TUNNEL_NONE && out_tid != SIXXSD_TUNNEL_UPLINK) ? tunnel_grab(out_tid) : NULL;
@@ -228,8 +228,8 @@ BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *pack
 }
 
 /* Send appropriate ICMP unreachables */
-VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
-VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
+static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
 {
 	struct sixxsd_tunnel	*outtun = tunnel_grab(out_tid);
 	uint8_t			code4 = ICMP_NET_UNREACH, code6 = ICMP6_DST_UNREACH_ADDR;
@@ -269,8 +269,8 @@ VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8
 	else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, code6);
 }
 
-VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
-VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
+static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
 {
 	struct sixxsd_tunnel	*outtun = tunnel_grab(out_tid);
 
@@ -337,8 +337,8 @@ VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t
 }
 
 /* Jeej, they reply to our ICMP echo requests! :) */
-VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, const uint16_t len);
-VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, const uint16_t len)
+static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, const uint16_t len);
+static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, const uint16_t len)
 {
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_latency	*lat;
@@ -610,8 +610,8 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	}
 }
 
-VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst);
-VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst)
+static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst);
+static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst)
 {
 	struct
 	{
@@ -758,8 +758,8 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt.ip) + sizeof(pkt.icmp) + plen, true, false, true);
 }
 
-VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param);
-VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param)
+static VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param);
+static VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param)
 {
 	struct ip			*ip = (struct ip *)packet;
 	struct
@@ -821,8 +821,8 @@ VOID iface_send_icmpv6_echo_reply(const uint16_t in_tid, const uint16_t out_tid,
 	else iface_unreachtun(in_tid, out_tid, IPPROTO_IPV6, packet, len, false);
 }
 
-VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq);
-VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq)
+static VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq);
+static VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq)
 {
 	tunnel_debug(tid, tid, NULL, len, "ICMPv6 Echo Request %u\n", seq);
 	iface_send_icmpv6(SIXXSD_TUNNEL_NONE, tid, packet, len, ICMP6_ECHO_REQUEST, 0, (0x4242 << 16) + (seq), dst);
@@ -878,8 +878,8 @@ VOID iface_send_icmp_toobig(const uint16_t in_tid, const uint16_t out_tid, const
 }
 
 /* This thread pings all the tunnels that are alive */
-PTR *iface_pinger_thread(PTR UNUSED *arg);
-PTR *iface_pinger_thread(PTR UNUSED *arg)
+static PTR *iface_pinger_thread(PTR UNUSED *arg);
+static PTR *iface_pinger_thread(PTR UNUSED *arg)
 {
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid, t16;
@@ -947,8 +947,8 @@ PTR *iface_pinger_thread(PTR UNUSED *arg)
 }
 
 /* This thread reads from the interfaces, passing the packets to the decoder and onward */
-PTR *iface_read_thread(PTR *__sock);
-PTR *iface_read_thread(PTR *__sock)
+static PTR *iface_read_thread(PTR *__sock);
+static PTR *iface_read_thread(PTR *__sock)
 {
 	struct sixxsd_socket	*sock = (struct sixxsd_socket *)__sock;
 	uint8_t			buffer[4096];
@@ -1033,8 +1033,8 @@ PTR *iface_read_thread(PTR *__sock)
 	return NULL;
 }
 
-int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned int af, unsigned int port);
-int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned int af, unsigned int port)
+static int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned int af, unsigned int port);
+static int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned int af, unsigned int port)
 {
 	struct sockaddr		*sa;
 	struct sockaddr_in	localaddr;
@@ -1086,8 +1086,8 @@ int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned int af
 	return 200;
 }
 
-int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock);
-int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
+static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock);
+static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 {
 	socklen_t on;
 
@@ -1118,8 +1118,8 @@ int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 	return 200;
 }
 
-int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *sock);
-int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *sock)
+static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *sock);
+static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *sock)
 {
 	struct ifreq	ifr;
 	const char	*tuntapdev = "/dev/net/tun";
@@ -1149,8 +1149,8 @@ int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *sock)
 	return 200;
 }
 
-int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af);
-int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af)
+static int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af);
+static int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af)
 {
 	socklen_t	on;
 
@@ -1167,8 +1167,8 @@ int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, u
 	return 200;
 }
 
-int iface_init_udp(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af, unsigned int proto, unsigned int port);
-int iface_init_udp(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af, unsigned int proto, unsigned int port)
+static int iface_init_udp(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af, unsigned int proto, unsigned int port);
+static int iface_init_udp(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af, unsigned int proto, unsigned int port)
 {
 	int ret;
 
@@ -1190,8 +1190,8 @@ int iface_init_udp(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsig
 	return 200;
 }
 
-void os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
-void os_exec(const char *fmt, ...)
+static VOID os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
+static VOID os_exec(const char *fmt, ...)
 {
         char	buf[1024];
         va_list	ap;

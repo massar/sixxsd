@@ -27,6 +27,8 @@
 #ifndef __SHA1_H__
 #define __SHA1_H__
 
+#include "platform.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -59,13 +61,13 @@ typedef struct _SHA_CTX {
 } SHA_CTX;
 
 #ifndef NOPROTO
-void SHA1_Init(SHA_CTX *context);
-void SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte *t);
-void SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX* context);
+VOID SHA1_Init(SHA_CTX *context);
+VOID SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte *t);
+VOID SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX* context);
 #else
-void SHA1_Init();
-void SHA1_Update();
-void SHA1_Final();
+VOID SHA1_Init();
+VOID SHA1_Update();
+VOID SHA1_Final();
 #endif
 
 #ifdef	__cplusplus

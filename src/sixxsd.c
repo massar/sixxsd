@@ -16,8 +16,8 @@
 const char module_sixxsd[] = "sixxsd";
 #define module module_sixxsd
 
-VOID sighup(int i);
-VOID sighup(int i)
+static VOID sighup(int i);
+static VOID sighup(int i)
 {
 	struct sixxsd_thread *t;
 
@@ -53,8 +53,8 @@ VOID terminate(const char *who)
 	exit(-42);
 }
 
-VOID sigshutdown(int i);
-VOID sigshutdown(int i)
+static VOID sigshutdown(int i);
+static VOID sigshutdown(int i)
 {
 	struct sixxsd_thread *t;
 
@@ -67,8 +67,8 @@ VOID sigshutdown(int i)
 }
 
 /* Handle illegal instruction */
-VOID sigill(int UNUSED i);
-VOID sigill(int UNUSED i)
+static VOID sigill(int UNUSED i);
+static VOID sigill(int UNUSED i)
 {
 	mdolog(LOG_ERR, "Illegal Processor Instruction caught, SixXSd was compiled with \"%s\"\n", SIXXSD_OPTIONS);
 	terminate("sigill");
@@ -92,8 +92,8 @@ struct ctx_menu ctx_menu_main[13] =
 	{NULL,		NULL,			0,0,	NULL,		NULL },
 };
 
-PTR *sixxsd_handleclient_thread(PTR *lc_);
-PTR *sixxsd_handleclient_thread(PTR *lc_)
+static PTR *sixxsd_handleclient_thread(PTR *lc_);
+static PTR *sixxsd_handleclient_thread(PTR *lc_)
 {
 	struct sixxsd_client	*lc = (struct sixxsd_client *)lc_;
 	fd_set			fd_select, fd_read;
@@ -202,8 +202,8 @@ PTR *sixxsd_handleclient_thread(PTR *lc_)
 	return NULL;
 }
 
-VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool);
-VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
+static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool);
+static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 {
 	int			i;
 	fd_set			fd_read;
@@ -366,8 +366,8 @@ VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 	socketpool_exit(pool);
 }
 
-VOID welcome(VOID);
-VOID welcome(VOID)
+static VOID welcome(VOID);
+static VOID welcome(VOID)
 {
 	mdolog(LOG_NOTICE, "%s %s\n", SIXXSD_DESC, SIXXSD_VERSION);
 	mdolog(LOG_NOTICE, "SixXSd %s by Jeroen Massar <jeroen@sixxs.net>\n", SIXXSD_RELEASE);
@@ -376,8 +376,8 @@ VOID welcome(VOID)
 	mdolog(LOG_NOTICE, "%s\n", SIXXSD_COPYRIGHT);
 }
 
-int sixxsd_run(struct sixxsd_context *ctx);
-int sixxsd_run(struct sixxsd_context *ctx)
+static int sixxsd_run(struct sixxsd_context *ctx);
+static int sixxsd_run(struct sixxsd_context *ctx)
 {
 	struct socketpool	pool;
 	struct sixxsd_thread	*t;
