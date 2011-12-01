@@ -34,7 +34,7 @@ static VOID hb_log(int level, const IPADDRESS *src, const char *fmt, ...)
 	mdolog(level, "[%s]: %s", srca, buf);
 }
 
-VOID hb_in(const IPADDRESS *src, const uint8_t *packet, const uint32_t len)
+VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 {
 	struct MD5Context	md5;
 	struct sixxsd_tunnel	*tun;
@@ -56,6 +56,14 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, const uint32_t len)
 	memcpy(message, packet, len);
 	/* Terminate it for sure */
 	message[len] = '\0';
+	len--;
+
+	/* Trim off any \r or \n's */
+	while (len > 0 && (message[len] == '\r' || message[len] == '\n'))
+	{
+		message[len] = '\0';
+		len--;
+	}
 
 	/* Compare the first part, fast, safe, easy */
 	if (strncmp((char *)packet, hb_prefix, sizeof(hb_prefix)-1) != 0)
@@ -182,7 +190,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, const uint32_t len)
 
 	if (strcmp(pnt, (char *)tmp) != 0)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_TUN_HASHFAIL, src);
+		tunnel_log(SIXXSD_TUNNEL_UPLINK, in_tid, SIXXSD_TERR_TUN_HASHFAIL, src);
 		return;
 	}
 

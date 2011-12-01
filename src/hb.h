@@ -11,7 +11,7 @@
 
 #define HEARTBEAT_PORT 3740
 
-VOID hb_in(const IPADDRESS *src, const uint8_t *packet, const uint32_t len);
+VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len);
 
 #endif
 
