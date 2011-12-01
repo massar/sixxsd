@@ -109,6 +109,8 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 
 VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const char *fmt, ...)
 {
+	assert(packet || len != 0);
+
 	/* Toggled globally when something is debugging or not */
 	if (!g_conf->debugging)
 	{
@@ -141,8 +143,15 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 			ver = ip->ip_v;
 			if (ver == 4)
 			{
-				inet_ntopA((IPADDRESS *)&ip6->ip6_src, src, sizeof(src));
-				inet_ntopA((IPADDRESS *)&ip6->ip6_dst, dst, sizeof(dst));
+				IPADDRESS s, d;
+
+				/* Convert the IP into an IPADDRESS we can use */
+				makeaddress(&s, &ip->ip_src);
+				makeaddress(&d, &ip->ip_dst);
+
+				/* Turn it into human readable stuff */
+				inet_ntopA(&s, src, sizeof(src));
+				inet_ntopA(&d, dst, sizeof(dst));
 				ttl = ip->ip_ttl;
 				proto = ip->ip_p;
 				plen = ip->ip_len;
@@ -226,12 +235,11 @@ VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunne
 	}
 }
 
-VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, struct in_addr *src)
+VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const struct in_addr *src)
 {
 	IPADDRESS ip;
 
-	memcpy(&ip.a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
-	memcpy(&ip.a8[12], src, 4);
+	makeaddress(&ip, src);
 
 	tunnel_log(in_tid, out_tid, err, &ip);
 }

@@ -118,7 +118,7 @@ VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packetlen);
 const char *tunnel_state_name(enum sixxsd_tunnel_state state);
 const char *tunnel_type_name(enum sixxsd_tunnel_type type);
 VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const IPADDRESS *src);
-VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, struct in_addr *src);
+VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const struct in_addr *src);
 VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const char *fmt, ...) ATTR_FORMAT(printf, 5, 6);
 
 #endif /* TUNNEL_H */

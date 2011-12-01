@@ -282,8 +282,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 				switch (sa.ss_family)
 				{
 				case AF_INET:
-					memcpy(&ip.a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
-					memcpy(&ip.a8[12], (VOID *)&((struct sockaddr_in *)&sa)->sin_addr, 4);
+					makeaddress(&ip, &((struct sockaddr_in *)&sa)->sin_addr);
 					break;
 				case AF_INET6:
 					memcpy(&ip.a8[0], (VOID *)&((struct sockaddr_in6 *)&sa)->sin6_addr, 16);

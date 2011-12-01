@@ -74,11 +74,9 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 		tun->state	= SIXXSD_TSTATE_NONE;
 		tun->debug_ctx	= NULL;
 
-		/* Put the IPv4-mapped prefix already in place */
-		memcpy(&tun->ip_them.a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
-
+		/* Init ip_them to IPv4 any */
 		/* Later we fill in the IP address with something real from AYIYA or heartbeat source */
-		memzero(&tun->ip_them.a8[12], 4);
+		makeaddress(&tun->ip_them, NULL);
 
 		/* Reset statistics */
 		memzero(tun->stats.traffic, sizeof(tun->stats.traffic));

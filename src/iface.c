@@ -553,8 +553,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	{
 		IPADDRESS s;
 
-		memcpy(&s.a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
-		memcpy(&s.a8[12], &ip->ip_src, 4);
+		makeaddress(&s, &ip->ip_src);
 
 		/* Do we like the source address coming from this interface? */
 		out_tid = address_find(&s, &istunnel);
@@ -566,8 +565,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 				char		src[128], dst[128];
 				IPADDRESS	d;
 
-				memcpy(&d.a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
-				memcpy(&d.a8[12], &ip->ip_dst, 4);
+				makeaddress(&d, &ip->ip_dst);
 
 				inet_ntopA((IPADDRESS *)&ip->ip_src, src, sizeof(src));
 				inet_ntopA((IPADDRESS *)&ip->ip_dst, dst, sizeof(dst));
@@ -957,7 +955,8 @@ static PTR *iface_read_thread(PTR *__sock)
 	int			len;
 	uint16_t		proto, port;
 	IPADDRESS		src;
-	BOOL			src_is_v4 = false;
+
+	makeaddress(&src, NULL);
 
 	/* Do the loopyloop */
 	while (g_conf && g_conf->running)
@@ -997,32 +996,52 @@ static PTR *iface_read_thread(PTR *__sock)
 			break;
 		}
 
-		/* Do we have the prefix here already? */
-		if (!src_is_v4)
-		{
-			memcpy(&src.a8[0], ipv4_mapped_ipv6_prefix, 12);
-			src_is_v4 = true;
-		}
+		/* Just in case we mess up the socket setup table */
+		assert(sock->af == ss.ss_family);
 
 		/* Pass it through the correct decoder */
-		switch (sock->type)
+		switch (sock->af)
 		{
-		case SIXXSD_SOCK_PROTO41:
-			memcpy(&src.a8[12], &buffer[offsetof(struct ip, ip_src)], 4);
-			proto41_in(&src, &buffer[20], len - 20);
-			break;
+		case AF_INET:
+			switch (sock->type)
+			{
+			case SIXXSD_SOCK_PROTO41:
+				memcpy(&src.a8[12], &buffer[offsetof(struct ip, ip_src)], 4);
+				proto41_in(&src, &buffer[20], len - 20);
+				break;
 
-		case SIXXSD_SOCK_AYIYA:
-			memcpy(&src.a8[12], &((struct sockaddr_in *)&ss)->sin_addr, 4);
-			memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
-			port = ntohs(port);
-			ayiya_in(&src, sock->af, sock->proto, port, sock->port, buffer, len);
-			break;
+			case SIXXSD_SOCK_AYIYA:
+				memcpy(&src.a8[12], &((struct sockaddr_in *)&ss)->sin_addr, 4);
+				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
+				port = ntohs(port);
+				ayiya_in(&src, AF_INET, sock->proto, port, sock->port, buffer, len);
+				break;
 
-		case SIXXSD_SOCK_HB:
-			memcpy(&src.a8[12], &((struct sockaddr_in *)&ss)->sin_addr, 4);
-			hb_in(&src, buffer, len);
-			break;
+			case SIXXSD_SOCK_HB:
+				memcpy(&src.a8[12], &((struct sockaddr_in *)&ss)->sin_addr, 4);
+				hb_in(&src, buffer, len);
+				break;
+
+			default:
+				assert(false);
+				break;
+			}
+
+		case AF_INET6:
+			switch (sock->type)
+			{
+			case SIXXSD_SOCK_AYIYA:
+				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in6, sin6_port), sizeof(port));
+				port = ntohs(port);
+				ayiya_in(	(IPADDRESS *) &((struct sockaddr_in6 *)&ss)->sin6_addr,
+						AF_INET6, sock->proto, port, sock->port, buffer, len);
+				break;
+
+			default:
+				/* Not supported */
+				assert(false);
+				break;
+			}
 
 		default:
 			assert(false);

@@ -73,6 +73,7 @@ BOOL isyes(const char *buf);
 #define yesno(x) (x ? "yes" : "no")
 #define sex(x) (x ? "female" : "male")
 BOOL isipv4(const IPADDRESS *address);
+VOID makeaddress(IPADDRESS *a, const struct in_addr *ipv4);
 BOOL isunspecified(const IPADDRESS *address);
 
 #define snprintfok(ret, bufsize) (((ret) >= 0) && (((unsigned int)(ret)) < bufsize))
@@ -141,8 +142,6 @@ VOID dump_stacktrace(VOID **trace, uint64_t *trace_size, unsigned int skip);
 VOID format_stacktrace(char *buf, unsigned int length, VOID **trace, unsigned int trace_size);
 VOID output_stacktrace(VOID);
 #endif
-
-extern const uint8_t ipv4_mapped_ipv6_prefix[12];
 
 #endif
 

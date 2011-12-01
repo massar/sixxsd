@@ -1159,6 +1159,14 @@ BOOL isipv4(const IPADDRESS *a)
 	return true;
 }
 
+VOID makeaddress(IPADDRESS *a, const struct in_addr *ipv4)
+{
+	memcpy(&a->a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
+
+	if (ipv4) memcpy(&a->a8[12], ipv4, 4);
+	else memzero(&a->a8[12], 4);
+}
+
 BOOL isunspecified(const IPADDRESS *a)
 {
 	return (a->a64[0] == 0 && a->a64[1] == 0) ? true : false;
