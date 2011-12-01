@@ -592,10 +592,10 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 
 	if (tun->stats.latency.num_sent > 0 && tun->stats.latency.num_recv > 0)
 	{
-		ctx_printf(ctx, "Latency Loss       : %2.2f\n",	tun->stats.latency.num_sent == 0 ? 0 : (float)(tun->stats.latency.num_sent - tun->stats.latency.num_recv) * 100 / tun->stats.latency.num_sent);
-		ctx_printf(ctx, "Latency Min        : %2.2f ms\n", time_us_msec(tun->stats.latency.min));
-		ctx_printf(ctx, "Latency Avg        : %2.2f ms\n", time_us_msec(tun->stats.latency.tot / (tun->stats.latency.num_recv == 0 ? 1 : tun->stats.latency.num_recv)));
-		ctx_printf(ctx, "Latency Max        : %2.2f ms\n", time_us_msec(tun->stats.latency.max));
+		ctx_printf(ctx, "Latency Loss            : %2.2f\n", tun->stats.latency.num_sent == 0 ? 0 : (float)(tun->stats.latency.num_sent - tun->stats.latency.num_recv) * 100 / tun->stats.latency.num_sent);
+		ctx_printf(ctx, "Latency Min             : %2.2f ms\n", time_us_msec(tun->stats.latency.min));
+		ctx_printf(ctx, "Latency Avg             : %2.2f ms\n", time_us_msec(tun->stats.latency.tot / (tun->stats.latency.num_recv == 0 ? 1 : tun->stats.latency.num_recv)));
+		ctx_printf(ctx, "Latency Max             : %2.2f ms\n", time_us_msec(tun->stats.latency.max));
 	}
 
 	/* Show the errors */
