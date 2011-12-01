@@ -100,6 +100,21 @@ uint16_t in_checksum(const unsigned char *buf, uint16_t len)
 	return inchksum(buf, len);
 }
 
+uint64_t ipv6_checksumA(const uint8_t *a, unsigned int len);
+uint64_t ipv6_checksumA(const uint8_t *a, unsigned int len)
+{
+	uint64_t	chksum = 0;
+	unsigned int	i = 0;
+
+	while (i < len)
+	{
+		if (i++ % 2 == 0)	chksum += *a++;
+		else			chksum += *a++ << 8;
+	}
+
+	return chksum;
+}
+
 uint16_t ipv6_checksum(const struct ip6_hdr *ip6, const uint8_t protocol, const VOID *data, const uint16_t length)
 {
 	struct
@@ -109,25 +124,23 @@ uint16_t ipv6_checksum(const struct ip6_hdr *ip6, const uint8_t protocol, const 
 		uint8_t		zero2;
 		uint8_t		next;
 	} pseudo;
-	register uint32_t       chksum = 0UL;
+	uint64_t chksum = 0;
 
 	pseudo.length   = htons(length);
 	pseudo.zero1    = 0;
 	pseudo.zero2    = 0;
 	pseudo.next     = protocol;
 
-	/* IPv6 Source + Dest */
-	chksum  = inchksum((const VOID *)&ip6->ip6_src, sizeof(ip6->ip6_src) + sizeof(ip6->ip6_dst));
-	chksum += inchksum((const VOID *)&pseudo, sizeof(pseudo));
-	chksum += inchksum(data, length);
+	chksum += ipv6_checksumA((uint8_t *)&ip6->ip6_src,	sizeof(ip6->ip6_src) * 2);
+	chksum += ipv6_checksumA((uint8_t *)&pseudo,		sizeof(pseudo));
+	chksum += ipv6_checksumA(data,				length);
 
 	/* Wrap in the carries to reduce chksum to 16 bits. */
-	chksum  = (chksum >> 16) + (chksum & 0xffff);
-	chksum += (chksum >> 16);
+	chksum = (chksum & 0xffff) + (chksum >> 16);
 
-	/* Take ones-complement and replace 0 with 0xFFFF. */
-	chksum = (uint16_t) ~chksum;
-	if (chksum == 0UL) chksum = 0xffffUL;
-	return (uint16_t)chksum;
+	/* Ones complement */
+	chksum = ~chksum;
+
+	return chksum;
 }
 

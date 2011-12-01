@@ -51,6 +51,7 @@ const char *tunnel_error_name(unsigned int err)
 		"Hash Fail",
 		"Encap.Pkt Too Big",
 		"Encap.Pkt Send Error",
+		"Same Input and Output Interface",
 		"Wrong Source IPv6",
 		"Wrong Source IPv4",
 		"Non-IPv6 Payload",
@@ -165,7 +166,7 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 
 
 		k = snprintf(buf, sizeof(buf),
-			"[T%-5u T%-5u][IPv%u : %-24s - %-24s ttl=%3u proto=%2u len=%-4u plen=%-4u] ",
+			"[T%-5u T%-5u][IPv%u : %-40s - %-40s ttl=%3u proto=%2u len=%-4u plen=%-4u] ",
 			intun ? intun->tunnel_id : 0,
 			outtun ? outtun->tunnel_id : 0,
 			ver,
@@ -190,6 +191,9 @@ VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunne
 {
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid;
+
+	/* Just in case */
+	assert(err < SIXXSD_TERR_MAX);
 
 	/* Select the TID that is a real actual tunnel */
 	tid = (out_tid == SIXXSD_TUNNEL_NONE || out_tid == SIXXSD_TUNNEL_UPLINK) ? in_tid : out_tid;

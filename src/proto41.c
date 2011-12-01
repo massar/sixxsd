@@ -156,7 +156,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 		return;
 	}
 
-	/* Forward it */
-	iface_route6(in_tid, packet, len, false, true, false);
+	/* Forward it: it is not an error, do decrease the TTL, do check the source */
+	iface_route6(in_tid, SIXXSD_TUNNEL_NONE, packet, len, false, true, false);
 }
 

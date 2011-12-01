@@ -85,14 +85,6 @@ struct nd_neigh_advert
 #endif
 };
 
-#ifndef ICMP6_DST_UNREACH_IN_EGRESS_POLICY
-#define ICMP6_DST_UNREACH_IN_EGRESS_POLICY 5
-#endif
-
-#ifndef ICMP6_DST_UNREACH_REJECTROUTE
-#define ICMP6_DST_UNREACH_REJECTROUTE 6
-#endif
-
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>

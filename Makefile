@@ -21,7 +21,7 @@ SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2011 All Rights Reserved"
 SIXXSD_VERSION=4.0
 
 # The version of SixXSd
-SIXXSD_RELEASE:=2011.10.24
+SIXXSD_RELEASE:=2011.12.01
 
 # Enable extra debugging operation + enables symbols (don't distribute with it enabled!)
 #SIXXSD_OPTIONS+=-DDEBUG

@@ -298,14 +298,14 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, co
 
 		if (s->ayh.ayh_nextheader == IPPROTO_IPV6)
 		{
-			/* Forward it */
-			iface_route6(in_tid, s->payload, plen, false, true, false);
+			/* Forward it, not an error, do decrease TTL, do a source check */
+			iface_route6(in_tid, SIXXSD_TUNNEL_NONE, s->payload, plen, false, true, false);
 			return;
 		}
 		else if (s->ayh.ayh_nextheader == IPPROTO_IPV4)
 		{
-			/* Forward it */
-			iface_route4(in_tid, s->payload, plen, false, true, false);
+			/* Forward it, not an error, do decrease TTL, do a source check */
+			iface_route4(in_tid, SIXXSD_TUNNEL_NONE, s->payload, plen, false, true, false);
 			return;
 		}
 		else

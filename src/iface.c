@@ -187,8 +187,8 @@ BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *pack
 	/* First check if the packet can actually go out over that output */
 	if (outtun && len > outtun->mtu)
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "prepfwd6 %u to %u len = %u > mtu = %u\n", in_tid, out_tid, len, outtun->mtu);
-		tunnel_log(out_tid, in_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, (IPADDRESS *)&ip6->ip6_src);
+		tunnel_debug(in_tid, out_tid, packet, len, "prepfwd6 %04x to %04x len = %u > mtu = %u\n", in_tid, out_tid, len, outtun->mtu);
+		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, (IPADDRESS *)&ip6->ip6_src);
 		if (!is_error) iface_send_icmpv6_toobig(in_tid, out_tid, packet, len, outtun->mtu);
 		return false;
 	}
@@ -273,21 +273,29 @@ VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t
 	/* No way to get out */
 	if (!outtun)
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "No output\n");
 		if (!is_error)
 		{
 			if (protocol == IPPROTO_IP)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_NET_UNREACH);
 			else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADDR);
 		}
+
 		return;
 	}
 
 	/* Same input as output? */
 	if (!is_error && in_tid == out_tid)
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "Same input as output\n");
-		if (protocol == IPPROTO_IP)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_UNREACH_SRCFAIL);
-		else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_REJECTROUTE);
+		if (protocol == IPPROTO_IP)
+		{
+			struct ip *ip = (struct ip *)packet;
+			tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, &ip->ip_src);
+		}
+		else
+		{
+			struct ip6_hdr *ip6 = (struct ip6_hdr *)packet;
+			tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
+		}
+
 		return;
 	}
 
@@ -395,10 +403,10 @@ VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, co
 	lat->num_recv++;
 }
 
-VOID iface_route6(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
+VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
-	uint16_t		out_tid;
+	uint16_t		out_tid = out_tid_;
 	BOOL			istunnel;
 
 	assert((is_error && !decrease_ttl) || !is_error);
@@ -406,38 +414,39 @@ VOID iface_route6(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BO
 	/* Make sure it is actually an IPv6 packet */
 	if ((ip6->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
 	{
-		tunnel_debug(in_tid, in_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_error ? "error" : "normal", ip6->ip6_ctlun.ip6_un2_vfc >> 4);
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_error ? "error" : "normal", ip6->ip6_ctlun.ip6_un2_vfc >> 4);
 		return;
 	}
 
 	/* We might want to show every packet */
-	tunnel_debug(in_tid, in_tid, packet, len, "iface_route6(%s/%s)\n", is_error ? "error" : "normal", nosrcchk ? "nosrcchk" : "srcchk");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s/%s)\n", is_error ? "error" : "normal", nosrcchk ? "nosrcchk" : "srcchk");
 
 	/* Ignore link-local source addresses completely */
-	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src)) return;
+	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src))
+	{
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local sourced packet\n", is_error ? "error" : "normal");
+		return;
+	}
 
 	/* Do we want to check where this packet came from? */
 	if (!nosrcchk)
 	{
 		/* Do we like the source address coming from this interface? */
-		out_tid = address_find((IPADDRESS *)&ip6->ip6_src, &istunnel);
-		if (out_tid != in_tid)
+		uint16_t src_tid = address_find((IPADDRESS *)&ip6->ip6_src, &istunnel);
+		if (src_tid != in_tid)
 		{
-			if (!is_error)
-			{
-				tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
-				iface_send_icmpv6_unreach(out_tid, in_tid, packet, len, ICMP6_DST_UNREACH_IN_EGRESS_POLICY);
-			}
-			else
-			{
-				tunnel_debug(in_tid, out_tid, packet, len, "Not sending an unreachable(wrong source) for a error packer\n");
-			}
+			/* We drop these to the floor as we can never reply to the real source which lives on the wrong interface */
+			tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
 			return;
 		}
 	}
 
 	/* Ignore link-local destination addresses */
-	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst)) return;
+	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst))
+	{
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local destined packet\n", is_error ? "error" : "normal");
+		return;
+	}
 
 	out_tid = address_find((IPADDRESS *)&ip6->ip6_dst, &istunnel);
 
@@ -478,10 +487,10 @@ VOID iface_route6(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BO
 				break;
 
 			default:
+				/* Ignore all other ICMP message types */
 				break;
 			}
 
-			/* Ignore all other ICMP message types */
 			return;
 		}
 
@@ -493,14 +502,15 @@ VOID iface_route6(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BO
 	/* Don't route out over the same interface as that would just cause a routing loop */
 	if (!nosrcchk && out_tid == in_tid)
 	{
-		tunnel_log(out_tid, in_tid, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
-		if (!is_error) iface_send_icmpv6_unreach(out_tid, in_tid, packet, len, ICMP6_DST_UNREACH_IN_EGRESS_POLICY);
+		/* Trying to send packets to itself, just drop it on the floor */
+		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
 		return;
 	}
 
 	/* Account that we routed this packet */
 	tunnel_account_packet(in_tid, out_tid, AF_INET6, len);
 
+	/* Prepare the packet for forwarding (MTU and TTL handling */
 	if (!iface_prepfwd6(in_tid, out_tid, packet, len, is_error, decrease_ttl)) return;
 
 	/* Send it to the network */
@@ -520,18 +530,19 @@ VOID iface_route6(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BO
 		return;
 	}
 
+	/* <tunnel>::2 and subnets routed behind that */
 	tunnel_debug(in_tid, out_tid, packet, len, "Routing to tunnel\n");
 	iface_routetun(in_tid, out_tid, IPPROTO_IPV6, packet, len, is_error);
 }
 
-VOID iface_route4(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
+VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
 {
 	struct ip		*ip = (struct ip *)packet;
-	uint16_t		out_tid;
+	uint16_t		out_tid = out_tid_;
 	BOOL			istunnel;
 	int			n;
 
-	tunnel_debug(in_tid, SIXXSD_TUNNEL_NONE, packet, len, "iface_route4(%s)\n", is_error ? "error" : "normal");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_route4(%s)\n", is_error ? "error" : "normal");
 
 	if (!nosrcchk)
 	{
@@ -565,6 +576,7 @@ VOID iface_route4(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BO
 	/* Where does the packet want to go? */
 	out_tid = address_find((IPADDRESS *)&ip->ip_dst, &istunnel);
 
+	/* Prepare the packet for forwarding (MTU and TTL handling) */
 	if (!iface_prepfwd4(in_tid, out_tid, packet, len, is_error, decrease_ttl)) return;
 
 	/* It goes out over one of our own tunnels */
@@ -579,16 +591,16 @@ VOID iface_route4(const uint16_t in_tid, uint8_t *packet, const uint16_t len, BO
 	n = write(g_conf->tuntap, packet, len);
 	if (n < 0)
 	{
-		mdoelog(LOG_ERR, errno, "iface_route6() - Could not send packet\n");
+		mdoelog(LOG_ERR, errno, "iface_route4() - Could not send packet\n");
 
 		if (!is_error)
 		{
 			iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_PARAMETERPROB);
-			mdoelog(LOG_ERR, errno, "iface_route6() - Could not send error packet\n");
+			mdoelog(LOG_ERR, errno, "iface_route4() - Could not send error packet\n");
 		}
 		else
 		{
-			mdoelog(LOG_ERR, errno, "iface_route6() - Could not send packet while sending error packet\n");
+			mdoelog(LOG_ERR, errno, "iface_route4() - Could not send packet while sending error packet\n");
 		}
 	}
 }
@@ -615,14 +627,24 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 		struct icmp6_hdr	*icmp;
 		uint8_t			ipe_type;
 
-		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen)) return;
+		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Echo Request\n", type, code);
 
-		if (ipe_type != IPPROTO_ICMPV6) return;
+		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen))
+		{
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is broken\n");
+			return;
+		}
+
+		if (ipe_type != IPPROTO_ICMPV6)
+		{
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request with unknown extension %04x != ICMP (%04x)\n", ipe_type, IPPROTO_ICMPV6);
+			return;
+		}
 
 		/* Ping too big? Send an error back instead */
 		if (plen > sizeof(pkt.payload))
 		{
-			tunnel_debug(in_tid, out_tid, packet, len, "ICMP ECHO TOO BIG (%u > %u)\n", plen, (unsigned int)sizeof(pkt.payload));
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is too big (%u > %u)\n", plen, (unsigned int)sizeof(pkt.payload));
 			iface_send_icmpv6_toobig(in_tid, out_tid, packet, len, sizeof(pkt));
 			return;
 		}
@@ -649,9 +671,19 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 		struct nd_neigh_advert		*adv;
 		struct nd_neigh_solicit		*sol;
 
-		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen)) return;
+		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Neighbor Advertisement\n", type, code);
 
-		if (ipe_type != IPPROTO_ICMPV6) return;
+		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen))
+		{
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is broken\n");
+			return;
+		}
+
+		if (ipe_type != IPPROTO_ICMPV6)
+		{
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request with unknown extension %04x != ICMP (%04x)\n", ipe_type, IPPROTO_ICMPV6);
+			return;
+		}
 
 		adv = (struct nd_neigh_advert *)&pkt.payload;
 		sol = (struct nd_neigh_solicit *)(((uint8_t *)ipe) + sizeof(struct icmp6_hdr));
@@ -665,9 +697,13 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	}
 	else
 	{
-		/* How much are we willing to echo back of the original packet? */
+		/* How much are we willing to send back of the original packet? */
 		plen = 1280 - (sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr));
+		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Other - possible plen = %u, len = %u\n", type, code, plen, len);
+
 		plen = len > plen ? plen : len;
+		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Other - possible plen = %u\n", type, code, plen);
+
 		memcpy(&pkt.payload, packet, plen);
 
 		pkt.icmp.icmp6_dataun.icmp6_un_data32[0] = htonl(param);
@@ -688,9 +724,15 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	memzero(&pkt.ip.ip6_src.s6_addr[(48/8)+2], (64/8)-1);
 	pkt.ip.ip6_src.s6_addr[15] = SIXXSD_TUNNEL_IP_US;
 
+	/* Set the Type & Code */
+	pkt.icmp.icmp6_type = type;
+	pkt.icmp.icmp6_code = code;
+
+	/* Set the destination */
 	if (dst)
 	{
 		memcpy(&pkt.ip.ip6_dst,	dst, sizeof(pkt.ip.ip6_dst));
+		tunnel_debug(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt.ip) + sizeof(pkt.icmp) + plen, "ICMPv6 %u::%u - Using provided address\n", type, code);
 	}
 	else
 	{
@@ -698,17 +740,17 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 
 		/* The sender will get this packet back */
 		memcpy(&pkt.ip.ip6_dst,	&ip6->ip6_src, sizeof(pkt.ip.ip6_dst));
+
+		tunnel_debug(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt.ip) + sizeof(pkt.icmp) + plen, "ICMPv6 %u::%u - Using source address\n", type, code);
 	}
 
-	/* Set the Type & Code */
-	pkt.icmp.icmp6_type = type;
-	pkt.icmp.icmp6_code = code;
 	pkt.icmp.icmp6_cksum = htons(0);
-
 	pkt.icmp.icmp6_cksum = ipv6_checksum(&pkt.ip, IPPROTO_ICMPV6, (uint8_t *)&pkt.icmp, sizeof(pkt.icmp) + plen);
 
-	/* Send it off */
-	iface_route6(in_tid, (uint8_t *)&pkt, sizeof(pkt.ip) + sizeof(pkt.icmp) + plen, true, false, true);
+	tunnel_debug(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt.ip) + sizeof(pkt.icmp) + plen, "ICMPv6 %u::%u - Answer prepared cksum %04x\n", type, code, ntohs(pkt.icmp.icmp6_cksum));
+
+	/* Send it off: it is an error, don't decrease the TTL, don't check the source */
+	iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt.ip) + sizeof(pkt.icmp) + plen, true, false, true);
 }
 
 VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param);
@@ -890,10 +932,10 @@ PTR *iface_pinger_thread(PTR UNUSED *arg)
 		/* Unlock the mutex so readers can get results */
 		mutex_release(g_conf->mutex_pinger);
 
-		/* Wait another 25 seconds for the next round */
-		if (!thread_sleep(25, 0)) break;
+		/* Wait another 60 seconds for the next round */
+		if (!thread_sleep(60, 0)) break;
 
-		/* We thus ping about every 30 seconds (few milliseconds are used for sending all the pings ;) */
+		/* We thus ping about every 60 seconds (few milliseconds are used for sending all the pings ;) */
 	}
 
 	return NULL;
@@ -931,8 +973,9 @@ PTR *iface_read_thread(PTR *__sock)
 			/* Ignore the tun_pi structure (which is why there is buffer[4] below) */
 			len -= 4;
 
-			if (proto == ETH_P_IP) iface_route4(SIXXSD_TUNNEL_UPLINK, &buffer[4], len, false, false, false);
-			else if (proto == ETH_P_IPV6) iface_route6(SIXXSD_TUNNEL_UPLINK, &buffer[4], len, false, false, false);
+			/* Send it off: it is not an error, don't decrease the TTL, do check the source */
+			if (proto == ETH_P_IP) iface_route4(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
+			else if (proto == ETH_P_IPV6) iface_route6(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
 			else { assert(false); }
 
 			continue;
