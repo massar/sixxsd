@@ -553,7 +553,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	{
 		IPADDRESS s;
 
-		makeaddress(&s, &ip->ip_src);
+		ipaddress_make_ipv4(&s, &ip->ip_src);
 
 		/* Do we like the source address coming from this interface? */
 		out_tid = address_find(&s, &istunnel);
@@ -565,7 +565,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 				char		src[128], dst[128];
 				IPADDRESS	d;
 
-				makeaddress(&d, &ip->ip_dst);
+				ipaddress_make_ipv4(&d, &ip->ip_dst);
 
 				inet_ntopA((IPADDRESS *)&ip->ip_src, src, sizeof(src));
 				inet_ntopA((IPADDRESS *)&ip->ip_dst, dst, sizeof(dst));
@@ -956,7 +956,7 @@ static PTR *iface_read_thread(PTR *__sock)
 	uint16_t		proto, port;
 	IPADDRESS		src;
 
-	makeaddress(&src, NULL);
+	ipaddress_make_ipv4(&src, NULL);
 
 	/* Do the loopyloop */
 	while (g_conf && g_conf->running)
@@ -1006,19 +1006,19 @@ static PTR *iface_read_thread(PTR *__sock)
 			switch (sock->type)
 			{
 			case SIXXSD_SOCK_PROTO41:
-				memcpy(&src.a8[12], &buffer[offsetof(struct ip, ip_src)], 4);
+				ipaddress_set_ipv4(&src, (struct in_addr *)&buffer[offsetof(struct ip, ip_src)]);
 				proto41_in(&src, &buffer[20], len - 20);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
-				memcpy(&src.a8[12], &((struct sockaddr_in *)&ss)->sin_addr, 4);
+				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
 				port = ntohs(port);
 				ayiya_in(&src, AF_INET, sock->proto, port, sock->port, buffer, len);
 				break;
 
 			case SIXXSD_SOCK_HB:
-				memcpy(&src.a8[12], &((struct sockaddr_in *)&ss)->sin_addr, 4);
+				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
 				hb_in(&src, buffer, len);
 				break;
 
@@ -1232,7 +1232,7 @@ VOID iface_upnets(VOID)
 	if (g_conf->tuntap == INVALID_SOCKET) return;
 
 	tuns = &g_conf->tunnels;
-	if (!isunspecified(&tuns->prefix) && !tuns->online)
+	if (!ipaddress_is_unspecified(&tuns->prefix) && !tuns->online)
 	{
 		os_exec("/sbin/ip -6 ro add %s:/48 dev sixxs", tuns->prefix_asc);
 		tuns->online = true;

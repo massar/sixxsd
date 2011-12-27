@@ -209,6 +209,9 @@ union ipaddress
 
 typedef union ipaddress IPADDRESS;
 
+#define ipaddress_ipv4(addr) (&(addr)->a8[12])
+#define ipaddress_ipv6(addr) (&(addr)->a8[0])
+
 /* VLAN Defines */
 #ifndef ETHER_ADDR_LEN
 #define ETHER_ADDR_LEN  6

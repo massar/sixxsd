@@ -282,11 +282,13 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 				switch (sa.ss_family)
 				{
 				case AF_INET:
-					makeaddress(&ip, &((struct sockaddr_in *)&sa)->sin_addr);
+					ipaddress_make_ipv4(&ip, &((struct sockaddr_in *)&sa)->sin_addr);
 					break;
+
 				case AF_INET6:
-					memcpy(&ip.a8[0], (VOID *)&((struct sockaddr_in6 *)&sa)->sin6_addr, 16);
+					ipaddress_make_ipv6(&ip, &((struct sockaddr_in6 *)&sa)->sin6_addr);
 					break;
+
 				default:
 					mdolog(LOG_ERR, "Unknown Address Family %u\n", sa.ss_family);
 					break;

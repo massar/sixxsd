@@ -132,8 +132,8 @@ VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	pkt.ip.ip_off = htons(IP_DF);
 	pkt.ip.ip_ttl = 64;
 	pkt.ip.ip_p = IPPROTO_UDP;
-	memcpy(&pkt.ip.ip_src, &g_conf->pop_ipv4.a8[12],sizeof(pkt.ip.ip_src));
-	memcpy(&pkt.ip.ip_dst, &tun->ip_them.a8[12],	sizeof(pkt.ip.ip_dst));
+	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pop_ipv4),	sizeof(pkt.ip.ip_src));
+	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),		sizeof(pkt.ip.ip_dst));
 
 	/* UDP */
 	pkt.udp.uh_sport = htons(tun->ayiya_port_us);
@@ -206,7 +206,7 @@ VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t prot
 
 	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_error)) return;
 
-	if (isipv4(&tun->ip_them))
+	if (ipaddress_is_ipv4(&tun->ip_them))
 	{
 		ayiya_out_ipv4(tun, in_tid, out_tid, protocol, packet, len, is_error);
 	}

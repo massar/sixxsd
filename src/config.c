@@ -76,7 +76,7 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 
 		/* Init ip_them to IPv4 any */
 		/* Later we fill in the IP address with something real from AYIYA or heartbeat source */
-		makeaddress(&tun->ip_them, NULL);
+		ipaddress_make_ipv4(&tun->ip_them, NULL);
 
 		/* Reset statistics */
 		memzero(tun->stats.traffic, sizeof(tun->stats.traffic));

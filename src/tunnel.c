@@ -146,8 +146,8 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 				IPADDRESS s, d;
 
 				/* Convert the IP into an IPADDRESS we can use */
-				makeaddress(&s, &ip->ip_src);
-				makeaddress(&d, &ip->ip_dst);
+				ipaddress_make_ipv4(&s, &ip->ip_src);
+				ipaddress_make_ipv4(&d, &ip->ip_dst);
 
 				/* Turn it into human readable stuff */
 				inet_ntopA(&s, src, sizeof(src));
@@ -239,7 +239,7 @@ VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunn
 {
 	IPADDRESS ip;
 
-	makeaddress(&ip, src);
+	ipaddress_make_ipv4(&ip, src);
 
 	tunnel_log(in_tid, out_tid, err, &ip);
 }

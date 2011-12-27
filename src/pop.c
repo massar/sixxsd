@@ -370,7 +370,7 @@ static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNU
 
 	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
 	{
-		if (isunspecified(&g_conf->cli_acl[i])) continue;
+		if (ipaddress_is_unspecified(&g_conf->cli_acl[i])) continue;
 
 		inet_ntopA(&g_conf->cli_acl[i], buf, sizeof(buf));
 		fprintf(f, "\t\tadd %s\n", buf);
@@ -503,7 +503,7 @@ static int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned 
 {
 	struct sixxsd_tunnels	*tuns = &g_conf->tunnels;
 
-	if (isunspecified(&tuns->prefix))
+	if (ipaddress_is_unspecified(&tuns->prefix))
 	{
 		ctx_printf(ctx, "Tunnel Prefix is not configured yet\n");
 		return 404;
@@ -527,7 +527,7 @@ static int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned i
 		return 400;
 	}
 
-	if (!isunspecified(&tuns->prefix))
+	if (!ipaddress_is_unspecified(&tuns->prefix))
 	{
 		ctx_printf(ctx, "Tunnel Prefix already configured\n");
 		return 200;
@@ -607,7 +607,7 @@ static int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned i
 	{
 		subs = &g_conf->subnets[i];
 
-		if (!isunspecified(&subs->prefix)) continue;
+		if (!ipaddress_is_unspecified(&subs->prefix)) continue;
 
 		memcpy(&subs->prefix, &ip, sizeof(subs->prefix));
 		subs->prefix_length = prefixlen;
@@ -668,7 +668,7 @@ static int pop_cmd_cliacl_list(struct sixxsd_context *ctx, const unsigned int UN
 
 	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
 	{
-		if (isunspecified(&g_conf->cli_acl[i])) continue;
+		if (ipaddress_is_unspecified(&g_conf->cli_acl[i])) continue;
 
 		inet_ntopA(&g_conf->cli_acl[i], hst, sizeof(hst));
 		ctx_printf(ctx, "%s\n", hst);
@@ -715,7 +715,7 @@ static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int arg
 	/* Find empty slot and add it */
 	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
 	{
-		if (!isunspecified(&g_conf->cli_acl[i])) continue;
+		if (!ipaddress_is_unspecified(&g_conf->cli_acl[i])) continue;
 
 		memcpy(&g_conf->cli_acl[i], &ip, sizeof(g_conf->cli_acl[i]));
 

@@ -72,11 +72,15 @@ BOOL parse_userpass(const char *uri, char *username, size_t username_len, char *
 BOOL isyes(const char *buf);
 #define yesno(x) (x ? "yes" : "no")
 #define sex(x) (x ? "female" : "male")
-BOOL isipv4(const IPADDRESS *address);
-VOID makeaddress(IPADDRESS *a, const struct in_addr *ipv4);
-BOOL isunspecified(const IPADDRESS *address);
 
 #define snprintfok(ret, bufsize) (((ret) >= 0) && (((unsigned int)(ret)) < bufsize))
+
+BOOL ipaddress_is_ipv4(const IPADDRESS *address);
+VOID ipaddress_set_ipv4(IPADDRESS *a, const struct in_addr *ipv4);
+VOID ipaddress_set_ipv6(IPADDRESS *a, const struct in6_addr *ipv6);
+VOID ipaddress_make_ipv4(IPADDRESS *a, const struct in_addr *ipv4);
+#define ipaddress_make_ipv6(a,i) ipaddress_set_ipv6(a,i)
+BOOL ipaddress_is_unspecified(const IPADDRESS *address);
 
 /* Misc */
 const char *inet_ntopA(const IPADDRESS *src, char *dst, socklen_t cnt);

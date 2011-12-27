@@ -1143,7 +1143,7 @@ BOOL isyes(const char *buf)
  * +----------------
  *            ffabcd	::ffff:aa.bb.cc.dd = IPv4 mapped
  */
-BOOL isipv4(const IPADDRESS *a)
+BOOL ipaddress_is_ipv4(const IPADDRESS *a)
 {
 	uint64_t *a64 = (uint64_t *)a->a8;
 	uint16_t *a16 = (uint16_t *)a->a8;
@@ -1159,15 +1159,26 @@ BOOL isipv4(const IPADDRESS *a)
 	return true;
 }
 
-VOID makeaddress(IPADDRESS *a, const struct in_addr *ipv4)
+VOID ipaddress_set_ipv4(IPADDRESS *a, const struct in_addr *ipv4)
+{
+	if (ipv4) memcpy(ipaddress_ipv4(a), ipv4, 4);
+	else memzero(ipaddress_ipv4(a), 4);
+}
+
+VOID ipaddress_make_ipv4(IPADDRESS *a, const struct in_addr *ipv4)
 {
 	memcpy(&a->a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
 
-	if (ipv4) memcpy(&a->a8[12], ipv4, 4);
-	else memzero(&a->a8[12], 4);
+	ipaddress_set_ipv4(a, ipv4);
 }
 
-BOOL isunspecified(const IPADDRESS *a)
+VOID ipaddress_set_ipv6(IPADDRESS *a, const struct in6_addr *ipv6)
+{
+	if (ipv6) memcpy(ipaddress_ipv6(a), ipv6, 16);
+	else memzero(ipaddress_ipv6(a), 16);
+}
+
+BOOL ipaddress_is_unspecified(const IPADDRESS *a)
 {
 	return (a->a64[0] == 0 && a->a64[1] == 0) ? true : false;
 }
@@ -1177,7 +1188,7 @@ BOOL isunspecified(const IPADDRESS *a)
  */
 const char *inet_ntopA(const IPADDRESS *addr, char *dst, socklen_t cnt)
 {
-	if (isipv4(addr)) inet_ntop(AF_INET, (char *)&addr->a8[12], dst, cnt);
+	if (ipaddress_is_ipv4(addr)) inet_ntop(AF_INET, (char *)ipaddress_ipv4(addr), dst, cnt);
 	else inet_ntop(AF_INET6, (char *)addr, dst, cnt);
 
 	return dst;
@@ -1187,7 +1198,7 @@ const char *inet_ntopAL(const IPADDRESS *addr, unsigned int len, char *dst, sock
 {
 	unsigned int l;
 
-	if (isipv4(addr)) inet_ntop(AF_INET, (char *)&addr->a8[12], dst, cnt);
+	if (ipaddress_is_ipv4(addr)) inet_ntop(AF_INET, (char *)ipaddress_ipv4(addr), dst, cnt);
 	else inet_ntop(AF_INET6, (char *)addr, dst, cnt);
 
 	l = strlen(dst);
@@ -1231,7 +1242,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 	/* Move IPv4 address to the back and set the ::ffff in front of it */
 	if (af == AF_INET)
 	{
-		memcpy(&dst->a8[12], &dst->a8[0], 4);
+		ipaddress_set_ipv4(dst, (const struct in_addr *)&dst->a8[0]);
 		memcpy(&dst->a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
 	}
 
@@ -1290,7 +1301,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 VOID sock_cleanss(struct sockaddr_storage *ss)
 {
 	if (	ss->ss_family == AF_INET6 &&
-		isipv4((const IPADDRESS *)&((struct sockaddr_in6 *)ss)->sin6_addr))
+		ipaddress_is_ipv4((const IPADDRESS *)&((struct sockaddr_in6 *)ss)->sin6_addr))
 	{
 		/* Move the IPv4 address into the correct place */
 		memmove(	&((struct sockaddr_in *)ss)->sin_addr,
