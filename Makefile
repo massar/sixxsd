@@ -2,10 +2,6 @@
 #  SixXSd - SixXS Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
 #  (C) Copyright SixXS 2000-2008 All Rights Reserved
-# **********************************************************
-# $Author: $
-# $Id$
-# $Date: $
 # *********************************************************/
 #
 # Toplevel Makefile allowing easy distribution.

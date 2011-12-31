@@ -2,10 +2,6 @@
  SixXSd - The Daemon of SixXS
  by Jeroen Massar <jeroen@sixxs.net>
  (C) Copyright SixXS 2000-2011 All Rights Reserved
-************************************************************
- $Author: $
- $Id: $
- $Date: $
 ***********************************************************/
 
 #ifndef COMMON_H
