@@ -1270,7 +1270,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 			/* Add 96 bits as that is where IPv4 starts inside IPv6 */
 			/* Users specify a /24, but then it is a /120 to us */
 			/* Only do this when it is not a /0 and when it is IPv4 */
-			if (l != 0 && af == AF_INET) l += 96;
+			if (af == AF_INET) l += 96;
 		}
 		/* No Prefix length, thus a /128 */
 		else l = 128;
