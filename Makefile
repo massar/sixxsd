@@ -1,7 +1,7 @@
 # /*********************************************************
 #  SixXSd - SixXS Daemon
 #  by Jeroen Massar <jeroen@sixxs.net>
-#  (C) Copyright SixXS 2000-2008 All Rights Reserved
+#  (C) Copyright SixXS 2000-2012 All Rights Reserved
 # *********************************************************/
 #
 # Toplevel Makefile allowing easy distribution.
@@ -11,13 +11,13 @@
 # The name of the application
 SIXXSD_NAME:=SixXSd
 SIXXSD_DESC:="SixXSd - SixXS Daemon"
-SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2011 All Rights Reserved"
+SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2012 All Rights Reserved"
 
 # The version of SixXSd
 SIXXSD_VERSION=4.0
 
 # The version of SixXSd
-SIXXSD_RELEASE:=2011.12.27
+SIXXSD_RELEASE:=2012.01.24
 
 # Enable extra debugging operation + enables symbols (don't distribute with it enabled!)
 #SIXXSD_OPTIONS+=-DDEBUG
