@@ -1,7 +1,7 @@
 /***********************************************************
  SixXSd - The Daemon of SixXS
  by Jeroen Massar <jeroen@sixxs.net>
- (C) Copyright SixXS 2000-2011 All Rights Reserved
+ (C) Copyright SixXS 2000-2012 All Rights Reserved
 ***********************************************************/
 
 #include "sixxsd.h"
@@ -40,14 +40,12 @@ static const char *iface_socket_name(enum sixxsd_sockets type)
 	return "unknown";
 }
 
-static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen);
-static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen)
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen);
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen)
 {
-	struct iovec	dat[3];
+	struct iovec	dat[2];
 	struct tun_pi	pi;
 	int		n;
-
-	assert((payload && payload_len > 0) || (!payload && payload_len == 0));
 
 	pi.flags = htons(0);
 	pi.proto = htons(protocol);
@@ -57,17 +55,11 @@ static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_
 	dat[1].iov_base	= (char *)header;
 	dat[1].iov_len	= header_len;
 
-	if (payload)
-	{
-		dat[2].iov_base	= (char *)payload;
-		dat[2].iov_len	= payload_len;
-	}
-
 	/* Send the packet to our tun/tap device and let the kernel handle it for the rest */
-	n = writev(g_conf->tuntap, dat, payload ? 3 : 2);
+	n = writev(g_conf->tuntap, dat, 2);
 	if (n >= 0)
 	{
-		tunnel_account_packet_out(out_tid, payload_len);
+		tunnel_account_packet_out(out_tid, 0);
 		return;
 	}
 
@@ -518,7 +510,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	if (out_tid == SIXXSD_TUNNEL_UPLINK)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "TAPped Packet\n");
-		iface_sendtap(in_tid, out_tid, ETH_P_IPV6, packet, len, NULL, 0, is_error, packet, len);
+		iface_sendtap(in_tid, out_tid, ETH_P_IPV6, packet, len, is_error, packet, len);
 		return;
 	}
 
