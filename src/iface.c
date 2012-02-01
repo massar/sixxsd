@@ -209,7 +209,7 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	if (decrease_ttl)
 	{
 		ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim--;
-		tunnel_debug(in_tid, out_tid, packet, len, "IPv6 HopLimit New %u\n", ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim--);
+		tunnel_debug(in_tid, out_tid, packet, len, "IPv6 HopLimit New %u\n", ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim);
 	}
 
 	return true;
