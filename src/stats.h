@@ -25,6 +25,8 @@ struct sixxsd_latency
 	uint16_t			seq, _padding_;			/* Sequence number */
 	uint16_t			num_sent, num_recv;		/* Number sent & received */
 	uint64_t			min, max, tot;			/* Minimum, Max and Total latency */
+	uint64_t			magic[2];			/* Current and previous magic */
+	uint64_t			seq_seen;			/* Sequence numbers seen */
 };
 
 struct sixxsd_stats

@@ -12,6 +12,7 @@ const char module_iface[] = "iface";
 struct pingtest
 {
 	uint64_t	time_us;
+	uint64_t	magic;
 	uint8_t		message[1000];
 };
 
@@ -331,7 +332,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_latency	*lat;
 	struct pingtest		*d;
-	uint64_t		currtime_us, t;
+	uint64_t		currtime_us, t, seqbit;
 	uint32_t		parm;
 	uint16_t		seq;
 
@@ -356,14 +357,49 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 		return;
 	}
 
+	/* The sequence number from the packet */
 	seq = parm & 0xffff;
-	if (seq < (lat->seq - 40))
+
+	mutex_lock(g_conf->mutex_pinger);
+
+	/*
+	 * We keep in lat->seq the highest sequence number seen
+	 * As such lat->seq_seen contains a bit each for the last 64 sequence numbers
+	 * When we see one, we set it so we can detect resends.
+	 */
+	if (seq < (lat->seq - 64))
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Sequence Number %u out of range (%u-%u)\n", seq, lat->seq - 40, lat->seq);
+		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Sequence Number %u out of range (%u-%u)\n", seq, lat->seq - 64, lat->seq);
+		mutex_release(g_conf->mutex_pinger);
+		return;
+	}
+
+	/* What is the bit that represents this sequence number? */
+	seqbit = (1 >> (lat->seq - seq));
+
+	/* Check if we have seen this sequence number already */
+	if (lat->seq_seen & seqbit)
+	{
+		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Sequence Number %u was already seen\n", seq);
+		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
 
 	d = (struct pingtest *)(((uint8_t *)(icmp)) + sizeof(*icmp));
+
+	/* Check that the magic is either the current or the previous one */
+	if (g_conf->magic[0] != d->magic && g_conf->magic[1] != d->magic)
+	{
+		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Magic is not current or previous\n");
+		mutex_release(g_conf->mutex_pinger);
+		return;
+	}
+
+	/*
+	 * We deem the packet okay as the magic is correct and sequence is there
+	 * Thus mark the packet as seen
+	 */
+	lat->seq_seen |= seqbit;
 
 	/* How late is it now? */
 	currtime_us = gettime_us();
@@ -372,6 +408,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	if (currtime_us < d->time_us)
 	{
 		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply timestamp is in the future?\n");
+		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
 
@@ -382,12 +419,14 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	if (t > 4000000)
 	{
 		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply was %2.2f millseconds old? (%" PRIu64 ")\n", time_us_msec(lat->min), t);
+		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
 
 	if (lat->num_recv >= lat->num_sent)
 	{
 		tunnel_debug(tid, tid, NULL, 0, "Already received %u responses for %u sent packets...\n", lat->num_recv, lat->num_sent);
+		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
 
@@ -397,6 +436,8 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 
 	lat->tot += t;
 	lat->num_recv++;
+
+	mutex_release(g_conf->mutex_pinger);
 }
 
 VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
@@ -892,7 +933,7 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 	/* Do the loopyloop */
 	while (g_conf && g_conf->running)
 	{
-		/* Grab the write mutex, to avoid folks from reading results while we ping */
+		/* Grab the mutex, to avoid folks from reading results while we ping */
 		mutex_lock(g_conf->mutex_pinger);
 
 		for (tid = 0; g_conf && g_conf->running && tid < lengthof(g_conf->tunnels.tunnel); tid++)
@@ -909,12 +950,18 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 			/* Update the time, as we are talking microseconds here */
 			payload.time_us = gettime_us();
 
+			/* Fill in the magic */
+			payload.magic = tun->stats.latency.magic[0];
+
 			/* Send the packet */
 			iface_send_icmpv6_echo_request(tid, &dst, (uint8_t *)&payload, plen, tun->stats.latency.seq);
 
 			/* Another one out of the door */
 			tun->stats.latency.seq++;
 			tun->stats.latency.num_sent++;
+
+			/* Shift up the seq_seen bits */
+			tun->stats.latency.seq_seen <<= 1;
 		}
 
 		/* Wait 5 seconds for all the answer */

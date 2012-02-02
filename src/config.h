@@ -58,6 +58,9 @@ struct sixxsd_configuration
 	BOOL			opened_syslog;				/* Syslog gets opened at first reference */
 	uint64_t		starttime;				/* When we got started */
 
+	/* Current & Previous Magic number (used for latency checks) */
+	uint64_t		magic[2];				/* Latency Magic number */
+
 	/* Verbosity levels */
 	uint64_t		verbose;				/* Verbose
 									 *           0 = disabled           (NOTICE and up),

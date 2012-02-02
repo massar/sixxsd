@@ -770,7 +770,7 @@ static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc,
 	tunnel_stats(ctx, name, &g_conf->stats_uplink.traffic[stats_in], &g_conf->stats_uplink.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_uplink, sizeof(g_conf->stats_uplink));
 
-	/* Grab the write mutex, to avoid the pinger from pinging more and messing up our stats ;) */
+	/* Grab the mutex, to avoid the pinger from pinging more and messing up our stats ;) */
 	mutex_lock(g_conf->mutex_pinger);
 
 	for (tid = 0; tid <= t->tunnel_hi; tid++)
@@ -913,6 +913,15 @@ static PTR *tunnel_beat_check(PTR UNUSED *arg)
 	{
 		/* Get the current time */
 		currtime = gettime();
+
+		/* Make this magic old */
+		g_conf->magic[1] = g_conf->magic[0];
+
+		/* Generate a new magic number */
+		g_conf->magic[0] = (	((uint64_t)rand() << 48) +
+					((uint64_t)rand() << 32) +
+					((uint64_t)rand() << 16) +
+					((uint64_t)rand() <<  0));
 
 		/* Test all tunnels */
 		for (tid = 0; tid <= t->tunnel_hi; tid++)
