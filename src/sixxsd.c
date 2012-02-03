@@ -31,7 +31,7 @@ static VOID sighup(int i)
 	}
 
 	/* Reset the signal */
-	signal(i, &sighup);
+	signal(i, sighup);
 }
 
 VOID terminate(const char *who)
@@ -451,9 +451,9 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 #endif /* !_DEBUG */
 
 	/* Handle a SIGHUP/SIGTERM/SIGINT to cleanly exit */
-	signal(SIGHUP,	&sighup);
-	signal(SIGTERM,	&sighup);
-	signal(SIGINT,	&sighup);
+	signal(SIGHUP,	sighup);
+	signal(SIGTERM,	sighup);
+	signal(SIGINT,	sighup);
 
 	/* Seed the randomization engine */
 	srand(gettime() + 42);
@@ -558,9 +558,9 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 	}
 
 	/* Handle a SIGHUP/SIGTERM/SIGINT to cleanly exit */
-	signal(SIGHUP,	&sighup);
-	signal(SIGTERM,	&sighup);
-	signal(SIGINT,	&sighup);
+	signal(SIGHUP,	sighup);
+	signal(SIGTERM,	sighup);
+	signal(SIGINT,	sighup);
 
 	/* Ignore some odd signals */
 	signal(SIGABRT,	SIG_IGN);
@@ -578,15 +578,15 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 
 #ifndef DEBUG
 	/* Bus Errors and Segfaults */
-	signal(SIGBUS, &sigshutdown);
-	signal(SIGSEGV, &sigshutdown);
-	signal(SIGKILL,	&sigshutdown);
+	signal(SIGBUS, sigshutdown);
+	signal(SIGSEGV, sigshutdown);
+	signal(SIGKILL,	sigshutdown);
 
 	/*
 	 * Just in case we compile a binary for a certain arch
 	 * and the machine where it gets run on doesn't support it
 	 */
-	signal(SIGILL, &sigill);
+	signal(SIGILL, sigill);
 #endif
 
 	while (true)
