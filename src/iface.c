@@ -964,9 +964,6 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 			tun->stats.latency.seq_seen <<= 1;
 		}
 
-		/* Wait 5 seconds for all the answer */
-		if (!thread_sleep(5, 0)) break;
-
 		/* Unlock the mutex so readers can get results */
 		mutex_release(g_conf->mutex_pinger);
 
