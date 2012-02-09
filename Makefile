@@ -17,7 +17,7 @@ SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2012 All Rights Reserved"
 SIXXSD_VERSION=4.0
 
 # The version of SixXSd
-SIXXSD_RELEASE:=2012.02.02
+SIXXSD_RELEASE:=2012.02.09
 
 # Enable extra debugging operation + enables symbols (don't distribute with it enabled!)
 #SIXXSD_OPTIONS+=-DDEBUG
@@ -51,7 +51,7 @@ OS_BITS=64
 OS_PROC=x86_64
 else
 OS_BITS=32
-OS_PROC=i686
+OS_PROC=i586
 endif
 endif
 endif
@@ -126,7 +126,11 @@ endif
 # When not debugging and not profiling: Optimize even more
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "DEBUG"),0)
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "PROFILE"),0)
-	CFLAGS += -O3 -fno-trapping-math -fprefetch-loop-arrays -ftracer -ffast-math -DNDEBUG
+	CFLAGS += -O3 -fno-trapping-math
+	ifeq ($(OS_BITS),64)
+	CFLAGS += -fprefetch-loop-arrays
+	endif
+	CFLAGS += -ftracer -ffast-math -DNDEBUG
 	CFLAGS += -maccumulate-outgoing-args -minline-all-stringops
 
 	# Note that this was optimized
