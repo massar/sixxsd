@@ -326,8 +326,8 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 }
 
 /* Jeej, they reply to our ICMP echo requests! :) */
-static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, const uint16_t len);
-static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *icmp, const uint16_t len)
+static VOID iface_got_icmpv6_reply(const uint16_t tid, uint8_t *packet, const uint16_t len, const struct icmp6_hdr *icmp, const uint16_t plen);
+static VOID iface_got_icmpv6_reply(const uint16_t tid, uint8_t *packet, const uint16_t len, const struct icmp6_hdr *icmp, const uint16_t plen)
 {
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_latency	*lat;
@@ -343,9 +343,9 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	lat = &tun->stats.latency;
 
 	/* We expect at least this to come back */
-	if (len <= sizeof(*icmp) + sizeof(d->time_us) + 40)
+	if (plen <= sizeof(*icmp) + sizeof(d->time_us) + 40)
 	{
-		tunnel_debug(tid, tid, NULL, 0, "Got short ICMPv6 packet, dropping it\n");
+		tunnel_debug(tid, tid, packet, len, "Got short ICMPv6 packet, dropping it\n");
 		return;
 	}
 
@@ -353,7 +353,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	parm = ntohl(icmp->icmp6_dataun.icmp6_un_data32[0]);
 	if ((parm >> 16) != 0x4242)
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply sequence number is not ours\n");
+		tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Reply sequence number is not ours\n");
 		return;
 	}
 
@@ -369,7 +369,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	 */
 	if (seq < (lat->seq - 64))
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Sequence Number %u out of range (%u-%u)\n", seq, lat->seq - 64, lat->seq);
+		tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Reply Sequence Number %u out of range (%u-%u)\n", seq, lat->seq - 64, lat->seq);
 		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
@@ -380,7 +380,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	/* Check if we have seen this sequence number already */
 	if (lat->seq_seen & seqbit)
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Sequence Number %u was already seen\n", seq);
+		tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Reply Sequence Number %u was already seen\n", seq);
 		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
@@ -390,7 +390,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	/* Check that the magic is either the current or the previous one */
 	if (g_conf->magic[0] != d->magic && g_conf->magic[1] != d->magic)
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply Magic is not current or previous\n");
+		tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Reply Magic is not current or previous\n");
 		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
@@ -407,7 +407,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	/* Back to the future is impossible */
 	if (currtime_us < d->time_us)
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply timestamp is in the future?\n");
+		tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Reply timestamp is in the future?\n");
 		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
@@ -415,17 +415,17 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, const struct icmp6_hdr *i
 	/* The latency incurred */
 	t = currtime_us - d->time_us;
 
-	/* Drop anything that comes in after 4000 milliseconds == 4000000 microseconds */
-	if (t > 4000000)
+	/* Drop anything that comes in after 10.000 milliseconds == 10.000.000 microseconds */
+	if (t > (10 * 1000 *1000))
 	{
-		tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Reply was %2.2f millseconds old? (%" PRIu64 ")\n", time_us_msec(lat->min), t);
+		tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Reply was %2.2f milliseconds old? (%" PRIu64 ", %" PRIu64 ", %" PRIu64 ")\n", time_us_msec(lat->min), t, currtime_us, d->time_us);
 		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
 
 	if (lat->num_recv >= lat->num_sent)
 	{
-		tunnel_debug(tid, tid, NULL, 0, "Already received %u responses for %u sent packets...\n", lat->num_recv, lat->num_sent);
+		tunnel_debug(tid, tid, packet, len, "Already received %u responses for %u sent packets...\n", lat->num_recv, lat->num_sent);
 		mutex_release(g_conf->mutex_pinger);
 		return;
 	}
@@ -494,12 +494,12 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 		uint8_t		ipe_type;
 		uint32_t	plen;
 
-		tunnel_debug(in_tid, out_tid, packet, len, "LOCAL ADDRESS\n");
+		tunnel_debug(in_tid, out_tid, packet, len, "Local Address\n");
 
 		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen)) return;
 
 		/* ICMP packet? */
-		tunnel_debug(in_tid, out_tid, packet, len, "PACKET CONTAINS %u (ICMPv6 = %u)\n", ipe_type, IPPROTO_ICMPV6);
+		tunnel_debug(in_tid, out_tid, packet, len, "Packet Contains %u (ICMPv6 = %u)\n", ipe_type, IPPROTO_ICMPV6);
 		if (ipe_type == IPPROTO_ICMPV6)
 		{
 			struct icmp6_hdr *icmp = (struct icmp6_hdr *)ipe;
@@ -515,7 +515,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 				/* We only care about these if they came from the remote tunnel endpoint on the tunnel */
 				if (istunnel && address_isremote((IPADDRESS *)&ip6->ip6_src) && in_tid == out_tid)
 				{
-					iface_got_icmpv6_reply(in_tid, icmp, plen);
+					iface_got_icmpv6_reply(in_tid, packet, len, icmp, plen);
 				}
 				break;
 
@@ -650,7 +650,7 @@ static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, con
 	uint16_t			t16;
 	uint8_t				hlim = 64;
 
-	tunnel_debug(in_tid, out_tid, type == ICMP6_ECHO_REQUEST ? NULL : packet, len, "ICMPv6 %u::%u\n", type, code);
+	tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u\n", type, code);
 
 	/* Fill in the payload */
 	if (type == ICMP6_ECHO_REPLY)
@@ -851,7 +851,7 @@ VOID iface_send_icmpv6_echo_reply(const uint16_t in_tid, const uint16_t out_tid,
 static VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq);
 static VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq)
 {
-	tunnel_debug(tid, tid, NULL, len, "ICMPv6 Echo Request %u\n", seq);
+	tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Request - seqno %u\n", seq);
 	iface_send_icmpv6(SIXXSD_TUNNEL_NONE, tid, packet, len, ICMP6_ECHO_REQUEST, 0, (0x4242 << 16) + (seq), dst);
 }
 
