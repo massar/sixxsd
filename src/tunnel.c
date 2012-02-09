@@ -693,8 +693,8 @@ static int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED
 	return tunnel_show(ctx, tid);
 }
 
-static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
-static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	uint16_t		tid;
 	int			ret;
@@ -958,7 +958,7 @@ int tunnel_init(struct sixxsd_context *ctx)
 struct ctx_menu ctx_menu_tunnel_get[] =
 {
 	{"get",			NULL,				0,0,	NULL,	NULL },
-	{"outer_endpoint",	tunnel_cmd_get_outer_endpoint,	0,0,	NULL,	"Get the current outer endpoint" },
+	{"outer_endpoint",	tunnel_cmd_get_outer_endpoint,	1,1,	"<tunnel-id>", "Get the current outer endpoint" },
 	{NULL,			NULL,				0,0,	NULL,	NULL },
 };
 
