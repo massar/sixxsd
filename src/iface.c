@@ -951,7 +951,7 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 			payload.time_us = gettime_us();
 
 			/* Fill in the magic */
-			payload.magic = tun->stats.latency.magic[0];
+			payload.magic = g_conf->magic[0];
 
 			/* Send the packet */
 			iface_send_icmpv6_echo_request(tid, &dst, (uint8_t *)&payload, plen, tun->stats.latency.seq);
