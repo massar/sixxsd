@@ -239,7 +239,7 @@ static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UN
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	unsigned int		i;
 	enum sixxsd_tunnel_type	type;
-	uint64_t		tot = 0, cfg = 0, act = 0;
+	uint64_t		onl = 0, act = 0, cfg = 0;
 	uint64_t		online[SIXXSD_TTYPE_MAX], active[SIXXSD_TTYPE_MAX], configured[SIXXSD_TTYPE_MAX];
 	time_t			now = time(NULL);
 
@@ -267,12 +267,12 @@ static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UN
 	{
 		ctx_printdf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", tunnel_type_name(i), online[i], active[i], configured[i]);
 
-		tot += online[i];
-		cfg += configured[i];
+		onl += online[i];
 		act += active[i];
+		cfg += configured[i];
 	}
 
-	ctx_printdf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", "total", tot, act, cfg);
+	ctx_printdf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 "\n", "total", onl, act, cfg);
 
 	return 200;
 }
