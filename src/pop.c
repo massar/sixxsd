@@ -259,8 +259,12 @@ static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UN
 		/* Count the tunnels that are marked as being UP */
 		if (t->tunnel[i].state == SIXXSD_TSTATE_UP) online[type]++;
 
-		/* Count the tunnels that send a packet in the last 15 minutes */
-		if ((now - t->tunnel[i].stats.traffic[0].last) < (15*60)) active[type]++;
+		/* Active are tunnels that send and received a packet in the last 15 minutes */
+		if (	((now - t->tunnel[i].stats.traffic[0].last) < (15*60)) &&
+			((now - t->tunnel[i].stats.traffic[0].last) < (15*60)))
+		{
+			active[type]++;
+		}
 	}
 
 	for (i = 1; i < lengthof(online); i++)
