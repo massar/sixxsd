@@ -34,13 +34,19 @@ struct sixxsd_stats
 	struct sixxsd_latency		latency;			/* Latency */
 };
 
+#define reset_traffic(t)		\
+	{				\
+		(t)->packets = 0;	\
+		(t)->octets = 0;	\
+	}
+
 #define reset_latency(l)		\
 	{				\
+		(l)->num_sent = 0;	\
+		(l)->num_recv = 0;	\
 		(l)->min = -1;		\
 		(l)->max = 0;		\
 		(l)->tot = 0;		\
-		(l)->num_sent = 0;	\
-		(l)->num_recv = 0;	\
 	}
 
 #endif /* STATS_H */

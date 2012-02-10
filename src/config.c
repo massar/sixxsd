@@ -75,7 +75,8 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 		ipaddress_make_ipv4(&tun->ip_them, NULL);
 
 		/* Reset statistics */
-		memzero(tun->stats.traffic, sizeof(tun->stats.traffic));
+		reset_traffic(&tun->stats.traffic[0]);
+		reset_traffic(&tun->stats.traffic[1]);
 		reset_latency(&tun->stats.latency);
 	}
 

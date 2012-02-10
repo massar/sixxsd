@@ -787,7 +787,8 @@ static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc,
 		/* Reset them */
 		if (reset)
 		{
-			memzero(tun->stats.traffic, sizeof(tun->stats.traffic));
+			reset_traffic(&tun->stats.traffic[0]);
+			reset_traffic(&tun->stats.traffic[1]);
 			reset_latency(&tun->stats.latency);
 		}
 	}
