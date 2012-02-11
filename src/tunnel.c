@@ -209,7 +209,8 @@ VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunne
 		char hst[64];
 		if (src) inet_ntopA(src, hst, sizeof(hst));
 		else snprintf(hst, sizeof(hst), "<unknown>");
-		mdolog(LOG_ERR, "tunnel_log(%u(%u->%u)/%u/%s) for unknown tunnel\n", tid, in_tid, out_tid, err, hst);
+		mdolog(LOG_ERR, "tunnel_log(%u(%u->%u)//%s) for unknown tunnel : %u :: %s\n",
+			tid, in_tid, out_tid, hst, err, tunnel_error_name(err));
 		return;
 	}
 
