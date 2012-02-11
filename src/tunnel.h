@@ -44,6 +44,7 @@ enum sixxsd_tunnel_errors
 	SIXXSD_TERR_TUN_SAME_IO,					/* Same input as output interface */
 	SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6,				/* IPv6 packet with a wrong source address */
 	SIXXSD_TERR_TUN_WRONG_SOURCE_IPV4,				/* IPv4 packet with a wrong source address */
+	SIXXSD_TERR_TUN_FROM_UPLINK,					/* Tunnel sourced packet came in from uplink */
 	SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6,				/* Payload was supposed to be IPv6 but is not */
 	SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV4,				/* Payload was supposed to be IPv4 but is not */
 	SIXXSD_TERR_AYIYA_FOR_NON_AYIYA,				/* Received an AYIYA packet for a non-AYIYA tunnel */

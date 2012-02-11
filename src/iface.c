@@ -473,7 +473,16 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 		if (src_tid != in_tid)
 		{
 			/* We drop these to the floor as we can never reply to the real source which lives on the wrong interface */
-			tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
+
+			/* When a tunneled packet came in from uplink put the error in the tunnel */
+			if (in_tid == SIXXSD_TUNNEL_UPLINK)
+			{
+				tunnel_log(src_tid, out_tid, SIXXSD_TERR_TUN_FROM_UPLINK, (IPADDRESS *)&ip6->ip6_src);
+			}
+			else
+			{
+				tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
+			}
 			return;
 		}
 	}

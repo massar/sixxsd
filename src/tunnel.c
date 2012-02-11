@@ -50,6 +50,7 @@ static const char *tunnel_error_name(unsigned int err)
 		"Same In&Output Interface",
 		"Wrong Source IPv6",
 		"Wrong Source IPv4",
+		"Packet over uplink",
 		"Non-IPv6 Payload",
 		"Non-IPv4 Payload",
 		"AYIYA-non-AYIYA",
