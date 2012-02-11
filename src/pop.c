@@ -62,12 +62,12 @@ static int pop_cmd_show_timeinfo(struct sixxsd_context *ctx, const unsigned int 
 	t = g_conf->starttime; 
 	gmtime_r(&t, &teem);
 	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &teem);
-	ctx_printdf(ctx, "Started: %s UTC\n", buf);
+	ctx_printdf(ctx, "Started: %s UTC (%" PRIu64 ")\n", buf, (uint64_t)t);
 
 	te = t = gettime();
 	gmtime_r(&te, &teem);
 	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &teem);
-	ctx_printdf(ctx, "Current: %s UTC\n", buf);
+	ctx_printdf(ctx, "Current: %s UTC (%" PRIu64 ")\n", buf, (uint64_t)te);
 
 	ctx_printdf(ctx, "UTC Offset: %d\n", get_utc_offset());
 
