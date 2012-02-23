@@ -49,6 +49,7 @@ VOID terminate(const char *who)
 	exit(-42);
 }
 
+#ifndef DEBUG
 static VOID sigshutdown(int i);
 static VOID sigshutdown(int i)
 {
@@ -69,6 +70,7 @@ static VOID sigill(int UNUSED i)
 	mdolog(LOG_ERR, "Illegal Processor Instruction caught, SixXSd was compiled with \"%s\"\n", SIXXSD_OPTIONS);
 	terminate("sigill");
 }
+#endif
 
 struct sixxsd_client
 {

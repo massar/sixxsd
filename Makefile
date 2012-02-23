@@ -94,24 +94,30 @@ endif
 # internal Makefile addons ;)
 SIXXSD_OPTS:=$(SIXXSD_OPTIONS)
 
-ifeq ($(CC_VER),4)
-	# Our very *bliep* set of options to make sure that these things can't cause any issues
-	CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline -Wbad-function-cast -fshort-enums -fstrict-aliasing -fno-common -Wno-packed -Wpadded -pedantic -ansi -Wall -Wswitch-default -Wformat=2 -Wformat-security -Wmissing-format-attribute -D_REENTRANT -D_THREAD_SAFE -pipe -Wunused -Winit-self -Wextra -Wno-long-long -Wmissing-include-dirs
-
-endif
+# Our very *bliep* set of options to make sure that these things can't cause any issues
+CFLAGS += -ansi -pedantic -std=c99
+CFLAGS += -W -Wall -Wshadow -Wpointer-arith -Wcast-align -Wwrite-strings -Waggregate-return
+CFLAGS += -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wredundant-decls
+CFLAGS += -Wnested-externs -Winline -Wbad-function-cast
+CFLAGS += -fshort-enums -fstrict-aliasing -fno-common
+CFLAGS += -Wno-packed -Wpadded -Wswitch-default -Wno-variadic-macros
+CFLAGS += -Wformat=2 -Wformat-security -Wmissing-format-attribute
+CFLAGS += -D_REENTRANT -D_THREAD_SAFE
+CFLAGS += -pipe
+CFLAGS += -Wunused -Winit-self -Wextra -Wno-long-long -Wmissing-include-dirs
 
 # Compile 'sixxsd' (which resides in 'src')
 TARGETS+=src
 
 LDFLAGS+=-lrt
 
+# http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
+# Describes the various standard toggles (_LARGEFILE_SOURCE, _LARGEFILE64_SOURCE, _FILE_OFFSET_BITS=64)
+# See also http://www.suse.de/~aj/linux_lfs.html for Long File Support (LFS) / 64bit support documentation
 ifeq ($(OS_NAME),Linux)
 	LDFLAGS += -lpthread -lm
+	CFLAGS += -D_XOPEN_SOURCE=600 -D_BSD_SOURCE
 	CFLAGS += -D_LINUX -pthread -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
-
-	ifeq ($(CC_VER),4)
-	CFLAGS += -Wno-variadic-macros
-	endif
 
 	ifeq ($(OS_PROC),x86_64)
 	CFLAGS += -D_64BIT
@@ -248,6 +254,9 @@ endif
 
 	@for dir in $(TARGETS); do $(MAKE) -C $${dir} all; done
 	@echo "Building done"
+ifeq ($(OS_BITS),64)
+	@echo "Note: Can only build popstatd for 32bits platform (use OS_BITS=32)"
+endif
 
 help:
 	@echo "$(SIXXSD_NAME) - $(SIXXSD_DESC)"
@@ -262,9 +271,12 @@ help:
 	@echo ""
 	@echo "Note that gcc-multilib is needed for cross-compiles on 64bit to 32bit Debian hosts"
 
+depend:
+	@${MAKE} -C src depend
+
 clean:
-	${MAKE} -C src clean
+	@${MAKE} -C src clean
 
 # Mark targets as phony
-.PHONY: all help clean
+.PHONY: all help clean depend
 

@@ -257,7 +257,6 @@ static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsig
 	struct sixxsd_stats	*s;
 	uint64_t		currtime = gettime();
 
-	assert(a < 2);
 	assert(direction < 2);
 
 	/* Grab the tunnel these packets are for */

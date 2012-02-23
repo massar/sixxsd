@@ -11,7 +11,6 @@
 
 /* Logging & Management functions */
 VOID showlog(int f, unsigned int max);
-VOID doelogA(int level, int errnum, const char *module, const char *ATTR_RESTRICT fmt, va_list ap) ATTR_FORMAT(printf, 4, 0);
 
 #define mdoelogA(level, errnum, fmt, ap) doelogA(level, errnum, module, fmt, ap)
 #define mdoelog(level, errnum, ...) doelog(level, errnum, module, __VA_ARGS__)

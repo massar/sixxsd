@@ -874,6 +874,8 @@ int sock_getline(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled, ch
 	uint64_t	j;
 	int		i;
 
+	DD(ddolog("common", "gl() - Start filled %" PRIu64 "\n", *filled);)
+
 	/* A closed socket? -> clear the buffer */
 	if (sock == INVALID_SOCKET)
 	{

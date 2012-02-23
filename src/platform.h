@@ -43,6 +43,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -225,10 +226,6 @@ struct ether_vlan_hdr
 	u_int16_t	evh_tag;
 	u_int16_t	evh_proto;
 };
-
-/* Booleans */
-#define false	0
-#define true	(!false)
 
 /* To make alignment easy, just use a 64bit boolean on 64bit archs */
 #ifdef _64BIT

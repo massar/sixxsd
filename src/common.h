@@ -53,6 +53,7 @@ PTR *mrealloc(PTR *ptr, size_t newsize, size_t oldsize);
 
 VOID doelog(int level, int errnum, const char *module, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 4, 5);
 VOID dolog(int level, const char *module, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 3, 4);
+VOID doelogA(int level, int errnum, const char *module, const char *fmt, va_list ap) ATTR_FORMAT(printf, 4, 0);
 
 /* Parsing functions */
 size_t countfields(const char *s);

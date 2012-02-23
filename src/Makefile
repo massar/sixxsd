@@ -14,12 +14,14 @@ ifndef SIXXSD_VERSION
 $(error Run this make from the root, aka one level up)
 endif
 
-EXED = sixxsd_$(OS_BITS)
 
-BINS		= ../bin/${EXED}${EXT}
+# The binaries we want build
+BINS		=
 
-# Core Modules
-OBJS		=	sixxsd.o 							\
+# The modules sixxsd consists of
+SD_EXE		=	../bin/sixxsd_$(OS_BITS)
+BINS		+=	$(SD_EXE)
+SD_OBJS		=	sixxsd.o 							\
 			ayiya.o								\
 			checksum.o common.o common_extra.o config.o context.o 		\
 			decode.o							\
@@ -31,25 +33,17 @@ OBJS		=	sixxsd.o 							\
 			rwl.o								\
 			subnet.o							\
 			thread.o tunnel.o
+SD_LIBS		=
 
-INCS		=	sixxsd.h 							\
-			ayiya.h								\
-			checksum.h common.h common_extra.h config.h context.h		\
-			hash_md5.h hash_sha1.h hb.h					\
-			iface.h								\
-			list.h								\
-			platform.h proto41.h						\
-			rwl.h								\
-			sixxsd.h stats.h subnet.h					\
-			thread.h tunnel.h
+PS_EXE		=	../../../sbin/popstatd
+ifeq ($(OS_BITS),32)
+# Only build popstat for 32bits platform as that is what noc.sixxs.net is
+BINS		+=	$(PS_EXE)
+endif
+PS_OBJS		=	popstatd.o common.o
+PS_LIBS		=	-l rrd -l mysqlclient
 
-# http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
-# Describes the various standard toggles (_LARGEFILE_SOURCE, _LARGEFILE64_SOURCE, _FILE_OFFSET_BITS=64)
-# See also http://www.suse.de/~aj/linux_lfs.html for Long File Support (LFS) / 64bit support documentation
 DEPS		:=	../Makefile Makefile
-CFLAGS		+=	-D_XOPEN_SOURCE=600 -D_BSD_SOURCE
-CFLAGS		+=	-D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
-CFLAGS		+=	-D_REENTRANT -D_THREAD_SAFE
 CFLAGS		+=	-D'SIXXSD_RELEASE="$(SIXXSD_RELEASE)"' -D'SIXXSD_VERSION="$(SIXXSD_VERSION)"'
 CFLAGS		+=	-D'SIXXSD_DESC=$(SIXXSD_DESC)' -D'SIXXSD_COPYRIGHT=$(SIXXSD_COPYRIGHT)'
 CFLAGS		+=	$(SIXXSD_OPTIONS) -D'SIXXSD_OPTIONS="$(SIXXSD_OPTS)"'
@@ -58,27 +52,46 @@ COMPILE		=	@echo "* Compiling to $@"; $(CC) -c $(CFLAGS)
 LINK		=	@echo "* Linking $@"; $(CC) $(CFLAGS)
 RM		=	@echo "* Removing $@"; rm
 
+# All the objects in this project nicely in alpha order
+OBJS	:= $(shell echo $(SD_OBJS) $(PS_OBJS) | sed 's/ /\n/g' | sort | uniq | tr '\n' ' ')
+
 # The part of the Makefile which actually builds SixXSd
 
+# The final targets we want to produce
 all: ${BINS}
+	@echo "* All Done"
 
-../bin/${EXED}${EXT}: ${OBJS} ${INCS} ${DEPS}
-	$(LINK) -o $@ $(OBJS) $(LDFLAGS)
+${SD_EXE}: $(DEPS) $(SD_OBJS)
+	$(LINK) -o $@ $(SD_OBJS) $(LDFLAGS) $(LDLIBS) $(SD_LIBS)
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "SYMBOLS"),0)
 	@echo [STRIP] $@; strip $@;
 endif
 
-../bin/${EXEW}${EXT}: ${OBJSW} ${INCSW} ${DEPS}
-	$(LINK) -o $@ $(OBJSW) $(LDFLAGSW)
+${PS_EXE}: $(DEPS) $(PS_OBJS)
+	$(LINK) -o $@ $(PS_OBJS) $(LDFLAGS) $(LDLIBS) $(PS_LIBS)
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "SYMBOLS"),0)
 	@echo [STRIP] $@; strip $@;
 endif
-
-$(OBJS): %.o: %.c $(DEPS) ${INCS}
-	$(COMPILE) $< -o $@
 
 clean:
 	$(RM) -f $(OBJS) *.o $(BINS)
+
+# Include all the dependencies
+-include $(OBJS:.o=.d)
+
+depend: clean
+	@echo "* Making dependencies"
+	@$(MAKE) -s $(OBJS)
+	@echo "* Making dependencies - done"
+
+%.o: %.c $(DEPS)
+	@echo "* Compiling $@";
+	@$(CC) -c $(CFLAGS) $*.c -o $*.o
+	@$(CC) -MM $(CFLAGS) $*.c > $*.d
+	@cp -f $*.d $*.d.tmp
+	@sed -e 's/.*://' -e 's/\\$$//' < $*.d.tmp | fmt -1 | \
+	  sed -e 's/^ *//' -e 's/$$/:/' >> $*.d
+	@rm -f $*.d.tmp
 
 # Mark targets as phony
 .PHONY : all clean
