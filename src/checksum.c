@@ -9,8 +9,7 @@
 const char module_checksum[] = "checksum";
 #define module module_checksum
 
-static uint16_t inchksum(const unsigned char *buf, uint16_t len);
-static uint16_t inchksum(const unsigned char *buf, uint16_t len)
+uint16_t in_checksum(const unsigned char *buf, uint16_t len)
 {
 	int		odd, count;
 	unsigned long	result = 0;
@@ -89,11 +88,6 @@ static uint16_t inchksum(const unsigned char *buf, uint16_t len)
 	if (odd) result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
 
 	return result;
-}
-
-uint16_t in_checksum(const unsigned char *buf, uint16_t len)
-{
-	return inchksum(buf, len);
 }
 
 static uint64_t ipv6_checksumA(const uint8_t *a, unsigned int len);

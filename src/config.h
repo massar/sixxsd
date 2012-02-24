@@ -89,6 +89,9 @@ struct sixxsd_configuration
 	/* Outgoing socket */
 	SOCKET			tuntap;					/* Tun/tap (copied from above) */
 	SOCKET			rawsocket_ipv4;				/* Need to do raw packets as otherwise we need to do a bind per send... */
+#ifdef _FREEBSD
+	SOCKET			rawsocket_proto41;			/* For sending proto41 packets */
+#endif
 
 	struct sixxsd_stats	stats_total, stats_uplink;		/* Statistics Total + Uplink */
 

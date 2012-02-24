@@ -22,7 +22,11 @@ static VOID sighup(int i)
 
 	t = thread_getthis();
 
-	mdolog(LOG_INFO, "Received signal %d in %s/%u - shutting down%s\n", i, t ? t->description : "<unknown>", (unsigned int)(t ? t->thread_id : 0), g_conf && g_conf->running ? "" : " again");
+	mdolog(LOG_INFO, "Received signal %d in %s - shutting down%s\n",
+		i,
+		t ? t->description : "<unknown>",
+		g_conf && g_conf->running ? "" : " again");
+
 	if (t && !t->start_routine)
 	{
 
@@ -613,9 +617,9 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 		ctx_flush(&ctx, ret);
 		if (ret != 200) break;
 
-		/* Fire up our packet capture */
+		/* Fire up our sockets */
 		ret = iface_init(&ctx);
-		if (ret != 200) ctx_printf(&ctx, "Starting Captures failed\n");
+		if (ret != 200) ctx_printf(&ctx, "Starting Sockets failed\n");
 		ctx_flush(&ctx, ret);
 		if (ret != 200) break;
 

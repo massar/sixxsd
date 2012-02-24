@@ -17,7 +17,7 @@ SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2012 All Rights Reserved"
 SIXXSD_VERSION=4.0
 
 # The version of SixXSd
-SIXXSD_RELEASE:=2012.02.11
+SIXXSD_RELEASE:=2012.02.24
 
 # Enable extra debugging operation + enables symbols (don't distribute with it enabled!)
 #SIXXSD_OPTIONS+=-DDEBUG
@@ -31,6 +31,10 @@ SIXXSD_RELEASE:=2012.02.11
 
 #####################################################################
 # No more settings to change any more below this block
+#####################################################################
+# HAS_IFHEAD  -> Tunnel Device produces packets with a tun_pi in the front
+# NEED_IFHEAD -> Tunnel Device produces packets with a tun_pi in the front,
+#                but it is not active per default
 #####################################################################
 
 ifeq ($(OS_NAME),)
@@ -77,19 +81,6 @@ CP=@echo [Copy]; cp
 RPMBUILD=@echo [RPMBUILD]; rpmbuild
 RPMBUILD_SILENCE=>/dev/null 2>/dev/null
 
-# Use doc/gcccpuopt to determine these, we display these as project options
-ifeq ($(OS_NAME),Linux)
-	ifeq ($(OS_PROC),i686)
-	SIXXSD_OPTIONS += -m32 -march=pentium4 -mfpmath=sse
-	OS_BITS = 32
-	endif
-
-	ifeq ($(OS_PROC),x86_64)
-	SIXXSD_OPTIONS += -m64 -march=native
-	OS_BITS = 64
-	endif
-endif
-
 # Alias the Project Options, so we can show it without our own ugly
 # internal Makefile addons ;)
 SIXXSD_OPTS:=$(SIXXSD_OPTIONS)
@@ -116,17 +107,22 @@ LDFLAGS+=-lrt
 # See also http://www.suse.de/~aj/linux_lfs.html for Long File Support (LFS) / 64bit support documentation
 ifeq ($(OS_NAME),Linux)
 	LDFLAGS += -lpthread -lm
+	CFLAGS += -DHAS_IFHEAD=1
 	CFLAGS += -D_XOPEN_SOURCE=600 -D_BSD_SOURCE
 	CFLAGS += -D_LINUX -pthread -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
-
-	ifeq ($(OS_PROC),x86_64)
-	CFLAGS += -D_64BIT
-	endif
 endif
 
 ifeq ($(OS_NAME),FreeBSD)
 LDFLAGS += -lpthread -lm
+CFLAGS += -DNEED_IFHEAD=1
 CFLAGS += -D_FREEBSD -pthread
+endif
+
+ifeq ($(OS_BITS),64)
+CFLAGS += -D_64BIT
+SIXXSD_OPTIONS += -m64
+else
+SIXXSD_OPTIONS += -m32
 endif
 
 # When not debugging and not profiling: Optimize even more
@@ -243,7 +239,7 @@ all:	Makefile $(TARGETS)
 	@echo "Version   : "$(SIXXSD_VERSION)
 	@echo "Release   : "$(SIXXSD_RELEASE)
 	@echo "Options   : "$(SIXXSD_OPTS)
-	@echo "OS        : "$(OS_NAME)
+	@echo "OS        : "$(OS_NAME) $(OS_BITS)-bit
 	@echo "Compiler  : $(CC) $(CC_VERSION)"
 	@echo "CFLAGS    : $(CFLAGS)" >/dev/null
 
@@ -255,7 +251,9 @@ endif
 	@for dir in $(TARGETS); do $(MAKE) -C $${dir} all; done
 	@echo "Building done"
 ifeq ($(OS_BITS),64)
+ifeq ($(OS_NAME),Linux)
 	@echo "Note: Can only build popstatd for 32bits platform (use OS_BITS=32)"
+endif
 endif
 
 help:

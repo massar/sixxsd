@@ -134,11 +134,14 @@ static int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int 
 		else ctx_printdf(ctx, "Uptime: %s\n", "(bad details in /proc/version)");
 		fclose(f);
 	}
-	else ctx_printdf(ctx, "Uptime: %s\n", "(/proc/version not available)");
-#else
-	/* *BSD (in theory also Linux but it doesn't seem to work) */
-	pop_uptimeA(ctx, "Uptime: ", times(&tms) / sysconf(_SC_CLK_TCK));
+#else /* *BSD */
+	struct timespec tp;
+	if (clock_gettime(CLOCK_MONOTONIC, &tp) != -1)
+	{
+		pop_uptimeA(ctx, "Uptime: ", tp.tv_sec);
+	}
 #endif
+	else ctx_printdf(ctx, "Uptime: %s\n", "(not available)");
 
 #ifdef _SC_NPROCESSORS_ONLN
 	/* When the system can provide the information, use it */
@@ -646,11 +649,11 @@ static int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned i
 		/* Remove 00:: */
 		subs->prefix_asc[j - rembytes] = '\0';
 
-		/* Bring them up if possible */
-		iface_upnets();
-
 		/* The new high one */
 		g_conf->subnets_hi = i;
+
+		/* Bring them up if possible */
+		iface_upnets();
 
 		ctx_printf(ctx, "Subnet Prefix %s00:/%u added\n", subs->prefix_asc, subs->prefix_length);
 		return 200;

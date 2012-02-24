@@ -59,6 +59,70 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
+#ifndef ICMP_PKT_FILTERED
+#ifdef _FREEBSD
+#define ICMP_PKT_FILTERED ICMP_UNREACH_FILTER_PROHIB
+#else
+#error "No definition for ICMP_PKT_FILTERED"
+#endif
+#endif
+
+#ifndef ICMP_DEST_UNREACH
+#ifdef _FREEBSD
+#define ICMP_DEST_UNREACH ICMP_UNREACH
+#else
+#error "No definition for ICMP_DEST_UNREACH"
+#endif
+#endif
+
+#ifndef ICMP_NET_UNREACH
+#ifdef _FREEBSD
+#define ICMP_NET_UNREACH ICMP_UNREACH_NET
+#else
+#error "No definition for ICMP_NET_UNREACH"
+#endif
+#endif
+
+#ifndef ICMP_PARAMETERPROB
+#ifdef _FREEBSD
+#define ICMP_PARAMETERPROB ICMP_PARAMPROB
+#else
+#error "No definition for ICMP_PARAMETERPROB"
+#endif
+#endif
+
+#ifndef ICMP_TIME_EXCEEDED
+#ifdef _FREEBSD
+#define ICMP_TIME_EXCEEDED ICMP_TIMXCEED
+#else
+#error "No definition for ICMP_TIME_EXCEEDED"
+#endif
+#endif
+
+#ifndef ICMP_EXC_TTL
+#ifdef _FREEBSD
+#define ICMP_EXC_TTL ICMP_TIMXCEED_INTRANS
+#else
+#error "No definition for ICMP_EXC_TTL"
+#endif
+#endif
+
+#ifndef ICMP_FRAG_NEEDED
+#ifdef _FREEBSD
+#define ICMP_FRAG_NEEDED ICMP_UNREACH_NEEDFRAG
+#else
+#error "No definition for ICMP_FRAG_NEEDED"
+#endif
+#endif
+
+#ifndef ICMP_PROT_UNREACH
+#ifdef _FREEBSD
+#define ICMP_PROT_UNREACH ICMP_UNREACH_PROTOCOL
+#else
+#error "No definition for ICMP_PROT_UNREACH"
+#endif
+#endif
+
 struct icmp_hdr
 {
 	uint8_t		icmp_type;
@@ -98,7 +162,9 @@ struct nd_neigh_advert
 #endif
 #include <sys/wait.h>
 
+#ifdef _LINUX
 #include <netpacket/packet.h>
+#endif
 
 #include <strings.h>
 #include <string.h>
@@ -119,7 +185,14 @@ struct nd_neigh_advert
 
 #include <net/if_arp.h>
 #include <net/if.h>
+
+#ifdef _LINUX
 #include <linux/if_tun.h>
+#endif
+
+#ifdef _FREEBSD
+#include <net/if_tun.h>
+#endif
 
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
@@ -165,6 +238,10 @@ typedef pthread_mutex_t		mutex;
 #include <math.h>
 #include <assert.h>
 
+#ifdef _FREEBSD
+#include <sys/uio.h>
+#endif
+
 #ifndef BYTE_ORDER
 #error "BYTE_ORDER not defined"
 #endif
@@ -208,6 +285,14 @@ typedef union ipaddress IPADDRESS;
 
 #define ipaddress_ipv4(addr) (&(addr)->a8[12])
 #define ipaddress_ipv6(addr) (&(addr)->a8[0])
+
+#ifndef ETH_P_IP
+#define ETH_P_IP		0x0800
+#endif
+
+#ifndef ETH_P_IPV6
+#define ETH_P_IPV6		0x86dd
+#endif
 
 /* VLAN Defines */
 #ifndef ETHER_ADDR_LEN

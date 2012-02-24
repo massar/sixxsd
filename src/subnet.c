@@ -25,13 +25,17 @@ struct sixxsd_subnet *subnet_get(IPADDRESS *addr)
 
 		/* The next 8 bits describe the subnet id */
 		sid = addr->a8[bo];
-		if (sid < lengthof(ss->subnet)) return &ss->subnet[sid];
+		if (sid < lengthof(ss->subnet))
+		{
+			return &ss->subnet[sid];
+		}
 		else
 		{
 			char buf[NI_MAXHOST];
 			inet_ntopA(addr, buf, sizeof(buf));
 			mdolog(LOG_ERR, "subnet_get(%s) is out of subnet range\n", buf);
 		}
+
 		break;
 	}
 

@@ -96,13 +96,13 @@ VOID thread_remove(struct sixxsd_thread *thread, BOOL dolock)
 
 	if (t && t->thread_id == thread->thread_id)
 	{
-		mddolog("Thread 0x%x (%s) stopped\n", (unsigned int)t->thread_id, t->description ? t->description : "<no description>");
+		mddolog("Thread %s stopped\n", t->description ? t->description : "<no description>");
 		if (t->description) mfree(t->description, "strdup", strlen(t->description));
 		pthread_cond_destroy(&t->cond);
 		mutex_destroy(t->mutex);
 		mfree(t, "thread", sizeof(*t));
 	}
-	else mdolog(LOG_WARNING, "Thread 0x%x not found\n", (unsigned int)thread->thread_id);
+	else mdolog(LOG_WARNING, "Thread not found\n");
 
 	if (dolock) rwl_releaseW(&g_conf->rwl_threads);
 }
@@ -242,7 +242,7 @@ os_thread_id thread_add(struct sixxsd_context *ctx, const char *description, PTR
 			return 0;
 		}
 
-		t->thread_id = t->thread;
+		t->thread_id = (os_thread_id)t->thread;
 
 		/* Detach the thread */
 		pthread_detach(t->thread);
@@ -265,7 +265,7 @@ os_thread_id thread_add(struct sixxsd_context *ctx, const char *description, PTR
 
 	id = t->thread_id;
 
-	DD(mddolog("Thread 0x%x (%s) started\n", (unsigned int)t->thread_id, t->description);)
+	DD(mddolog("Thread %s started\n", t->description);)
 
 	rwl_releaseW(&g_conf->rwl_threads);
 
@@ -369,8 +369,12 @@ int thread_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, cons
 		localtime_r(&t->starttime, &teem);
 
 		ctx_printdf(ctx,
-				"0x%06x %4u-%02u-%02u %02u:%02u:%02u (%4" PRIu64 " seconds) : %s%s%s%s%s [%s]%s\n",
-				(unsigned int)t->thread_id,
+				"0x%" PRIx64 " %4u-%02u-%02u %02u:%02u:%02u (%4" PRIu64 " seconds) : %s%s%s%s%s [%s]%s\n",
+#ifdef _64BIT
+				(uint64_t)t->thread_id,
+#else
+				(uint64_t)t->thread_id,
+#endif
 				teem.tm_year+1900, teem.tm_mon+1, teem.tm_mday,
 				teem.tm_hour, teem.tm_min, teem.tm_sec, now - t->starttime,
 				t->description ? t->description : "<no description>",

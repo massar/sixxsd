@@ -47,7 +47,7 @@ static const char *tunnel_error_name(unsigned int err)
 		"Hash Fail",
 		"Encap.Pkt Too Big",
 		"Encap.Pkt Send Error",
-		"Same In&Output Interface",
+		"Same In&Out Interface",
 		"Wrong Source IPv6",
 		"Wrong Source IPv4",
 		"Packet over uplink",
@@ -106,7 +106,8 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 
 VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const char *fmt, ...)
 {
-	assert(packet || len != 0);
+#ifndef DEBUG
+	assert((packet && len != 0) || (!packet && len == 0));
 
 	/* Toggled globally when something is debugging or not */
 	if (!g_conf->debugging)
@@ -115,8 +116,9 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 	}
 	else
 	{
-		struct sixxsd_tunnel	*intun, *outtun;
 		struct sixxsd_context	*ctx;
+#endif
+		struct sixxsd_tunnel	*intun, *outtun;
 		va_list			ap;
 		char 			src[NI_MAXHOST], dst[NI_MAXHOST], buf[256];
 		struct ip		*ip = (struct ip *)packet;
@@ -131,9 +133,11 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 		intun = tunnel_grab(in_tid);
 		outtun = tunnel_grab(out_tid);
 
+#ifndef DEBUG
 		if (intun && intun->debug_ctx) ctx = intun->debug_ctx;
 		else if (outtun && outtun->debug_ctx) ctx = outtun->debug_ctx;
 		else return;
+#endif
 
 		if (packet && len > 20 && (ip->ip_v == 4 || ip->ip_v == 6))
 		{
@@ -170,7 +174,6 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 			snprintf(dst, sizeof(dst), "data");
 		}
 
-
 		k = snprintf(buf, sizeof(buf),
 			"[T%-5u T%-5u][IPv%u : %-40s - %-40s ttl=%3u proto=%2u len=%-4u plen=%-4u] ",
 			intun ? intun->tunnel_id : 0,
@@ -184,13 +187,16 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 		vsnprintf(&buf[k], sizeof(buf) - k, fmt, ap);
 		va_end(ap);
 
+#ifndef DEBUG
 		ctx_lock(ctx);
 		ctx_printf(ctx, "%s", buf);
 		ctx_flush(ctx, 200);
 		ctx_release(ctx);
-
 		assert(plen < 30000);
 	}
+#else
+		fprintf(stderr, "tunnel_debug: %s", buf);
+#endif
 }
 
 VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const IPADDRESS *src)
@@ -222,7 +228,9 @@ VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunne
 	tun->errors[err].last_seen = gettime();
 	if (src) memcpy(&tun->errors[err].last_ip, src, sizeof(tun->errors[err].last_ip));
 
+#ifndef DEBUG
 	if (g_conf->debugging)
+#endif
 	{
 		char hst[64];
 
@@ -242,16 +250,16 @@ VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunn
 	tunnel_log(in_tid, out_tid, err, &ip);
 }
 
-static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64_t currtime);
-static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packetlen, uint64_t currtime)
+static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packet_len, uint64_t currtime);
+static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packet_len, uint64_t currtime)
 {
 	t->last = currtime;
 	t->packets++;
-	t->octets += packetlen;
+	t->octets += packet_len;
 }
 
-static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen);
-static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packetlen)
+static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packet_len);
+static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packet_len)
 {
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_stats	*s;
@@ -265,18 +273,18 @@ static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsig
 	/* If it is not a tunnel, it must be the uplink */
 	s = tun ? &tun->stats : &g_conf->stats_uplink;
 
-	tunnel_update_stat(&s->traffic[direction], packetlen, currtime);
-	tunnel_update_stat(&g_conf->stats_total.traffic[direction], packetlen, currtime);
+	tunnel_update_stat(&s->traffic[direction], packet_len, currtime);
+	tunnel_update_stat(&g_conf->stats_total.traffic[direction], packet_len, currtime);
 }
 
-VOID tunnel_account_packet_in(const uint16_t in_tid, unsigned int packetlen)
+VOID tunnel_account_packet_in(const uint16_t in_tid, unsigned int packet_len)
 {
-	tunnel_account_pkt(in_tid,	0, packetlen);
+	tunnel_account_pkt(in_tid,  0, packet_len);
 }
 
-VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packetlen)
+VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packet_len)
 {
-	tunnel_account_pkt(out_tid,	1, packetlen);
+	tunnel_account_pkt(out_tid, 1, packet_len);
 }
 
 BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_error)
@@ -920,10 +928,13 @@ static PTR *tunnel_beat_check(PTR UNUSED *arg)
 		g_conf->magic[1] = g_conf->magic[0];
 
 		/* Generate a new magic number */
-		g_conf->magic[0] = (	((uint64_t)rand() << 48) +
-					((uint64_t)rand() << 32) +
-					((uint64_t)rand() << 16) +
-					((uint64_t)rand() <<  0));
+		g_conf->magic[0] = (
+#ifndef _FREEBSD
+					(((uint64_t)rand()) << 48) +
+					(((uint64_t)rand()) << 32) +
+#endif
+					(((uint64_t)rand()) << 16) +
+					(((uint64_t)rand()) <<  0));
 
 		/* Test all tunnels */
 		for (tid = 0; tid <= t->tunnel_hi; tid++)

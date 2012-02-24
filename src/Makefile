@@ -14,7 +14,6 @@ ifndef SIXXSD_VERSION
 $(error Run this make from the root, aka one level up)
 endif
 
-
 # The binaries we want build
 BINS		=
 
@@ -37,8 +36,10 @@ SD_LIBS		=
 
 PS_EXE		=	../../../sbin/popstatd
 ifeq ($(OS_BITS),32)
+ifeq ($(OS_NAME),Linux)
 # Only build popstat for 32bits platform as that is what noc.sixxs.net is
 BINS		+=	$(PS_EXE)
+endif
 endif
 PS_OBJS		=	popstatd.o common.o
 PS_LIBS		=	-l rrd -l mysqlclient

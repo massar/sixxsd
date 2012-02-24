@@ -16,6 +16,19 @@ struct pingtest
 	uint8_t		message[1000];
 };
 
+static VOID os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
+static VOID os_exec(const char *fmt, ...)
+{
+        char	buf[1024];
+        va_list	ap;
+
+        va_start(ap, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, ap);
+        mdolog(LOG_DEBUG, "#### os_exec(\"%s\")\n", buf);
+        system(buf);
+        va_end(ap);
+}
+
 static const char *iface_socket_name(enum sixxsd_sockets type);
 static const char *iface_socket_name(enum sixxsd_sockets type)
 {
@@ -41,26 +54,50 @@ static const char *iface_socket_name(enum sixxsd_sockets type)
 	return "unknown";
 }
 
-static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen);
-static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *header, const uint16_t header_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen)
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orgpacket_len);
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t org_len)
 {
-	struct iovec	dat[2];
-	struct tun_pi	pi;
 	int		n;
+	unsigned int	iovlen = 0;
+	struct iovec	iov[3];
+#ifdef _LINUX
+	struct tun_pi	pi;
 
 	pi.flags = htons(0);
 	pi.proto = htons(protocol);
 
-	dat[0].iov_base	= &pi;
-	dat[0].iov_len	= sizeof(pi);
-	dat[1].iov_base	= (char *)header;
-	dat[1].iov_len	= header_len;
+	memzero(iov, sizeof(iov));
+	iov[iovlen].iov_base = &pi;
+	iov[iovlen].iov_len  = sizeof(pi);
+
+#else /* BSD */
+	uint32_t type = htonl(protocol == ETH_P_IP ? AF_INET : AF_INET6);
+
+	memzero(iov, sizeof(iov));
+	iov[iovlen].iov_base = (void *)&type;
+	iov[iovlen].iov_len  = sizeof(type);
+#endif
+	iovlen++;
+
+	assert(packet && packet_len != 0);
+
+	iov[iovlen].iov_base = (char *)packet;
+	iov[iovlen].iov_len  = packet_len;
+	iovlen++;
+
+#ifdef DEBUG
+	if ((packet[0] >> 4) != (protocol == ETH_P_IP ? 4 : 6))
+	{
+		assert(false);
+	}
+#endif
 
 	/* Send the packet to our tun/tap device and let the kernel handle it for the rest */
-	n = writev(g_conf->tuntap, dat, 2);
+	n = writev(g_conf->tuntap, iov, iovlen);
+
 	if (n >= 0)
 	{
-		tunnel_account_packet_out(out_tid, 0);
+		tunnel_account_packet_out(out_tid, packet_len);
 		return;
 	}
 
@@ -76,52 +113,87 @@ static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_
 
 	if (is_error) return;
 
-	if (protocol == ETH_P_IPV6) iface_send_icmpv6_unreach(in_tid, out_tid, orgpacket, orglen, ICMP6_DST_UNREACH_ADMIN);
-	else iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, orglen, ICMP_PKT_FILTERED);
+	if (protocol == ETH_P_IPV6) iface_send_icmpv6_unreach(in_tid, out_tid, orgpacket, org_len, ICMP6_DST_UNREACH_ADMIN);
+	else iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, org_len, ICMP_PKT_FILTERED);
 }
 
-VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen)
+VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *header, const uint16_t header_len, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orgpacket_len)
 {
 	struct ip		*ip = (struct ip *)header;
-	struct msghdr		msg;
-	struct iovec		iov[2];
-	struct sockaddr_in	dst;
-	socklen_t		dstlen;
 	int			n;
+	struct iovec		iov[2];
+	unsigned int		iovlen = 0;
+	struct msghdr		msg;
+	struct sockaddr_in	dst;
 
-	dstlen = sizeof(dst);
-	memzero(&dst, dstlen);
+	memzero(iov, sizeof(iov));
+	memzero(&dst, sizeof(dst));
 	dst.sin_family = AF_INET;
 	memcpy(&dst.sin_addr, &ip->ip_dst, sizeof(dst.sin_addr));
 
+#ifdef _LINUX
 	/* Update the checksum */
 	ip->ip_sum = htons(0);
 	ip->ip_sum = in_checksum((unsigned char *)ip, sizeof(*ip));
 
-	assert((payload && payload_len > 0) || (!payload && payload_len == 0));
+	assert((packet && packet_len > 0) || (!packet && packet_len == 0));
 
-	iov[0].iov_base	= (char *)header;
-	iov[0].iov_len	= header_len;
-
-	if (payload)
+	iov[iovlen].iov_base = (char *)header;
+	iov[iovlen].iov_len  = header_len;
+	iovlen++;
+#else
+	/* For FreeBSD, skip the IPv4 header */
+	if (header_len > 20)
 	{
-		iov[1].iov_base	= (char *)payload;
-		iov[1].iov_len	= payload_len;
+		iov[iovlen].iov_base = (char *)&header[20];
+		iov[iovlen].iov_len  = header_len - 20;
+		iovlen++;
+	}
+#endif
+
+	if (packet)
+	{
+		iov[iovlen].iov_base = (char *)packet;
+		iov[iovlen].iov_len  = packet_len;
+		iovlen++;
 	}
 
+	memzero(&msg, sizeof(msg));
 	msg.msg_name		= &dst;
 	msg.msg_namelen		= sizeof(dst);
 	msg.msg_iov		= iov;
-	msg.msg_iovlen		= payload ? 2 : 1;
+	msg.msg_iovlen		= iovlen;
 	msg.msg_control		= NULL;
 	msg.msg_controllen	= 0;
 	msg.msg_flags		= 0;
 
-	/* Send the packet to our tun/tap device and let the kernel handle it for the rest */
+	/* Send the packet and let the kernel handle it for the rest */
+#ifdef _LINUX
 	n = sendmsg(g_conf->rawsocket_ipv4, &msg, MSG_NOSIGNAL);
+#else
+	/*
+	 * On FreeBSD we apparently cannot do sendmsg() and include
+	 * a header even if we set HDRINCL on, as such use two separate
+	 * sockets: one for proto-41 and one for ICMP.
+	 * This also means that other protocols are not supported.
+	 * And if we ever send those they will be dropped...
+	 */
+	switch (ip->ip_p)
+	{
+	case IPPROTO_IPV6:
+		n = sendmsg(g_conf->rawsocket_proto41, &msg, MSG_NOSIGNAL);
+		break;
+	case IPPROTO_ICMP:
+		n = sendmsg(g_conf->rawsocket_ipv4, &msg, MSG_NOSIGNAL);
+		break;
+	default:
+		tunnel_debug(in_tid, out_tid, packet, packet_len, "send4 unknown proto %u\n", ip->ip_p);
+		return;
+	}
+#endif
 	if (n >= 0)
 	{
-		tunnel_account_packet_out(out_tid, payload_len);
+		tunnel_account_packet_out(out_tid, header_len + packet_len);
 		return;
 	}
 
@@ -131,11 +203,12 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 		tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &ip->ip_dst);
 		break;
 	default:
+		tunnel_debug(in_tid, out_tid, packet, packet_len, "send4 (%u) error %u\n", ip->ip_p, errno);
 		tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_OUT_ERR, &ip->ip_dst);
 		break;
 	}
 
-	if (!is_error) iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, orglen, ICMP_PKT_FILTERED);
+	if (!is_error) iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, orgpacket_len, ICMP_PKT_FILTERED);
 }
 
 static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
@@ -298,7 +371,10 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 
 	if (outtun->state == SIXXSD_TSTATE_UP)
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "Tunnel up, forwarding to %s (%u)\n", outtun->type == SIXXSD_TTYPE_PROTO41 || outtun->type == SIXXSD_TTYPE_PROTO41_HB ? "proto41" : "ayiya", outtun->type);
+		tunnel_debug(in_tid, out_tid, packet, len, "Tunnel up, forwarding to %s (%u)\n",
+			(outtun->type == SIXXSD_TTYPE_PROTO41 ||
+				outtun->type == SIXXSD_TTYPE_PROTO41_HB ? "proto41" : "ayiya"),
+			outtun->type);
 
 		switch (outtun->type)
 		{
@@ -310,6 +386,8 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 					proto41_out(in_tid, out_tid, packet, len, is_error);
 					return;
 				}
+
+				/* Fall through to sending an unreachable below */
 				break;
 
 			case SIXXSD_TTYPE_AYIYA:
@@ -458,10 +536,31 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	/* We might want to show every packet */
 	tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s/%s)\n", is_error ? "error" : "normal", nosrcchk ? "nosrcchk" : "srcchk");
 
-	/* Ignore link-local source addresses completely */
+	/* Ignore unspecified source (XXX: Check for IGMP listener / Multicast) */
+	if (IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_src))
+	{
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping unspecified sourced packet\n", is_error ? "error" : "normal");
+		return;
+	}
+
+	/* Ignore unspecified destination (XXX: Check for IGMP listener / Multicast) */
+	if (IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_dst))
+	{
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping unspecified destination packet\n", is_error ? "error" : "normal");
+		return;
+	}
+
+	/* Ignore link-local source addresses */
 	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src))
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local sourced packet\n", is_error ? "error" : "normal");
+		return;
+	}
+
+	/* Ignore link-local destination addresses */
+	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst))
+	{
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local destination packet\n", is_error ? "error" : "normal");
 		return;
 	}
 
@@ -580,10 +679,9 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 
 VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
 {
-	struct ip		*ip = (struct ip *)packet;
-	uint16_t		out_tid = out_tid_;
-	BOOL			istunnel;
-	int			n;
+	struct ip	*ip = (struct ip *)packet;
+	uint16_t	out_tid = out_tid_;
+	BOOL		istunnel;
 
 	tunnel_debug(in_tid, out_tid, packet, len, "iface_route4(%s)\n", is_error ? "error" : "normal");
 
@@ -629,21 +727,9 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	}
 
 	/* Send the packet to our tun/tap device and let the kernel handle the routing */
-	n = write(g_conf->tuntap, packet, len);
-	if (n < 0)
-	{
-		mdoelog(LOG_ERR, errno, "iface_route4() - Could not send packet\n");
-
-		if (!is_error)
-		{
-			iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_PARAMETERPROB);
-			mdoelog(LOG_ERR, errno, "iface_route4() - Could not send error packet\n");
-		}
-		else
-		{
-			mdoelog(LOG_ERR, errno, "iface_route4() - Could not send packet while sending error packet\n");
-		}
-	}
+	tunnel_debug(in_tid, out_tid, packet, len, "TAPing Packet\n");
+	iface_sendtap(in_tid, out_tid, ETH_P_IP, packet, len, is_error, packet, len);
+	return;
 }
 
 static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst);
@@ -860,7 +946,8 @@ VOID iface_send_icmpv6_echo_reply(const uint16_t in_tid, const uint16_t out_tid,
 static VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq);
 static VOID iface_send_icmpv6_echo_request(const uint16_t tid, struct in6_addr *dst, const uint8_t *packet, const uint16_t len, const uint16_t seq)
 {
-	tunnel_debug(tid, tid, packet, len, "ICMPv6 Echo Request - seqno %u\n", seq);
+	/* Packet is a payload, not a real packet (that is, starts with an IPv4 or IPv6 header) */
+	tunnel_debug(tid, tid, NULL, 0, "ICMPv6 Echo Request - seqno %u\n", seq);
 	iface_send_icmpv6(SIXXSD_TUNNEL_NONE, tid, packet, len, ICMP6_ECHO_REQUEST, 0, (0x4242 << 16) + (seq), dst);
 }
 
@@ -1015,6 +1102,23 @@ static PTR *iface_read_thread(PTR *__sock)
 
 			proto = (buffer[2] << 8) + buffer[3];
 
+#ifndef _LINUX
+			switch (proto)
+			{
+			case AF_INET:
+				proto = ETH_P_IP;
+				break;
+
+			case AF_INET6:
+				proto = ETH_P_IPV6;
+				break;
+
+			default:
+				proto = 0;
+				break;
+			}
+#endif
+
 			/* Ignore the tun_pi structure (which is why there is buffer[4] below) */
 			len -= 4;
 
@@ -1022,9 +1126,20 @@ static PTR *iface_read_thread(PTR *__sock)
 			tunnel_account_packet_in(SIXXSD_TUNNEL_UPLINK, len);
 
 			/* Send it off: it is not an error, don't decrease the TTL, do check the source */
-			if (proto == ETH_P_IP) iface_route4(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
-			else if (proto == ETH_P_IPV6) iface_route6(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
-			else { assert(false); }
+			switch (proto)
+			{
+			case ETH_P_IP:
+				iface_route4(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
+				break;
+
+			case ETH_P_IPV6:
+				iface_route6(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
+				break;
+
+			default:
+				assert(false);
+				break;
+			}
 
 			continue;
 		}
@@ -1068,6 +1183,8 @@ static PTR *iface_read_thread(PTR *__sock)
 				break;
 			}
 
+			break;
+
 		case AF_INET6:
 			switch (sock->type)
 			{
@@ -1083,6 +1200,8 @@ static PTR *iface_read_thread(PTR *__sock)
 				assert(false);
 				break;
 			}
+
+			break;
 
 		default:
 			assert(false);
@@ -1149,14 +1268,21 @@ static int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned
 static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock);
 static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 {
+#ifdef _LINUX
 	socklen_t on;
+#endif
 
 	/*
 	 * Open an IPv4 RAW socket, so we can use that for sending out IPv4 packets
 	 * the kernel then takes care of the MAC addresses and the routing
 	 * For some magic reason this can't be done for IPv6...
 	 */
+#ifdef _LINUX
 	*sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+#else
+	/* For FreeBSD we only use it for ICMP, proto-41 goes over the other one */
+	*sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+#endif
 	if (*sock == INVALID_SOCKET)
 	{
 		ctx_printef(ctx, errno, "Couldn't create RAW socket\n");
@@ -1166,6 +1292,7 @@ static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 	/* Write only */
 	shutdown(*sock, SHUT_RD);
 
+#ifdef _LINUX
 	/* We supply packets including the IPv4 header */
 	on = 1;
 	if (setsockopt(*sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
@@ -1174,6 +1301,7 @@ static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 		closesocket(*sock);
 		return 400;
 	}
+#endif
 
 	return 200;
 }
@@ -1182,7 +1310,20 @@ static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *s
 static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *sock)
 {
 	struct ifreq	ifr;
+	char		wantname[] = "sixxs";
+#ifdef _LINUX
 	const char	*tuntapdev = "/dev/net/tun";
+#else /* FreeBSD */
+	const char	*tuntapdev = "/dev/tun";
+	int		reqfd;
+	struct stat	stats;
+
+	/* Destroy any existing devices if they are there */
+	os_exec("ifconfig %s destroy 2>/dev/null >/dev/null", wantname);
+#endif
+#ifdef NEED_IFHEAD
+	int		mode;
+#endif
 
 	sock->socket = open(tuntapdev, O_RDWR);
 	if (sock->socket == INVALID_SOCKET)
@@ -1193,18 +1334,39 @@ static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *s
 
 	memset(&ifr, 0, sizeof(ifr));
 
+#ifdef _LINUX
 	/* Request a TUN device */
 	ifr.ifr_flags = IFF_TUN;
 
-	/* Set the interface name */
-	strncpy(ifr.ifr_name, "sixxs", sizeof(ifr.ifr_name));
+	/* Set the interface name to sixxs */
+	strncpy(ifr.ifr_name, wantname, sizeof(ifr.ifr_name));
 
 	if (ioctl(sock->socket, TUNSETIFF, &ifr) != 0)
+#else /* BSD */
+
+	reqfd = socket(AF_INET6, SOCK_DGRAM, 0);
+	fstat(sock->socket, &stats);
+	devname_r(stats.st_rdev, S_IFCHR, ifr.ifr_name, sizeof(ifr.ifr_name));
+	ifr.ifr_data = wantname;
+
+	if (ioctl(reqfd, SIOCSIFNAME, &ifr) != 0)
+#endif
 	{
 		ctx_printef(ctx, errno, "Couldn't set interface name of TUN/TAP device\n");
 		closesocket(sock->socket);
 		return 400;
 	}
+
+#ifdef NEED_IFHEAD
+	mode = 1;
+	if (ioctl(sock->socket, TUNSIFHEAD, &mode, sizeof(mode)) == -1)
+	{
+		ctx_printef(ctx, errno, "Couldn't set interface TUNSIFHEAD to enabled: %s (%d)\n",
+				strerror(errno), errno);
+		closesocket(sock->socket);
+		return 400;
+	}
+#endif
 
 	return 200;
 }
@@ -1250,19 +1412,6 @@ static int iface_init_udp(struct sixxsd_context *ctx, struct sixxsd_socket *sock
 	return 200;
 }
 
-static VOID os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
-static VOID os_exec(const char *fmt, ...)
-{
-        char	buf[1024];
-        va_list	ap;
-
-        va_start(ap, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, ap);
-        mddolog("#### os_exec(\"%s\")\n", buf);
-        system(buf);
-        va_end(ap);
-}
-
 VOID iface_upnets(VOID)
 {
 	unsigned int		i;
@@ -1275,16 +1424,31 @@ VOID iface_upnets(VOID)
 	tuns = &g_conf->tunnels;
 	if (!ipaddress_is_unspecified(&tuns->prefix) && !tuns->online)
 	{
+#ifdef _LINUX
 		os_exec("/sbin/ip -6 ro add %s:/48 dev sixxs", tuns->prefix_asc);
+#else /* FREEBSD */
+		os_exec("/sbin/route add -inet6 %s:/48 -interface sixxs", tuns->prefix_asc);
+#endif
 		tuns->online = true;
 	}
 
 	for (i = 0; i <= g_conf->subnets_hi; i++)
 	{
 		subs = &g_conf->subnets[i];
-		if (subs->online) continue;
+		if (subs->online)
+		{
+			mdolog(LOG_INFO, "Subnet %u is already online\n", i);
+		}
 
-		os_exec("/sbin/ip -6 ro add %s%s::/%u dev sixxs", subs->prefix_asc, subs->prefix_length == 40 ? "00" : "", subs->prefix_length);
+#ifdef _LINUX
+		os_exec("/sbin/ip -6 ro add %s%s::/%u dev sixxs",
+#else /* FREEBSD */
+		os_exec("/sbin/route add -inet6 %s%s::/%u -interface sixxs",
+#endif
+			subs->prefix_asc,
+			subs->prefix_length == 40 ? "00" : "",
+			subs->prefix_length);
+
 		subs->online = true;
 	}
 }
@@ -1351,6 +1515,9 @@ int iface_init(struct sixxsd_context *ctx)
 		case SIXXSD_SOCK_PROTO41:
 			ret = iface_init_proto41(ctx, s, types[i].af);
 			if (ret != 200) return ret;
+#ifdef _FREEBSD
+			g_conf->rawsocket_proto41 = s->socket;
+#endif
 			break;
 
 		case SIXXSD_SOCK_AYIYA:
@@ -1393,6 +1560,7 @@ int iface_init(struct sixxsd_context *ctx)
 	if (!thread_add(ctx, buf, iface_pinger_thread, NULL, NULL, true)) return 400;
 
 	/* Set sysconf stuff making sure this is set ;) */
+#ifdef _LINUX
 	os_exec("sysctl -q -w net.ipv6.conf.default.forwarding=1");
 	os_exec("sysctl -q -w net.ipv6.conf.all.forwarding=1");
 
@@ -1404,6 +1572,15 @@ int iface_init(struct sixxsd_context *ctx)
 
 	/* Enable our interface */
 	os_exec("/sbin/ip link set up dev sixxs");
+
+#else /* FreeBSD */
+	os_exec("sysctl -w net.inet6.ip6.forwarding=1");
+
+	/* Remove proto-41 driver */
+
+	/* Enable our interface */
+	os_exec("ifconfig sixxs up");
+#endif
 
 	/* Bring up our networks */
 	iface_upnets();
@@ -1418,7 +1595,10 @@ uint16_t address_find(IPADDRESS *addr, BOOL *istunnel)
 
 	/* Try to get it from the tunnel ranges */
 	tid = tunnel_get(addr, istunnel);
-	if (tid != SIXXSD_TUNNEL_NONE) return tid;
+	if (tid != SIXXSD_TUNNEL_NONE)
+	{
+		return tid;
+	}
 
 	/* Subnet then? */
 	s = subnet_get(addr);

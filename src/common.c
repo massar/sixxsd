@@ -1567,12 +1567,14 @@ VOID output_stacktrace(VOID)
 
 #else /* _LINUX */
 
-VOID dump_stacktrace(VOID)
+VOID dump_stacktrace(VOID UNUSED **trace, uint64_t UNUSED *trace_size, unsigned int UNUSED skip)
 {
 }
-VOID format_stacktrace(VOID)
+
+VOID format_stacktrace(char UNUSED *buf, unsigned int UNUSED length, VOID UNUSED **trace, unsigned int UNUSED trace_size)
 {
 }
+
 VOID output_stacktrace(VOID)
 {
 }

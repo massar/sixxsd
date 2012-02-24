@@ -12,7 +12,7 @@ int iface_exit				(struct sixxsd_context *ctx);
 VOID iface_upnets			(VOID);
 VOID iface_route6			(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk);
 VOID iface_route4			(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk);
-VOID iface_send4			(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *header, const uint16_t header_len, const uint8_t *payload, const uint16_t payload_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orglen);
+VOID iface_send4			(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *header, const uint16_t header_len, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orgpacket_len);
 VOID iface_send_icmpv6_unreach		(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t code);
 VOID iface_send_icmpv4_unreach		(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t code);
 VOID iface_send_icmpv6_ttl		(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len);

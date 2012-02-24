@@ -19,7 +19,7 @@ VOID doelogA(int level, int errnum, const char *module, const char *fmt, va_list
 	unsigned int	i;
 	int		k;
 
-#ifdef DEBUG
+#ifndef DEBUG
 	/*
 	 * Don't output debug information when we are not verbose enough
 	 * or when debugging for that module is disabled.
@@ -36,9 +36,6 @@ VOID doelogA(int level, int errnum, const char *module, const char *fmt, va_list
 		return;
 	}
 #endif
-
-	/* Defaultly don't log INFO messages unless they are events */
-	if ((level == LOG_INFO || level == LOG_DEBUG) && strcasecmp("event", module) != 0 && g_conf && g_conf->verbose < 1) return;
 
 	/* Clean out the mess */
 	memzero(buf, sizeof(buf));
