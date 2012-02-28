@@ -390,131 +390,6 @@ void disconnect_client(int *sockfd)
 	*sockfd = -1;
 }
 
-int connect_client(const char *hostname, const char *service, int family, int socktype);
-int connect_client(const char *hostname, const char *service, int family, int socktype)
-{
-	struct addrinfo hints, *res, *ressave;
-	int n, sockfd;
-
-	mdolog(LOG_DEBUG, "[%s] Connecting to %s service %s\n", g_pop_name, hostname, service);
-
-	memzero(&hints, sizeof(struct addrinfo));
-	hints.ai_family   = family;
-	hints.ai_socktype = socktype;
-	hints.ai_flags    = AI_ADDRCONFIG;
-
-	n = getaddrinfo(hostname, service, &hints, &res);
-
-	if (n < 0)
-	{
-		mdolog(LOG_ERR, "[%s] connect_client: getaddrinfo error: %s\n", g_pop_name, gai_strerror(n));
-		return -1;
-	}
-
-	ressave = res;
-
-	/* Try open socket with each address getaddrinfo returned,
- 	   until getting a valid connection. */
-	sockfd = -1;
-
-	while (res)
-	{
-		sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (!(sockfd < 0))
-		{
-			/* Set non-blocking */
-			if ((n = fcntl(sockfd, F_GETFL, NULL)) < 0)
-			{
-				mdolog(LOG_ERR, "[%s] connect_client: fcntl(...,F_GETFL) error: %s\n", g_pop_name, gai_strerror(n));
-			}
-
-			n |= O_NONBLOCK; 
-			if (fcntl(sockfd, F_SETFL, n) < 0)
-			{ 
-				mdolog(LOG_ERR, "[%s] connect_client: fcntl(...,F_SETFL) error: %s\n", g_pop_name, gai_strerror(n));
-			}
-
-			mdolog(LOG_DEBUG, "[%s] Connecting to %s service %s (proto %u)\n", g_pop_name, hostname, service, res->ai_family);
-
-			errno = 0;
-			n = connect(sockfd, res->ai_addr, res->ai_addrlen);
-			/* Direct succes? -> Break out of the loop */
-			if (n == 0) break;
-
-			/* Not there yet? */
-			if (errno == EINPROGRESS)
-			{
-				struct timeval	tv;
-				fd_set		fdset;
-				int		maxsecs = 15;
-
-				tv.tv_sec = maxsecs;
-				tv.tv_usec = 0;
-				FD_ZERO(&fdset);
-				FD_SET(sockfd, &fdset);
-				n = select(sockfd+1, NULL, &fdset, NULL, &tv);
-
-				/* Failed? Try the next one */
-				if (n <= 0 && errno != EINTR)
-				{
-					mdolog(LOG_ERR, "[%s] connect_client: select() returned %u/%d/%s\n", g_pop_name, n, errno, strerror(errno));
-				}
-				else if (n > 0)
-				{
-					socklen_t	lon = sizeof(int);
-					int		valopt;
-
-					errno = 0;
-					if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void *)&valopt, &lon) < 0)
-					{
-						mdolog(LOG_ERR, "[%s] connect_client(%s): getsockopt(...,SO_ERROR) error: %u: %s\n", g_pop_name, hostname, errno, strerror(errno));
-					}
-					else
-					{
-						if (valopt == 0)
-						{
-							/* Success */
-							break;
-						}
-						else
-						{
-							mdolog(LOG_ERR, "[%s] connect_client(%s): Error %d in delayed connection: %s\n", g_pop_name, hostname, valopt, strerror(valopt));
-						}
-					}
-				}
-				else
-				{
-					mdolog(LOG_ERR, "[%s] connect_client(%s): connect timed out after %u seconds\n", g_pop_name, hostname, maxsecs);
-				}
-			}
-			else
-			{
-				/* Failed due to something else */
-				mdolog(LOG_ERR, "[%s] connect_client(%s): Error %d in connection to: %s\n", g_pop_name, hostname, errno, strerror(errno));
-			}
-		}
-
-		/* a 'break' above would break out of the loop and skip this */
-
-		/* Disconnect and try next */
-		disconnect_client(&sockfd);
-
-		res = res->ai_next;
-	}
-
-	if (sockfd < 0)
-	{
-		freeaddrinfo(ressave);
-		mdolog(LOG_ERR, "[%s] connect_client(%s): socket error: could not open socket\n", g_pop_name, hostname);
-		return -1;
-	}
-
-	mdolog(LOG_DEBUG, "[%s] Connecting to %s service %s: socket = %d\n", g_pop_name, hostname, service, sockfd);
-
-	freeaddrinfo(ressave);
-	return sockfd;
-}
-
 /* Interface is sixxs<x> for v3, but T<x> for v4 and up */
 void create_rrd(const char *type, const char *interface);
 void create_rrd(const char *type, const char *interface)
@@ -1326,6 +1201,7 @@ bool checkv4rrd(void)
 void collectstats(void);
 void collectstats(void)
 {
+	char	buf[256];
 	int	sockfd = -1;
 	MYSQL	*db = NULL;
 
@@ -1342,20 +1218,22 @@ void collectstats(void)
 	/* First try to connect to the Management IP if there is one */
 	if (g_pop_mgmt && strlen(g_pop_mgmt) > 0)
 	{
-		sockfd = connect_client(g_pop_mgmt, g_pop_service, AF_UNSPEC, SOCK_STREAM);
+		sockfd = sock_connect(buf, sizeof(buf), g_pop_mgmt, g_pop_service, AF_UNSPEC, SOCK_STREAM, 0, NULL, NULL);
 		if (sockfd == -1)
 		{
-			mdolog(LOG_WARNING, "[%s] Couldn't connect to management address of %s:%s\n", g_pop_name, g_pop_name, g_pop_service);
+			mdolog(LOG_WARNING, "[%s] Couldn't connect to management address of %s:%s - %s\n",
+				g_pop_name, g_pop_name, g_pop_service, buf);
 		}
 	}
 
 	/* No management IP or that one failed, then try to connect over IPv6 + IPv4 based on DNS */
 	if (sockfd == -1)
 	{
-		sockfd = connect_client(g_pop_name, g_pop_service, AF_UNSPEC, SOCK_STREAM);
+		sockfd = sock_connect(buf, sizeof(buf), g_pop_name, g_pop_service, AF_UNSPEC, SOCK_STREAM, 0, NULL, NULL);
 		if (sockfd == -1)
 		{
-			mdolog(LOG_WARNING, "[%s] Couldn't connect to address of %s:%s\n", g_pop_name, g_pop_name, g_pop_service);
+			mdolog(LOG_WARNING, "[%s] Couldn't connect to address of %s:%s - %s\n",
+				g_pop_name, g_pop_name, g_pop_service, buf);
 		}
 	}
 
