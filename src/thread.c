@@ -98,6 +98,7 @@ VOID thread_remove(struct sixxsd_thread *thread, BOOL dolock)
 	{
 		mddolog("Thread %s stopped\n", t->description ? t->description : "<no description>");
 		if (t->description) mfree(t->description, "strdup", strlen(t->description));
+		if (t->notice) mfree(t->notice, "strdup", strlen(t->notice));
 		pthread_cond_destroy(&t->cond);
 		mutex_destroy(t->mutex);
 		mfree(t, "thread", sizeof(*t));
