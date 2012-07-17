@@ -1251,7 +1251,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 		char		*s;
 
 		/* Prefix length given? */
-		s = index(src, '/');
+		s = strchr(src, '/');
 
 		if (s)
 		{
