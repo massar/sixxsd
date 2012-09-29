@@ -34,11 +34,11 @@ enum sixxsd_tunnel_state
 	SIXXSD_TSTATE_UP						/* Tunnel is up */
 };
 
+/* Keep synced with tunnel_error_name() in tunnel.c */
 enum sixxsd_tunnel_errors
 {
 	SIXXSD_TERR_TUN_DISABLED = 0,					/* Packet received for a disabled tunnel */
 	SIXXSD_TERR_TUN_CLOCK_OFF,					/* Packet sent was not inside clock limits */
-	SIXXSD_TERR_TUN_HASHFAIL,					/* Tunnel Hash verification failed (AYIYA or HB) */
 	SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG,				/* Packet Too Big when sending an encapsulated packet */
 	SIXXSD_TERR_TUN_ENCAPS_OUT_ERR,					/* Output error when sending an encapsulated packet */
 	SIXXSD_TERR_TUN_SAME_IO,					/* Same input as output interface */
@@ -47,8 +47,10 @@ enum sixxsd_tunnel_errors
 	SIXXSD_TERR_TUN_FROM_UPLINK,					/* Tunnel sourced packet came in from uplink */
 	SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6,				/* Payload was supposed to be IPv6 but is not */
 	SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV4,				/* Payload was supposed to be IPv4 but is not */
+	SIXXSD_TERR_AYIYA_HASHFAIL,					/* Tunnel Hash verification failed (AYIYA) */
 	SIXXSD_TERR_AYIYA_FOR_NON_AYIYA,				/* Received an AYIYA packet for a non-AYIYA tunnel */
 	SIXXSD_TERR_AYIYA_INVALIDFORWARD,				/* Can't forward a packet with an invalid protocol */
+	SIXXSD_TERR_HB_HASHFAIL,					/* Tunnel Hash verification failed (heartbeat) */
 	SIXXSD_TERR_HB_FOR_NON_HB,					/* Heartbeat received for non-heartbeat tunnel */
 	SIXXSD_TERR_HB_NO_IPV4,						/* No IPv4/sender found in HB packet */
 	SIXXSD_TERR_HB_SENDER_MISMATCH,					/* Sender mismatch */

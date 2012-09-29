@@ -332,7 +332,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, co
 	/* Compare the SHA1's */
 	if (memcmp(&their_hash, &our_hash, sizeof(their_hash)) != 0)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_TUN_HASHFAIL, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_AYIYA_HASHFAIL, src);
 		return;
 	}
 

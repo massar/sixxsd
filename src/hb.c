@@ -186,7 +186,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 
 	if (strcmp(pnt, (char *)tmp) != 0)
 	{
-		tunnel_log(SIXXSD_TUNNEL_UPLINK, in_tid, SIXXSD_TERR_TUN_HASHFAIL, src);
+		tunnel_log(SIXXSD_TUNNEL_UPLINK, in_tid, SIXXSD_TERR_HB_HASHFAIL, src);
 		return;
 	}
 

@@ -17,7 +17,7 @@ SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2012 All Rights Reserved"
 SIXXSD_VERSION=4.0
 
 # The version of SixXSd
-SIXXSD_RELEASE:=2012.02.24
+SIXXSD_RELEASE:=2012.09.29
 
 # Enable extra debugging operation + enables symbols (don't distribute with it enabled!)
 #SIXXSD_OPTIONS+=-DDEBUG
@@ -250,9 +250,9 @@ endif
 
 	@for dir in $(TARGETS); do $(MAKE) -C $${dir} all; done
 	@echo "Building done"
-ifeq ($(OS_BITS),64)
+ifeq ($(OS_BITS),32)
 ifeq ($(OS_NAME),Linux)
-	@echo "Note: Can only build popstatd for 32bits platform (use OS_BITS=32)"
+	@echo "Note: We only build popstatd for 64bits platform which noc.sixxs.net is (use OS_BITS=64)"
 endif
 endif
 
