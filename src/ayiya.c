@@ -380,13 +380,13 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, co
 
 const char *ayiya_hash_name(enum ayiya_hash type)
 {
-        const char *types[] =
-        {
-                "none",
-                "md5",
-                "sha1",
-        };
+	const char *types[] =
+	{
+		"none",
+		"MD5",
+		"SHA-1",
+	};
 
-        return type < lengthof(types) ? types[type] : "<unknown>";
+	return type < lengthof(types) ? types[type] : "<unknown>";
 }
 
