@@ -582,7 +582,8 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 		ctx_printf(ctx, "AYIYA Protocol          : %u\n", tun->ayiya_protocol);
 		ctx_printf(ctx, "AYIYA Port Us           : %u\n", tun->ayiya_port_us);
 		ctx_printf(ctx, "AYIYA Port Them         : %u\n", tun->ayiya_port_them);
-		ctx_printf(ctx, "AYIYA Hash Type         : %u\n", tun->ayiya_hash_type);
+		ctx_printf(ctx, "AYIYA Hash              : %u (%s)\n", tun->ayiya_hash_type,
+				ayiya_hash_name(tun->ayiya_hash_type));
 	}
 
 	/* When the last heartbeat was seen */
@@ -909,8 +910,6 @@ static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int 
 
 	return 200;
 }
-
-#define CHECKTUN 83602
 
 static PTR *tunnel_beat_check(PTR UNUSED *arg);
 static PTR *tunnel_beat_check(PTR UNUSED *arg)
