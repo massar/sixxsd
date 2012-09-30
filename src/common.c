@@ -106,6 +106,107 @@ static int snprintef(char *str, size_t size, int errnum, const char *format, ...
 	return k;
 }
 
+const char *af_name(uint8_t af)
+{
+	const char *afs[] =
+	{
+		"UNSPEC",
+		"LOCAL",
+		"INET",
+		"AX25",
+		"IPX",
+		"APPLETALK",
+		"NETROM",
+		"BRIDGE",
+		"ATMPVC",
+		"X25",
+		"INET6",
+	};
+
+	return af < lengthof(afs) ? afs[af] : "<unknown>";
+}
+
+const char *sock_name(uint8_t type)
+{
+	const char *types[] =
+	{
+		"none",
+		"STREAM (TCP)",
+		"DGRAM (UDP)",
+		"RAW",
+		"RDM",
+		"SEQPACKET (SCTP)",
+		"DCCP",
+		"7",
+		"8",
+		"9",
+		"PACKET",
+	};
+
+	return type < lengthof(types) ? types[type] : "<unknown>";
+}
+
+const char *protocol_name(uint8_t protocol)
+{
+	const char *protocols[] =
+	{
+		"IP",
+		"ICMP",
+		"IGMP",
+		"3",
+		"IPIP",
+		"5",
+		"TCP",
+		"7",
+		"EGP",
+		"9",
+		"10",
+		"11",
+		"PUP",
+		"13",
+		"14",
+		"15",
+		"UDP",
+		"17",
+		"18",
+		"19",
+		"20",
+		"21",
+		"IDP",
+		"23",
+		"24",
+		"25",
+		"26",
+		"27",
+		"28",
+		"29",
+		"30",
+		"31",
+		"32",
+		"DCCP",
+		"34",
+		"35",
+		"36",
+		"37",
+		"38",
+		"39",
+		"40",
+		"IPV6",
+		"42",
+		"43",
+		"44",
+		"45",
+		"RSVP",
+		"GRE",
+		"48",
+		"49",
+		"ESP",
+		"AH",
+	};
+
+	return protocol < lengthof(protocols) ? protocols[protocol] : "<unknown>";
+}
+
 static SOCKET sock_connect_unix(char *buf, unsigned int buflen, const char *hostname, int family, int socktype, int protocol);
 static SOCKET sock_connect_unix(char *buf, unsigned int buflen, const char *hostname, int family, int socktype, int protocol)
 {

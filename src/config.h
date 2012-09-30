@@ -23,8 +23,9 @@ struct sixxsd_socket
 	SOCKET			socket;					/* The socket */
 
 	uint16_t		type;					/* SIXXSD_SOCK_<...> */
-	uint16_t		af;					/* Address Family that we are listening on */
-	uint16_t		proto;					/* Protocol "" */
+	uint8_t			af;					/* Address Family that we are listening on */
+	uint8_t			socktype;				/* Socket Type (SOCK_*) "" */
+	uint16_t		proto;					/* Protocol (IPPROTO_*) "" */
 	uint16_t		port;					/* Port "" */
 };
 

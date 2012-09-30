@@ -129,6 +129,9 @@ uint64_t sn_done(struct socketnode *sn, uint64_t amount);
 int sn_getline(struct socketnode *sn, char *ubuf, uint64_t ubuflen);
 
 /* Networking functions */
+const char *af_name(uint8_t af);
+const char *sock_name(uint8_t af);
+const char *protocol_name(uint8_t protocol);
 VOID sock_cleanss(struct sockaddr_storage *addr);
 VOID sock_setnonblock(SOCKET sock);
 VOID sock_setblock(SOCKET sock);

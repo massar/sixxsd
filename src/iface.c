@@ -1170,7 +1170,7 @@ static PTR *iface_read_thread(PTR *__sock)
 				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
 				port = ntohs(port);
-				ayiya_in(&src, AF_INET, sock->proto, port, sock->port, buffer, len);
+				ayiya_in(&src, AF_INET, sock->socktype, sock->proto, port, sock->port, buffer, len);
 				break;
 
 			case SIXXSD_SOCK_HB:
@@ -1192,7 +1192,7 @@ static PTR *iface_read_thread(PTR *__sock)
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in6, sin6_port), sizeof(port));
 				port = ntohs(port);
 				ayiya_in(	(IPADDRESS *) &((struct sockaddr_in6 *)&ss)->sin6_addr,
-						AF_INET6, sock->proto, port, sock->port, buffer, len);
+						AF_INET6, sock->socktype, sock->proto, port, sock->port, buffer, len);
 				break;
 
 			default:
@@ -1484,14 +1484,14 @@ int iface_init(struct sixxsd_context *ctx)
 
 	struct
 	{
-		unsigned int	type,	af,		proto,		 port;
+		unsigned int	type,	af,		socktype,	proto,		 port;
 	} types[] =
 	{
-		{ SIXXSD_SOCK_TUNTAP,	0,		0,		0		},
-		{ SIXXSD_SOCK_PROTO41,	AF_INET,	0,		0		},
-		{ SIXXSD_SOCK_AYIYA,	AF_INET,	SOCK_DGRAM,	AYIYA_PORT	},
-		{ SIXXSD_SOCK_AYIYA,	AF_INET6,	SOCK_DGRAM,	AYIYA_PORT	},
-		{ SIXXSD_SOCK_HB,	AF_INET,	SOCK_DGRAM,	HEARTBEAT_PORT	},
+		{ SIXXSD_SOCK_TUNTAP,	0,		0,		0,		0		},
+		{ SIXXSD_SOCK_PROTO41,	AF_INET,	0,		IPPROTO_IPV6,	0		},
+		{ SIXXSD_SOCK_AYIYA,	AF_INET,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
+		{ SIXXSD_SOCK_AYIYA,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
+		{ SIXXSD_SOCK_HB,	AF_INET,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
 	};
 
 	/* Should not be initialized yet */
@@ -1521,8 +1521,21 @@ int iface_init(struct sixxsd_context *ctx)
 			break;
 
 		case SIXXSD_SOCK_AYIYA:
+			switch (types[i].proto)
+			{
+			case IPPROTO_UDP:
+				ret = iface_init_udp(ctx, s, types[i].af, types[i].socktype, types[i].port);
+				break;
+			default:
+				assert(false);
+				ctx_printf(ctx, "Unknown socket protocol %u",types[i].proto);
+				ret = 500;
+			}
+			if (ret != 200) return ret;
+			break;
+
 		case SIXXSD_SOCK_HB:
-			ret = iface_init_udp(ctx, s, types[i].af, types[i].proto, types[i].port);
+			ret = iface_init_udp(ctx, s, types[i].af, types[i].socktype, types[i].port);
 			if (ret != 200) return ret;
 			break;
 
@@ -1537,6 +1550,7 @@ int iface_init(struct sixxsd_context *ctx)
 
 		s->type		= types[i].type;
 		s->af		= types[i].af;
+		s->socktype	= types[i].socktype;
 		s->proto	= types[i].proto;
 		s->port		= types[i].port;
 	}

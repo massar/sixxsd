@@ -30,8 +30,8 @@ struct pseudo_ayh
 struct sockaddr_storage lastlogs[10];
 int log_last = 0;
 */
-static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 7, 8);
-static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *fmt, ...)
+static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t socktype, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 8, 9);
+static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t socktype, uint8_t protocol, uint16_t sport, uint16_t dport, const IPADDRESS *identity, const char *fmt, ...)
 {
 	char		buf[1024];
 	char		srca[NI_MAXHOST], id[NI_MAXHOST];
@@ -52,7 +52,7 @@ static VOID ayiya_log(int level, const IPADDRESS *src, uint8_t protocol, uint16_
 	va_end(ap);
 	
 	/* Print the host+port this is coming from */
-	mdolog(level, "[%s]:%u/%u->%u(%s): %s", srca, protocol, sport, dport, id, buf);
+	mdolog(level, "[%s]:%u:%u/%u->%u(%s): %s", srca, socktype, protocol, sport, dport, id, buf);
 
 #if 0
 	/* Add this one */
@@ -221,7 +221,7 @@ VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t prot
  * packet     = buffer containing the packet
  * length     = length of the packet
 */
-VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
+VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
 {
 	SHA_CTX			sha1;
 	struct pseudo_ayh	*s = (struct pseudo_ayh *)packet;
@@ -258,21 +258,21 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, co
 		 s->ayh.ayh_opcode != ayiya_op_echo_request_forward))
 	{
 		/* Invalid AYIYA packet */
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "incoming: Dropping invalid AYIYA packet\n");
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "idlen:   %u != %u\n", s->ayh.ayh_idlen, 4);
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "idtype:  %u != %u\n", s->ayh.ayh_idtype, ayiya_id_integer);
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "siglen:  %u != %u\n", s->ayh.ayh_siglen, 5);
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "hshmeth: %u != %u\n", s->ayh.ayh_hshmeth, ayiya_hash_sha1);
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "autmeth: %u != %u\n", s->ayh.ayh_autmeth, ayiya_auth_sharedsecret);
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "nexth  : %u != %u || %u\n", s->ayh.ayh_nextheader, IPPROTO_IPV6, IPPROTO_NONE);
-		ayiya_log(LOG_ERR, src, protocol, sport, dport, &s->identity, "opcode : %u != %u || %u || %u || %u\n", s->ayh.ayh_opcode, ayiya_op_noop, ayiya_op_forward, ayiya_op_echo_request, ayiya_op_echo_request_forward);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "incoming: Dropping invalid AYIYA packet\n");
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "idlen:   %u != %u\n", s->ayh.ayh_idlen, 4);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "idtype:  %u != %u\n", s->ayh.ayh_idtype, ayiya_id_integer);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "siglen:  %u != %u\n", s->ayh.ayh_siglen, 5);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "hshmeth: %u != %u\n", s->ayh.ayh_hshmeth, ayiya_hash_sha1);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "autmeth: %u != %u\n", s->ayh.ayh_autmeth, ayiya_auth_sharedsecret);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "nexth  : %u != %u || %u\n", s->ayh.ayh_nextheader, IPPROTO_IPV6, IPPROTO_NONE);
+		ayiya_log(LOG_ERR, src, socktype, protocol, sport, dport, &s->identity, "opcode : %u != %u || %u || %u || %u\n", s->ayh.ayh_opcode, ayiya_op_noop, ayiya_op_forward, ayiya_op_echo_request, ayiya_op_echo_request_forward);
 		return;
 	}
 
 	in_tid = tunnel_get(&s->identity, &is_tunnel);
 	if (in_tid == SIXXSD_TUNNEL_NONE)
 	{
-		ayiya_log(LOG_WARNING, src, protocol, sport, dport, &s->identity, "incoming: Unknown endpoint\n");
+		ayiya_log(LOG_WARNING, src, socktype, protocol, sport, dport, &s->identity, "incoming: Unknown endpoint\n");
 		return;
 	}
 
@@ -340,6 +340,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t protocol, co
 	tun->state		= SIXXSD_TSTATE_UP;
 	tun->lastbeat		= currtime;
 	tun->ayiya_af		= af;
+	tun->ayiya_socktype	= socktype;
 	tun->ayiya_protocol	= protocol;
 	tun->ayiya_port_us	= dport;
 	tun->ayiya_port_them	= sport;
