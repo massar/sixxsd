@@ -54,8 +54,8 @@ static const char *iface_socket_name(enum sixxsd_sockets type)
 	return "unknown";
 }
 
-static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orgpacket_len);
-static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t org_len)
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *packet, const uint16_t packet_len, BOOL is_response, const uint8_t *orgpacket, const uint16_t orgpacket_len);
+static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_t protocol, const uint8_t *packet, const uint16_t packet_len, BOOL is_response, const uint8_t *orgpacket, const uint16_t org_len)
 {
 	int		n;
 	unsigned int	iovlen = 0;
@@ -111,13 +111,13 @@ static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_
 		break;
 	}
 
-	if (is_error) return;
+	if (is_response) return;
 
 	if (protocol == ETH_P_IPV6) iface_send_icmpv6_unreach(in_tid, out_tid, orgpacket, org_len, ICMP6_DST_UNREACH_ADMIN);
 	else iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, org_len, ICMP_PKT_FILTERED);
 }
 
-VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *header, const uint16_t header_len, const uint8_t *packet, const uint16_t packet_len, BOOL is_error, const uint8_t *orgpacket, const uint16_t orgpacket_len)
+VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *header, const uint16_t header_len, const uint8_t *packet, const uint16_t packet_len, BOOL is_response, const uint8_t *orgpacket, const uint16_t orgpacket_len)
 {
 	struct ip		*ip = (struct ip *)header;
 	int			n;
@@ -208,11 +208,11 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 		break;
 	}
 
-	if (!is_error) iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, orgpacket_len, ICMP_PKT_FILTERED);
+	if (!is_response) iface_send_icmpv4_unreach(in_tid, out_tid, orgpacket, orgpacket_len, ICMP_PKT_FILTERED);
 }
 
-static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
-static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl)
+static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl);
+static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl)
 {
 	struct ip		*ip = (struct ip *)packet;
 	struct sixxsd_tunnel	*outtun = (out_tid != SIXXSD_TUNNEL_NONE && out_tid != SIXXSD_TUNNEL_UPLINK) ? tunnel_grab(out_tid) : NULL;
@@ -221,7 +221,7 @@ static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	if (outtun && len > outtun->mtu)
 	{
 		tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &ip->ip_src);
-		if (!is_error) iface_send_icmpv4_toobig(in_tid, out_tid, packet, len, outtun->mtu);
+		if (!is_response) iface_send_icmpv4_toobig(in_tid, out_tid, packet, len, outtun->mtu);
 		return false;
 	}
 
@@ -233,7 +233,7 @@ static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	/* Out of hops? */
 	if (ip->ip_ttl <= 1)
 	{
-		if (!is_error) iface_send_icmpv4_ttl(in_tid, out_tid, packet, len);
+		if (!is_response) iface_send_icmpv4_ttl(in_tid, out_tid, packet, len);
 		return false;
 	}
 
@@ -246,8 +246,8 @@ static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	return true;
 }
 
-static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl);
-static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl)
+static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl);
+static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
 	struct sixxsd_tunnel	*outtun = (out_tid != SIXXSD_TUNNEL_NONE && out_tid != SIXXSD_TUNNEL_UPLINK) ? tunnel_grab(out_tid) : NULL;
@@ -259,7 +259,7 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "prepfwd6 %04x to %04x len = %u > mtu = %u\n", in_tid, out_tid, len, outtun->mtu);
 		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, (IPADDRESS *)&ip6->ip6_src);
-		if (!is_error) iface_send_icmpv6_toobig(in_tid, out_tid, packet, len, outtun->mtu);
+		if (!is_response) iface_send_icmpv6_toobig(in_tid, out_tid, packet, len, outtun->mtu);
 		return false;
 	}
 
@@ -276,7 +276,7 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	if (ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim <= 1)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "HopLimit <= 1\n");
-		if (!is_error) iface_send_icmpv6_ttl(in_tid, out_tid, packet, len);
+		if (!is_response) iface_send_icmpv6_ttl(in_tid, out_tid, packet, len);
 		return false;
 	}
 
@@ -290,8 +290,8 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 }
 
 /* Send appropriate ICMP unreachables */
-static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
-static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
+static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct sixxsd_tunnel	*outtun = tunnel_grab(out_tid);
 	uint8_t			code4 = ICMP_NET_UNREACH, code6 = ICMP6_DST_UNREACH_ADDR;
@@ -300,7 +300,7 @@ static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, cons
 	if (!outtun) return;
 
 	/* Don't reply to ICMP errors */
-	if (is_error) return;
+	if (is_response) return;
 
 	/* Interface must be 'up' for it to work */
 	switch (outtun->state)
@@ -331,19 +331,19 @@ static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, cons
 	else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, code6);
 }
 
-static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
-static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
+static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct sixxsd_tunnel	*outtun = tunnel_grab(out_tid);
 
 	assert(protocol == IPPROTO_IP || protocol == IPPROTO_IPV6);
 
-	tunnel_debug(in_tid, out_tid, packet, len, "iface_routetun() kicking it out%s\n", is_error ? " [error]" : " [normal]");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_routetun() kicking it out%s\n", is_response ? " [response]" : " [normal]");
 
 	/* No way to get out */
 	if (!outtun)
 	{
-		if (!is_error)
+		if (!is_response)
 		{
 			if (protocol == IPPROTO_IP)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_NET_UNREACH);
 			else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADDR);
@@ -353,7 +353,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 	}
 
 	/* Same input as output? */
-	if (!is_error && in_tid == out_tid)
+	if (!is_response && in_tid == out_tid)
 	{
 		if (protocol == IPPROTO_IP)
 		{
@@ -383,7 +383,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 				/* Can only send IPv6 inside of this */
 				if (protocol == IPPROTO_IPV6)
 				{
-					proto41_out(in_tid, out_tid, packet, len, is_error);
+					proto41_out(in_tid, out_tid, packet, len, is_response);
 					return;
 				}
 
@@ -391,7 +391,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 				break;
 
 			case SIXXSD_TTYPE_AYIYA:
-				ayiya_out(in_tid, out_tid, protocol, packet, len, is_error);
+				ayiya_out(in_tid, out_tid, protocol, packet, len, is_response);
 				return;
 
 			default:
@@ -400,7 +400,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 		}
 	}
 
-	iface_unreachtun(in_tid, out_tid, protocol, packet, len, is_error);
+	iface_unreachtun(in_tid, out_tid, protocol, packet, len, is_response);
 }
 
 /* Jeej, they reply to our ICMP echo requests! :) */
@@ -518,49 +518,49 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, uint8_t *packet, const ui
 	mutex_release(g_conf->mutex_pinger);
 }
 
-VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
+VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl, BOOL nosrcchk)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
 	uint16_t		out_tid = out_tid_;
 	BOOL			istunnel;
 
-	assert((is_error && !decrease_ttl) || !is_error);
+	assert((is_response && !decrease_ttl) || !is_response);
 
 	/* Make sure it is actually an IPv6 packet */
 	if ((ip6->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_error ? "error" : "normal", ip6->ip6_ctlun.ip6_un2_vfc >> 4);
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_response ? "error" : "normal", ip6->ip6_ctlun.ip6_un2_vfc >> 4);
 		return;
 	}
 
 	/* We might want to show every packet */
-	tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s/%s)\n", is_error ? "error" : "normal", nosrcchk ? "nosrcchk" : "srcchk");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s/%s)\n", is_response ? "error" : "normal", nosrcchk ? "nosrcchk" : "srcchk");
 
 	/* Ignore unspecified source (XXX: Check for IGMP listener / Multicast) */
 	if (IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_src))
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping unspecified sourced packet\n", is_error ? "error" : "normal");
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping unspecified sourced packet\n", is_response ? "error" : "normal");
 		return;
 	}
 
 	/* Ignore unspecified destination (XXX: Check for IGMP listener / Multicast) */
 	if (IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_dst))
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping unspecified destination packet\n", is_error ? "error" : "normal");
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping unspecified destination packet\n", is_response ? "error" : "normal");
 		return;
 	}
 
 	/* Ignore link-local source addresses */
 	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_src))
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local sourced packet\n", is_error ? "error" : "normal");
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local sourced packet\n", is_response ? "error" : "normal");
 		return;
 	}
 
 	/* Ignore link-local destination addresses */
 	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst))
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local destination packet\n", is_error ? "error" : "normal");
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local destination packet\n", is_response ? "error" : "normal");
 		return;
 	}
 
@@ -589,7 +589,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	/* Ignore link-local destination addresses */
 	if (IN6_IS_ADDR_LINKLOCAL(&ip6->ip6_dst))
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local destined packet\n", is_error ? "error" : "normal");
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping Link-local destined packet\n", is_response ? "error" : "normal");
 		return;
 	}
 
@@ -653,13 +653,13 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	}
 
 	/* Prepare the packet for forwarding (MTU and TTL handling */
-	if (!iface_prepfwd6(in_tid, out_tid, packet, len, is_error, decrease_ttl)) return;
+	if (!iface_prepfwd6(in_tid, out_tid, packet, len, is_response, decrease_ttl)) return;
 
 	/* Send it to the network */
 	if (out_tid == SIXXSD_TUNNEL_UPLINK)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "TAPped Packet\n");
-		iface_sendtap(in_tid, out_tid, ETH_P_IPV6, packet, len, is_error, packet, len);
+		iface_sendtap(in_tid, out_tid, ETH_P_IPV6, packet, len, is_response, packet, len);
 		return;
 	}
 
@@ -674,16 +674,16 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 
 	/* <tunnel>::2 and subnets routed behind that */
 	tunnel_debug(in_tid, out_tid, packet, len, "Routing to tunnel\n");
-	iface_routetun(in_tid, out_tid, IPPROTO_IPV6, packet, len, is_error);
+	iface_routetun(in_tid, out_tid, IPPROTO_IPV6, packet, len, is_response);
 }
 
-VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_error, BOOL decrease_ttl, BOOL nosrcchk)
+VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl, BOOL nosrcchk)
 {
 	struct ip	*ip = (struct ip *)packet;
 	uint16_t	out_tid = out_tid_;
 	BOOL		istunnel;
 
-	tunnel_debug(in_tid, out_tid, packet, len, "iface_route4(%s)\n", is_error ? "error" : "normal");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_route4(%s)\n", is_response ? "error" : "normal");
 
 	if (!nosrcchk)
 	{
@@ -695,7 +695,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 		out_tid = address_find(&s, &istunnel);
 		if (out_tid != in_tid)
 		{
-			if (!is_error) iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_UNREACH_SRCFAIL);
+			if (!is_response) iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_UNREACH_SRCFAIL);
 			else
 			{
 				char		src[128], dst[128];
@@ -716,19 +716,19 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	out_tid = address_find((IPADDRESS *)&ip->ip_dst, &istunnel);
 
 	/* Prepare the packet for forwarding (MTU and TTL handling) */
-	if (!iface_prepfwd4(in_tid, out_tid, packet, len, is_error, decrease_ttl)) return;
+	if (!iface_prepfwd4(in_tid, out_tid, packet, len, is_response, decrease_ttl)) return;
 
 	/* It goes out over one of our own tunnels */
 	if (out_tid != SIXXSD_TUNNEL_UPLINK)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "Routing to tunnel\n");
-		iface_routetun(in_tid, out_tid, IPPROTO_IP, packet, len, is_error);
+		iface_routetun(in_tid, out_tid, IPPROTO_IP, packet, len, is_response);
 		return;
 	}
 
 	/* Send the packet to our tun/tap device and let the kernel handle the routing */
 	tunnel_debug(in_tid, out_tid, packet, len, "TAPing Packet\n");
-	iface_sendtap(in_tid, out_tid, ETH_P_IP, packet, len, is_error, packet, len);
+	iface_sendtap(in_tid, out_tid, ETH_P_IP, packet, len, is_response, packet, len);
 	return;
 }
 

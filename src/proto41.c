@@ -28,25 +28,25 @@ static VOID p41_log(int level, const IPADDRESS *src, const char *fmt, ...)
 	mdolog(level, "[%s]: %s", srca, buf);
 }
 
-VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_error)
+VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct sixxsd_tunnel	*tun = tunnel_grab(out_tid);
 	struct ip		ip;
 
 	if (!tun)
 	{
-		if (!is_error) iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_PROT_UNREACH);
+		if (!is_response) iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_PROT_UNREACH);
 		return;
 	}
 
 	if (len > tun->mtu)
 	{
 		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &tun->ip_them);
-		if (!is_error) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
+		if (!is_response) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
 		return;
 	}
 
-	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_error)) return;
+	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_response)) return;
 
 	/* IP version 4 */
 	ip.ip_v = 4;
@@ -62,7 +62,7 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pop_ipv4),	sizeof(ip.ip_src));
 	memcpy(&ip.ip_dst, ipaddress_ipv4(&tun->ip_them),	sizeof(ip.ip_dst));
 
-	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_error, packet, len);
+	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_response, packet, len);
 }
 
 VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)

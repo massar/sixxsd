@@ -109,8 +109,8 @@ VOID ayiya_out_pseudo(struct sixxsd_tunnel *tun, struct pseudo_ayh *s, const uin
 	memcpy(&s->hash, &hash, sizeof(s->hash));
 }
 
-VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
-VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
+VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct
 	{
@@ -143,11 +143,11 @@ VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	pkt.udp.uh_sum = htons(0);
 
 	/* Send the packet outbound */
-	iface_send4(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.s.payload) + len, NULL, 0, is_error, packet, len);
+	iface_send4(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.s.payload) + len, NULL, 0, is_response, packet, len);
 }
 
-VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error);
-VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
+VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct
 	{
@@ -179,36 +179,36 @@ VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	pkt.udp.uh_sum = ipv6_checksum(&pkt.ip, IPPROTO_UDP, (uint8_t *)&pkt.udp, sizeof(pkt.udp) + sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
 
 	/* Send it off: maybe an error, don't decrease the TTL, don't check the source */
-	iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.s.payload) + len, is_error, false, true);
+	iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.s.payload) + len, is_response, false, true);
 }
 
 /* From the interface (kernel) -> the other side of the tunnel */
-VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_error)
+VOID ayiya_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct sixxsd_tunnel *tun;
 
 	tun = tunnel_grab(out_tid);
 	if (!tun)
 	{
-		if (!is_error) iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADMIN);
+		if (!is_response) iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADMIN);
 		return;
 	}
 
 	if (len > sizeof(((struct pseudo_ayh *)NULL)->payload) || len > tun->mtu)
 	{
-		if (!is_error) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
+		if (!is_response) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
 		return;
 	}
 
-	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_error)) return;
+	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_response)) return;
 
 	if (ipaddress_is_ipv4(&tun->ip_them))
 	{
-		ayiya_out_ipv4(tun, in_tid, out_tid, protocol, packet, len, is_error);
+		ayiya_out_ipv4(tun, in_tid, out_tid, protocol, packet, len, is_response);
 	}
 	else
 	{
-		ayiya_out_ipv6(tun, in_tid, out_tid, protocol, packet, len, is_error);
+		ayiya_out_ipv6(tun, in_tid, out_tid, protocol, packet, len, is_response);
 	}
 }
 

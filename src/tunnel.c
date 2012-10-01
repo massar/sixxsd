@@ -176,7 +176,7 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 		}
 
 		k = snprintf(buf, sizeof(buf),
-			"[T%-5u T%-5u][IPv%u : %-40s - %-40s ttl=%3u proto=%2u len=%-4u plen=%-4u] ",
+			"[T%-6u T%-6u][IPv%u : %-40s - %-40s ttl=%3u proto=%2u len=%-4u plen=%-4u] ",
 			intun ? intun->tunnel_id : 0,
 			outtun ? outtun->tunnel_id : 0,
 			ver,
@@ -288,7 +288,7 @@ VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packet_len)
 	tunnel_account_pkt(out_tid, 1, packet_len);
 }
 
-BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_error)
+BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct sixxsd_tunnel	*tun;
 	unsigned int		code;
@@ -318,7 +318,7 @@ BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uin
 		break;
 	}
 
-	if (!is_error) iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, code);
+	if (!is_response) iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, code);
 
 	return false;
 }

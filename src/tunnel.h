@@ -112,7 +112,7 @@ struct sixxsd_tunnels
 int tunnel_init(struct sixxsd_context *ctx);
 uint16_t tunnel_get(IPADDRESS *addr, BOOL *istunnel);
 struct sixxsd_tunnel *tunnel_grab(const uint16_t tid);
-BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_error);
+BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response);
 VOID tunnel_account_packet_in(const uint16_t in_tid, unsigned int packet_len);
 VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packet_len);
 const char *tunnel_state_name(enum sixxsd_tunnel_state state);
