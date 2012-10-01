@@ -959,6 +959,39 @@ static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int 
 	return 200;
 }
 
+static int tunnel_cmd_reseterrors(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int tunnel_cmd_reseterrors(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+{
+	int			ret;
+	unsigned int		j;
+	struct sixxsd_tunnel	*tun;
+        struct sixxsd_tunnels	*tuns;
+
+	if (strcasecmp(args[0], "all") == 0)
+	{
+		tuns = &g_conf->tunnels;
+		for (j=0; j < lengthof(tuns->tunnel); j++)
+		{
+			tun = &tuns->tunnel[j];
+
+			/* Wipe them out */
+			memzero(tun->errors, sizeof(tun->errors));
+		}
+	}
+	else
+	{
+		ret = tunnel_grabtid(ctx, args[0], &tun);
+		if (ret != 200) return ret;
+
+		/* Wipe them out */
+		memzero(tun->errors, sizeof(tun->errors));
+	}
+
+	ctx_printf(ctx, "Wipeout!\n");
+
+	return 200;
+}
+
 static PTR *tunnel_beat_check(PTR UNUSED *arg);
 static PTR *tunnel_beat_check(PTR UNUSED *arg)
 {
@@ -1046,6 +1079,7 @@ struct ctx_menu ctx_menu_tunnel[] =
 	{"show",	tunnel_cmd_show,	1,1,	"<tid>",				"Show the configuration of a single tunnel" },
 	{"stats",	tunnel_cmd_stats,	0,1,	NULL,					"Get stats for all tunnels" },
 	{"list",	tunnel_cmd_list,	0,1,	"[{all|(debug|error)only|err=X}]",	"List a summary of the tunnels filtered by the given option" },
+	{"reseterrors",	tunnel_cmd_reseterrors,	0,1,	"(all|<tid>)",				"Reset error counters for all or a specific tunnel" },
 	{NULL,		NULL,			0,0,	NULL,					NULL },
 };
 
