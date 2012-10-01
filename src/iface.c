@@ -104,10 +104,10 @@ static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_
 	switch (errno)
 	{
 	case EMSGSIZE:
-		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, NULL);
+		tunnel_log(in_tid, out_tid, packet, packet_len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, NULL);
 		break;
 	default:
-		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_OUT_ERR, NULL);
+		tunnel_log(in_tid, out_tid, packet, packet_len, SIXXSD_TERR_TUN_ENCAPS_OUT_ERR, NULL);
 		break;
 	}
 
@@ -200,11 +200,11 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 	switch (errno)
 	{
 	case EMSGSIZE:
-		tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &ip->ip_dst);
+		tunnel_log4(in_tid, out_tid, packet, packet_len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &ip->ip_dst);
 		break;
 	default:
 		tunnel_debug(in_tid, out_tid, packet, packet_len, "send4 (%u) error %u\n", ip->ip_p, errno);
-		tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_OUT_ERR, &ip->ip_dst);
+		tunnel_log4(in_tid, out_tid, packet, packet_len, SIXXSD_TERR_TUN_ENCAPS_OUT_ERR, &ip->ip_dst);
 		break;
 	}
 
@@ -220,7 +220,7 @@ static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	/* First check if the packet can actually go out over that output */
 	if (outtun && len > outtun->mtu)
 	{
-		tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &ip->ip_src);
+		tunnel_log4(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &ip->ip_src);
 		if (!is_response) iface_send_icmpv4_toobig(in_tid, out_tid, packet, len, outtun->mtu);
 		return false;
 	}
@@ -258,7 +258,7 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	if (outtun && len > outtun->mtu)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "prepfwd6 %04x to %04x len = %u > mtu = %u\n", in_tid, out_tid, len, outtun->mtu);
-		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, (IPADDRESS *)&ip6->ip6_src);
+		tunnel_log(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, (IPADDRESS *)&ip6->ip6_src);
 		if (!is_response) iface_send_icmpv6_toobig(in_tid, out_tid, packet, len, outtun->mtu);
 		return false;
 	}
@@ -358,12 +358,12 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 		if (protocol == IPPROTO_IP)
 		{
 			struct ip *ip = (struct ip *)packet;
-			tunnel_log4(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, &ip->ip_src);
+			tunnel_log4(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_SAME_IO, &ip->ip_src);
 		}
 		else
 		{
 			struct ip6_hdr *ip6 = (struct ip6_hdr *)packet;
-			tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
+			tunnel_log(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
 		}
 
 		return;
@@ -576,11 +576,11 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 			/* When a tunneled packet came in from uplink put the error in the tunnel */
 			if (in_tid == SIXXSD_TUNNEL_UPLINK)
 			{
-				tunnel_log(src_tid, out_tid, SIXXSD_TERR_TUN_FROM_UPLINK, (IPADDRESS *)&ip6->ip6_src);
+				tunnel_log(src_tid, out_tid, packet, len, SIXXSD_TERR_TUN_FROM_UPLINK, (IPADDRESS *)&ip6->ip6_src);
 			}
 			else
 			{
-				tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
+				tunnel_log(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6, (IPADDRESS *)&ip6->ip6_src);
 			}
 			return;
 		}
@@ -648,7 +648,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	if (!nosrcchk && out_tid == in_tid)
 	{
 		/* Trying to send packets to itself, just drop it on the floor */
-		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
+		tunnel_log(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
 		return;
 	}
 

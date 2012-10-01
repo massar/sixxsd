@@ -36,15 +36,12 @@ const char *tunnel_state_name(enum sixxsd_tunnel_state state)
 	return state < lengthof(states) ? states[state] : "<unknown>";
 }
 
-static const char *tunnel_error_name(unsigned int err);
-static const char *tunnel_error_name(unsigned int err)
+static const char *tunnel_err_names[] =
 {
-	const char *errs[] =
-	{
 	/*	 012345678901234567890 */
+		"Encap.Pkt Too Big",
 		"Disabled tunnel",
 		"Clock Off",
-		"Encap.Pkt Too Big",
 		"Encap.Pkt Send Error",
 		"Same In&Out Interface",
 		"Wrong Source IPv6",
@@ -60,9 +57,28 @@ static const char *tunnel_error_name(unsigned int err)
 		"HB Missing IPv4",
 		"HB Sender Mismatch",
 		"HB Missing Time",
-	};
+};
 
-	return (err < lengthof(errs) ? errs[err] : "<unknown>");
+static const char *tunnel_error_name(unsigned int err);
+static const char *tunnel_error_name(unsigned int err)
+{
+	return (err < lengthof(tunnel_err_names) ? tunnel_err_names[err] : "<unknown>");
+}
+
+static unsigned int tunnel_error_num(const char *err, unsigned int *errnum);
+static unsigned int tunnel_error_num(const char *err, unsigned int *errnum)
+{
+	unsigned int i;
+
+	for (i = 0; i < lengthof(tunnel_err_names); i++)
+	{
+		if (strcasecmp(tunnel_err_names[i], err) != 0) continue;
+
+		*errnum = i;
+		return 200;
+	}
+
+	return 404;
 }
 
 struct sixxsd_tunnel *tunnel_grab(const uint16_t tid)
@@ -200,7 +216,7 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 #endif
 }
 
-VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const IPADDRESS *src)
+VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, enum sixxsd_tunnel_errors err, const IPADDRESS *src)
 {
 	struct sixxsd_tunnel	*tun;
 	uint16_t		tid;
@@ -227,28 +243,43 @@ VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunne
 
 	/* The last time and IP we got it from */
 	tun->errors[err].last_seen = gettime();
-	if (src) memcpy(&tun->errors[err].last_ip, src, sizeof(tun->errors[err].last_ip));
+	if (src)
+	{
+		memcpy(&tun->errors[err].last_ip, src, sizeof(tun->errors[err].last_ip));
+	}
+
+	/* First 128 bytes of the packet causing the error */
+	if (packet && len > 0)
+	{
+		memcpy(tun->errors[err].packet, packet, len < sizeof(tun->errors[err].packet) ? len : sizeof(tun->errors[err].packet));
+		tun->errors[err].orgplen = len;
+	}
 
 #ifndef DEBUG
 	if (g_conf->debugging)
 #endif
 	{
-		char hst[64];
+		struct sixxsd_context	*ctx;
+		char			hst[64];
 
 		if (src) inet_ntopA(src, hst, sizeof(hst));
 		else snprintf(hst, sizeof(hst), "<unknown>");
 
-		tunnel_debug(in_tid, out_tid, NULL, 0, "tunnel_log(%s, cnt=%" PRIu64 ") src = %s\n", tunnel_error_name(err), tun->errors[err].count, hst);
+		tunnel_debug(in_tid, out_tid, packet, len, "tunnel_log(%s, cnt=%" PRIu64 ") src = %s\n", tunnel_error_name(err), tun->errors[err].count, hst);
+
+		/* Live Debugging? -> Dump the full packet */
+		ctx = tun->debug_ctx;
+		if (ctx) ctx_showpacket(ctx, packet, len);
 	}
 }
 
-VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const struct in_addr *src)
+VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, enum sixxsd_tunnel_errors err, const struct in_addr *src)
 {
 	IPADDRESS ip;
 
 	ipaddress_make_ipv4(&ip, src);
 
-	tunnel_log(in_tid, out_tid, err, &ip);
+	tunnel_log(in_tid, out_tid, packet, len, err, &ip);
 }
 
 static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packet_len, uint64_t currtime);
@@ -432,6 +463,7 @@ static int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, 
 {
 	struct sixxsd_tunnels	*tuns = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
+	int			ret;
 	unsigned int		tid, count = 0, i, theerr = 0;
 	uint64_t		errorcount = 0;
 	char			hst[NI_MAXHOST];
@@ -444,15 +476,11 @@ static int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, 
 		else if (strcasecmp(args[0], "erroronly") == 0) { erroronly = true;	errspec = false;	debugonly = false;	}
 		else if (strncasecmp(args[0], "err=", 4) == 0)
 		{
-			for (theerr = 0; theerr < SIXXSD_TERR_MAX; theerr++)
+			ret = tunnel_error_num(&args[0][4], &theerr);
+			if (ret != 200)
 			{
-				if (strcasecmp(&args[0][4], tunnel_error_name(theerr)) == 0) break;
-			}
-
-			if (theerr >= SIXXSD_TERR_MAX)
-			{
-				ctx_printf(ctx, "Unknown error \"%s\"\n", &args[0][4]);
-				return 400;
+				ctx_printf(ctx, "Unknown error '%s'\n", &args[0][4]);
+				return ret;
 			}
 
 			errspec = true;
@@ -479,7 +507,9 @@ static int tunnel_cmd_list(struct sixxsd_context *ctx, const unsigned int argc, 
 		else
 		{
 			errorcount = 0;
-			for (i = 0; i < lengthof(tun->errors); i++)
+			/* We do not include PacketTooBig in the total error count */
+			/* PTB's are normal internet behavior */
+			for (i = 1; i < lengthof(tun->errors); i++)
 			{
 				errorcount += tun->errors[i].count;
 			}
@@ -690,6 +720,27 @@ static int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *
 	return 200;
 }
 
+static int tunnel_grabtid(struct sixxsd_context *ctx, const char *arg, struct sixxsd_tunnel **tun);
+static int tunnel_grabtid(struct sixxsd_context *ctx, const char *arg, struct sixxsd_tunnel **tun)
+{
+	int		ret;
+	uint16_t	tid;
+
+	assert(tun);
+
+	ret = tunnel_gettid(ctx, arg, &tid);
+	if (ret != 200) return ret;
+
+	*tun = tunnel_grab(tid);
+	if (!*tun)
+	{
+		ctx_printf(ctx, "Tunnel not configured: %s\n", arg);
+		return 404;
+	}
+
+	return 200;
+}
+
 static int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
 static int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
@@ -699,41 +750,62 @@ static int tunnel_cmd_show(struct sixxsd_context *ctx, const unsigned int UNUSED
 	ret = tunnel_gettid(ctx, args[0], &tid);
 	if (ret != 200) return ret;
 
-	if (tid == SIXXSD_TUNNEL_NONE)
-	{
-		ctx_printf(ctx, "No such address on this system\n");
-		return 404;
-	}
-
 	return tunnel_show(ctx, tid);
 }
 
 static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
 static int tunnel_cmd_get_outer_endpoint(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
-	uint16_t		tid;
 	int			ret;
 	char			buf[64];
 	struct sixxsd_tunnel	*tun;
 
-	ret = tunnel_gettid(ctx, args[0], &tid);
+	ret = tunnel_grabtid(ctx, args[0], &tun);
 	if (ret != 200) return ret;
-
-	if (tid == SIXXSD_TUNNEL_NONE)
-	{
-		ctx_printf(ctx, "No such address on this system\n");
-		return 404;
-	}
-
-	tun = tunnel_grab(tid);
-	if (!tun)
-	{
-		ctx_printf(ctx, "Tunnel not configured\n");
-		return 404;
-	}
 
 	inet_ntopA(&tun->ip_them, buf, sizeof(buf));
 	ctx_printf(ctx, "%s\n", buf);
+
+	return 200;
+}
+
+static int tunnel_cmd_get_errorpacket(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int tunnel_cmd_get_errorpacket(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+{
+	int			ret;
+	char			buf[64];
+	struct sixxsd_tunnel	*tun;
+	unsigned int		err;
+
+	ret = tunnel_grabtid(ctx, args[0], &tun);
+	if (ret != 200) return ret;
+
+	ret = tunnel_error_num(args[1], &err);
+	if (ret != 200)
+	{
+		ctx_printf(ctx, "Unknown Error \"%s\"\n", args[1]);
+		return ret;
+	}
+
+	/* This error happened again */
+	if (tun->errors[err].count == 0)
+	{
+		ctx_printf(ctx, "That error did not happen yet\n");
+		return 400;
+	}
+
+	/* Last Source causing this */
+	inet_ntopA(&tun->errors[err].last_ip, buf, sizeof(buf));
+
+	/* The error details */
+	ctx_printf(ctx, "Error       : %s\n", tunnel_error_name(err));
+	ctx_printf(ctx, "Count       : %" PRIu64 "\n", tun->errors[err].count);
+	tunnel_ago(ctx, tun->errors[err].last_seen, "Last Seen   : ");
+	ctx_printf(ctx, "Source      : %s\n", buf);
+	ctx_printf(ctx, "Real Length : %" PRIu64 "\n", tun->errors[err].orgplen);
+	ctx_printf(ctx, "8<--------------------------------------------\n");
+	ctx_showpacket(ctx, tun->errors[err].packet, tun->errors[err].orgplen > sizeof(tun->errors[err].packet) ? sizeof(tun->errors[err].packet) : tun->errors[err].orgplen);
+	ctx_printf(ctx, "-------------------------------------------->8\n");
 
 	return 200;
 }
@@ -823,24 +895,10 @@ static int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int U
 static int tunnel_cmd_set_debug(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	struct sixxsd_tunnel	*tun;
-	uint16_t		tid;
 	int			ret;
 
-	ret = tunnel_gettid(ctx, args[0], &tid);
+	ret = tunnel_grabtid(ctx, args[0], &tun);
 	if (ret != 200) return ret;
-
-	if (tid == SIXXSD_TUNNEL_NONE)
-	{
-		ctx_printf(ctx, "No such tunnel on this system\n");
-		return 404;
-	}
-
-	tun = tunnel_grab(tid);
-	if (!tun)
-	{
-		ctx_printf(ctx, "Tunnel went missing!?\n");
-		return 404;
-	}
 
 	/* Enable debugging or not */
 	if (isyes(args[1]))
@@ -882,24 +940,10 @@ static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int 
 static int tunnel_cmd_set_remote(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
 	struct sixxsd_tunnel	*tun;
-	uint16_t		tid;
 	int			ret;
 
-	ret = tunnel_gettid(ctx, args[0], &tid);
+	ret = tunnel_grabtid(ctx, args[0], &tun);
 	if (ret != 200) return ret;
-
-	if (tid == SIXXSD_TUNNEL_NONE)
-	{
-		ctx_printf(ctx, "No such tunnel on this system\n");
-		return 404;
-	}
-
-	tun = tunnel_grab(tid);
-	if (!tun)
-	{
-		ctx_printf(ctx, "Tunnel went missing!?\n");
-		return 404;
-	}
 
 	if (!inet_ptonA(args[1], &tun->ip_them, NULL))
 	{
@@ -974,9 +1018,10 @@ int tunnel_init(struct sixxsd_context *ctx)
 
 struct ctx_menu ctx_menu_tunnel_get[] =
 {
-	{"get",			NULL,				0,0,	NULL,	NULL },
-	{"outer_endpoint",	tunnel_cmd_get_outer_endpoint,	1,1,	"<tunnel-id>", "Get the current outer endpoint" },
-	{NULL,			NULL,				0,0,	NULL,	NULL },
+	{"get",			NULL,				0,0,	NULL,			NULL },
+	{"outer_endpoint",	tunnel_cmd_get_outer_endpoint,	1,1,	"<tid>",		"Get the current outer endpoint" },
+	{"errorpacket",		tunnel_cmd_get_errorpacket,	2,2,	"<tid> <error>",	"Show the last packet causing the error" },
+	{NULL,			NULL,				0,0,	NULL,			NULL },
 };
 
 struct ctx_menu ctx_menu_tunnel_set[] =
@@ -995,13 +1040,13 @@ CONTEXT_CMD(tunnel_set)
 
 struct ctx_menu ctx_menu_tunnel[] =
 {
-	{"tunnel",	NULL,			0,0,	NULL,			NULL },
-        {"get",		ctx_cmd_tunnel_get,	0,-1,	CONTEXT_SUB,		"Get configuration information" },
-        {"set",		ctx_cmd_tunnel_set,	0,-1,	CONTEXT_SUB,		"Set configuration information" },
-	{"show",	tunnel_cmd_show,	1,1,	"<ip>",			"Show the configuration of a single tunnel" },
-	{"stats",	tunnel_cmd_stats,	0,1,	NULL,			"Get stats for all tunnels" },
-	{"list",	tunnel_cmd_list,	0,1,	"[{all|debug|err=X}]",	"List a summary of the tunnels filtered by the given option" },
-	{NULL,		NULL,			0,0,	NULL,			NULL },
+	{"tunnel",	NULL,			0,0,	NULL,					NULL },
+        {"get",		ctx_cmd_tunnel_get,	0,-1,	CONTEXT_SUB,				"Get configuration information" },
+        {"set",		ctx_cmd_tunnel_set,	0,-1,	CONTEXT_SUB,				"Set configuration information" },
+	{"show",	tunnel_cmd_show,	1,1,	"<tid>",				"Show the configuration of a single tunnel" },
+	{"stats",	tunnel_cmd_stats,	0,1,	NULL,					"Get stats for all tunnels" },
+	{"list",	tunnel_cmd_list,	0,1,	"[{all|(debug|error)only|err=X}]",	"List a summary of the tunnels filtered by the given option" },
+	{NULL,		NULL,			0,0,	NULL,					NULL },
 };
 
 CONTEXT_CMD(tunnel)

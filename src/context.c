@@ -35,6 +35,54 @@ int ctx_shell(struct sixxsd_context *ctx, const char *args)
 	return 200;
 }
 
+#define SHOWPACKET_PERLINE 16
+int ctx_showpacket(struct sixxsd_context *ctx, const uint8_t *packet, const unsigned int len)
+{
+	unsigned int		i, j, k;
+	uint8_t			c;
+
+	for (i = 0; i < len; i++)
+	{
+		/* Show the position? */
+		if (i % SHOWPACKET_PERLINE == 0)
+		{
+			ctx_printf(ctx, "%08x ", i);
+		}
+
+		/* Print the char */
+		ctx_printf(ctx, "%02x ", packet[i]);
+
+		/* Show the ASCII portion at the end? */
+		j = i % SHOWPACKET_PERLINE;
+		if (j == (SHOWPACKET_PERLINE - 1) || i == (len - 1))
+		{
+			/* Add spaces for bytes that we do not show */
+			for (k = j; k < (SHOWPACKET_PERLINE-1); k++)
+			{
+				ctx_printf(ctx, "   ");
+			}
+
+			/* Go back to the beginning of the line */
+			i -= j;
+
+			/* Show the bytes in ASCII */
+			for (k = 0; k < j; k++)
+			{
+				c = packet[i+k];
+				ctx_printf(ctx, "%c", c >= ' ' && c <= '~' ? c : '.');
+			}
+
+			/* At the end again */
+			i += j;
+
+			/* Finish the line */
+			ctx_printf(ctx, "\n");
+		}
+	}
+
+	return 200;
+}
+
 int ctx_cmd_loop(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
 int ctx_cmd_sub(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
 int ctx_cmd_load(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);

@@ -102,13 +102,13 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	tun = tunnel_grab(in_tid);
 	if (!tun || tun->state == SIXXSD_TSTATE_DISABLED)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_TUN_DISABLED, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_DISABLED, src);
 		return;
 	}
 
 	if (tun->type != SIXXSD_TTYPE_PROTO41_HB)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_HB_FOR_NON_HB, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_FOR_NON_HB, src);
 		return;
 	}
 
@@ -117,7 +117,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_HB_NO_IPV4, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_NO_IPV4, src);
 		return;
 	}
 
@@ -129,7 +129,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 		inet_ptonA(pnt, &ip, NULL);
 		if (memcmp(&ip, src, sizeof(ip)) != 0)
 		{
-			tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_HB_SENDER_MISMATCH, src);
+			tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_SENDER_MISMATCH, src);
 			return;
 		}
 	}
@@ -142,7 +142,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_HB_NOTIME, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_NOTIME, src);
 		return;
 	}
 
@@ -161,7 +161,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	/* This also allows for some latency */
 	if (i > MAX_CLOCK_OFF)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_TUN_CLOCK_OFF, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_CLOCK_OFF, src);
 		return;
 	}
 
@@ -186,7 +186,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 
 	if (strcmp(pnt, (char *)tmp) != 0)
 	{
-		tunnel_log(SIXXSD_TUNNEL_UPLINK, in_tid, SIXXSD_TERR_HB_HASHFAIL, src);
+		tunnel_log(SIXXSD_TUNNEL_UPLINK, in_tid, NULL, 0, SIXXSD_TERR_HB_HASHFAIL, src);
 		return;
 	}
 

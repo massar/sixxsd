@@ -37,9 +37,9 @@ enum sixxsd_tunnel_state
 /* Keep synced with tunnel_error_name() in tunnel.c */
 enum sixxsd_tunnel_errors
 {
-	SIXXSD_TERR_TUN_DISABLED = 0,					/* Packet received for a disabled tunnel */
+	SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG = 0,			/* Packet Too Big when sending an encapsulated packet */
+	SIXXSD_TERR_TUN_DISABLED,					/* Packet received for a disabled tunnel */
 	SIXXSD_TERR_TUN_CLOCK_OFF,					/* Packet sent was not inside clock limits */
-	SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG,				/* Packet Too Big when sending an encapsulated packet */
 	SIXXSD_TERR_TUN_ENCAPS_OUT_ERR,					/* Output error when sending an encapsulated packet */
 	SIXXSD_TERR_TUN_SAME_IO,					/* Same input as output interface */
 	SIXXSD_TERR_TUN_WRONG_SOURCE_IPV6,				/* IPv6 packet with a wrong source address */
@@ -63,6 +63,8 @@ struct sixxsd_tunerr
 	uint64_t			count;				/* How many we have seen */
 	uint64_t			last_seen;			/* Last time we saw it */
 	IPADDRESS			last_ip;			/* Last IP address which caused it */
+	uint8_t				packet[128];			/* First 128 bytes of the packet that caused the error */
+	uint64_t			orgplen;			/* How long the original packet was */
 };
 
 struct sixxsd_tunnel
@@ -117,8 +119,8 @@ VOID tunnel_account_packet_in(const uint16_t in_tid, unsigned int packet_len);
 VOID tunnel_account_packet_out(const uint16_t out_tid, unsigned int packet_len);
 const char *tunnel_state_name(enum sixxsd_tunnel_state state);
 const char *tunnel_type_name(enum sixxsd_tunnel_type type);
-VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const IPADDRESS *src);
-VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, enum sixxsd_tunnel_errors err, const struct in_addr *src);
+VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, enum sixxsd_tunnel_errors err, const IPADDRESS *src);
+VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, enum sixxsd_tunnel_errors err, const struct in_addr *src);
 VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const char *fmt, ...) ATTR_FORMAT(printf, 5, 6);
 
 #endif /* TUNNEL_H */

@@ -41,7 +41,7 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 
 	if (len > tun->mtu)
 	{
-		tunnel_log(in_tid, out_tid, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &tun->ip_them);
+		tunnel_log(in_tid, out_tid, packet,len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &tun->ip_them);
 		if (!is_response) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
 		return;
 	}
@@ -148,7 +148,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 
 	if ((iph->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6, src);
 		return;
 	}
 

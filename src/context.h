@@ -53,6 +53,7 @@ VOID ctx_printxdf(struct sixxsd_context *ctx, const char *ATTR_RESTRICT fmt, ...
 VOID ctx_flush(struct sixxsd_context *ctx, int code);
 const char *ctx_get_string(struct sixxsd_context *ctx);
 
+int ctx_showpacket(struct sixxsd_context *ctx, const uint8_t *packet, const unsigned int len);
 int ctx_exec(struct sixxsd_context *ctx, const char *args, BOOL mainmenu, const char *precmd);
 int ctx_shell(struct sixxsd_context *ctx, const char *args);
 VOID ctx_popmenu(struct sixxsd_context *ctx);
