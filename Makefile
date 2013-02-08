@@ -264,8 +264,8 @@ help:
 	@echo "help                 : This little text"
 	@echo "clean                : Clean the dirs to be pristine in bondage"
 	@echo ""
-	@echo "all OS_BITS=32       : build 32bit binary"
-	@echo "all OS_BITS=64       : build 64bit binary"
+	@echo "OS_BITS=32 clean all  : build 32bit binary"
+	@echo "OS_BITS=64 clean all  : build 64bit binary"
 	@echo ""
 	@echo "Note that gcc-multilib is needed for cross-compiles on 64bit to 32bit Debian hosts"
 
