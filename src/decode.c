@@ -13,28 +13,28 @@ const char module_decode[] = "decode";
 
 BOOL l3_ipv6_parse(const uint8_t *packet, const uint32_t len, uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen)
 {
-	struct ip6_hdr		*iph = (struct ip6_hdr *)packet;
+	struct ip6_hdr		*ip = (struct ip6_hdr *)packet;
 	struct ip6_ext		*ipe;
 	uint8_t			ipe_type;
 	uint32_t		plen, l;
 
-	if (len < sizeof(*iph))
+	if (len < sizeof(*ip))
 	{
 		mdolog(LOG_WARNING, "IPv6: Short IPv6 packet received of len %u\n", len);
 		return false;
 	}
 
-	if ((iph->ip6_ctlun.ip6_un2_vfc>>4) != 6)
+	if ((ip->ip6_ctlun.ip6_un2_vfc>>4) != 6)
 	{
-		mdolog(LOG_WARNING, "IPv6: Corrupt IP version %u packet found\n", (iph->ip6_ctlun.ip6_un2_vfc>>4));
+		mdolog(LOG_WARNING, "IPv6: Corrupt IP version %u packet found\n", (ip->ip6_ctlun.ip6_un2_vfc>>4));
 		return false;
 	}
 
 	/* Save the type of the next header */
-	ipe_type = iph->ip6_nxt;
+	ipe_type = ip->ip6_nxt;
 	/* Step to the next header */
-	ipe = (struct ip6_ext *)(((char *)iph) + sizeof(*iph));
-	plen = ntohs(iph->ip6_plen);
+	ipe = (struct ip6_ext *)(((char *)ip) + sizeof(*ip));
+	plen = ntohs(ip->ip6_plen);
 
 	/*
 	 * Skip the hopbyhop options that we know.
@@ -62,7 +62,7 @@ BOOL l3_ipv6_parse(const uint8_t *packet, const uint32_t len, uint8_t *_ipe_type
 		ipe  = (struct ip6_ext *)(((char *)ipe) + l);
 
 		/* Check for corrupt packets */
-		if ((char *)ipe > ((char *)(iph) + len))
+		if ((char *)ipe > ((char *)(ip) + len))
 		{
 			mdolog(LOG_WARNING, "CORRUPT: Header chain beyond packet data\n");
 			/* Send ICMPv6 Parameter Problem - Header */

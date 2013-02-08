@@ -67,16 +67,16 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 
 VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 {
-	struct ip6_hdr		*iph = (struct ip6_hdr *)packet;
+	struct ip6_hdr		*ip = (struct ip6_hdr *)packet;
 	struct sixxsd_tunnel	*tun;
 	uint16_t		in_tid;
 	BOOL			istunnel, fail = false;
 	uint16_t		code = 0;
 
 	/* Quick sanity check */
-	if (len < sizeof(*iph))
+	if (len < sizeof(*ip))
 	{
-		p41_log(LOG_WARNING, src, "Short IPv4 packet received of len %u\n", len);
+		p41_log(LOG_WARNING, src, "Short IPv6 packet received of len %u\n", len);
 		return;
 	}
 
@@ -85,7 +85,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
          * determining the associated tunnel.
 	 * It also nicely solves the problem of having to search for the IPv4 src/dst pair :)
 	 */
-	in_tid = address_find((IPADDRESS *)&iph->ip6_src, &istunnel);
+	in_tid = address_find((IPADDRESS *)&ip->ip6_src, &istunnel);
 	tun = in_tid == SIXXSD_TUNNEL_UPLINK ? NULL : tunnel_grab(in_tid);
 
 	if (!tun || tun->state == SIXXSD_TSTATE_NONE)
@@ -146,7 +146,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 
 	if (!tunnel_state_check(in_tid, SIXXSD_TUNNEL_NONE, packet, len, false)) return;
 
-	if ((iph->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
+	if ((ip->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
 	{
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6, src);
 		return;
