@@ -76,7 +76,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 	/* Quick sanity check */
 	if (len < sizeof(*iph))
 	{
-		p41_log(LOG_WARNING, src, "Short IPv6 packet received of len %u\n", len);
+		p41_log(LOG_WARNING, src, "Short IPv4 packet received of len %u\n", len);
 		return;
 	}
 
