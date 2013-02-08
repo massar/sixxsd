@@ -55,7 +55,8 @@ enum sixxsd_tunnel_errors
 	SIXXSD_TERR_HB_NO_IPV4,						/* No IPv4/sender found in HB packet */
 	SIXXSD_TERR_HB_SENDER_MISMATCH,					/* Sender mismatch */
 	SIXXSD_TERR_HB_NOTIME,						/* No time found in packet */
-	SIXXSD_TERR_ICMPV4_ERROR,					/* We received an ICMPV4 error */
+	SIXXSD_TERR_ICMPV4_ERROR,					/* We received an ICMPv4 error */
+	SIXXSD_TERR_ICMPV4_ECHO_REQUEST,				/* We received an ICMPv4 Echo Request */
 	SIXXSD_TERR_MAX
 };
 

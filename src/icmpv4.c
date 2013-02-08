@@ -32,17 +32,17 @@ const char module_icmpv4[] = "icmpv4";
  */
 VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 {
-	struct icmp_hdr		*icmp = (struct icmp_hdr *)packet;
-	struct ip		*ip;
-	uint16_t		tid;
-	IPADDRESS		src;
+	struct icmp_hdr			*icmp = (struct icmp_hdr *)packet;
+	struct ip			*ip;
+	uint16_t			tid;
+	IPADDRESS			src;
+	enum sixxsd_tunnel_errors	err;
 
 	switch (icmp->icmp_type)
 	{
 	case ICMP_ECHOREPLY:
 	case ICMP_SOURCE_QUENCH:
 	case ICMP_REDIRECT:
-	case ICMP_ECHO:
 	case ICMP_TIMESTAMP:
 	case ICMP_TIMESTAMPREPLY:
 	case ICMP_INFO_REQUEST:
@@ -52,6 +52,11 @@ VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 		/* Ignore non-error ICMP types */
 		return;
 
+	case ICMP_ECHO:
+		/* We count the number of ICMPv4 pings people sent */
+		err = SIXXSD_TERR_ICMPV4_ECHO_REQUEST;
+		break;
+
 	case ICMP_DEST_UNREACH:
 	case ICMP_TIME_EXCEEDED:
 	case ICMP_PARAMETERPROB:
@@ -60,6 +65,7 @@ VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 		 * Consider the rest errors
 		 * especially as we do not know them
 		 */
+		err = SIXXSD_TERR_ICMPV4_ERROR;
 		break;
 	}
 
@@ -74,7 +80,7 @@ VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 	}
 
 	/* The destination of our packet is the endpoint we are looking for */
-	ipaddress_set_ipv4(&src, &ip->ip_dst);
+	ipaddress_make_ipv4(&src, &ip->ip_dst);
 
 	/* Find the IPv4 address in our tunnel table */
 	tid = tunnel_find(&src);
@@ -87,6 +93,6 @@ VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 	}
 
 	/* Note the problem */
-	tunnel_log(SIXXSD_TUNNEL_NONE, tid, packet, len, SIXXSD_TERR_ICMPV4_ERROR, org);
+	tunnel_log(SIXXSD_TUNNEL_NONE, tid, packet, len, err, org);
 }
 

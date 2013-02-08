@@ -58,6 +58,7 @@ static const char *tunnel_err_names[] =
 		"HB Sender Mismatch",
 		"HB Missing Time",
 		"ICMPv4 Errors Received",
+		"ICMPv4 Echo Req. Recv.",
 };
 
 static const char *tunnel_error_name(unsigned int err);
@@ -136,7 +137,7 @@ uint16_t tunnel_find(IPADDRESS *addr)
 
 	for (tid = 0; tid <= t->tunnel_hi; tid++)
 	{
-		if (memcmp(addr, &t->tunnel[tid].ip_them, sizeof(addr)) != 0) continue;
+		if (memcmp(addr, &t->tunnel[tid].ip_them, sizeof(*addr)) != 0) continue;
 
 		/* First match */
 		return tid;
