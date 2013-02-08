@@ -57,6 +57,7 @@ static const char *tunnel_err_names[] =
 		"HB Missing IPv4",
 		"HB Sender Mismatch",
 		"HB Missing Time",
+		"ICMPv4 Errors Received",
 };
 
 static const char *tunnel_error_name(unsigned int err);
@@ -116,6 +117,29 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 		char buf[64];
 		inet_ntopA(addr, buf, sizeof(buf));
 		mdolog(LOG_ERR, "tunnel_get(%s) is out of tunnel range\n", buf);
+	}
+
+	return SIXXSD_TUNNEL_NONE;
+}
+
+/*
+ * Find a tunnel based on IPv4 address
+ *
+ * Note that because of AYIYA there might be multiple... we return the first
+ *
+ * XXX: This is an expensive lookup (but a tree would change constantly too)
+ */
+uint16_t tunnel_find(IPADDRESS *addr)
+{
+	struct sixxsd_tunnels	*t = &g_conf->tunnels;
+	uint16_t		tid;
+
+	for (tid = 0; tid <= t->tunnel_hi; tid++)
+	{
+		if (memcmp(addr, &t->tunnel[tid].ip_them, sizeof(addr)) != 0) continue;
+
+		/* First match */
+		return tid;
 	}
 
 	return SIXXSD_TUNNEL_NONE;

@@ -26,6 +26,7 @@ SD_OBJS		=	sixxsd.o 							\
 			decode.o							\
 			hash_md5.o hash_sha1.o						\
 			hb.o								\
+			icmpv4.o							\
 			iface.o								\
 			pop.o								\
 			proto41.o							\

@@ -62,8 +62,9 @@ VOID terminate(const char *who);
 
 /* Protocols */
 #include "ayiya.h"
-#include "proto41.h"
 #include "hb.h"
+#include "icmpv4.h"
+#include "proto41.h"
 
 BOOL l3_ipv6_parse(const uint8_t *packet, const uint32_t len, uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen);
 

@@ -55,6 +55,7 @@ enum sixxsd_tunnel_errors
 	SIXXSD_TERR_HB_NO_IPV4,						/* No IPv4/sender found in HB packet */
 	SIXXSD_TERR_HB_SENDER_MISMATCH,					/* Sender mismatch */
 	SIXXSD_TERR_HB_NOTIME,						/* No time found in packet */
+	SIXXSD_TERR_ICMPV4_ERROR,					/* We received an ICMPV4 error */
 	SIXXSD_TERR_MAX
 };
 
@@ -113,6 +114,7 @@ struct sixxsd_tunnels
 
 int tunnel_init(struct sixxsd_context *ctx);
 uint16_t tunnel_get(IPADDRESS *addr, BOOL *istunnel);
+uint16_t tunnel_find(IPADDRESS *addr);
 struct sixxsd_tunnel *tunnel_grab(const uint16_t tid);
 BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response);
 VOID tunnel_account_packet_in(const uint16_t in_tid, unsigned int packet_len);
