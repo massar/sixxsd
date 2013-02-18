@@ -80,6 +80,19 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 		return;
 	}
 
+	/* Unspecified or link-local address? */
+	if (IN6_IS_ADDR_UNSPECIFIED(&ip->ip6_src) ||
+	    IN6_IS_ADDR_LINKLOCAL(&ip->ip6_src))
+	{
+		/*
+		 * Just ignore the packet, as long we don't do multicast it does not matter.
+		 *
+		 * But if we would process it further it would generate an proto-41
+		 * unreachable as then the source address could not be found.
+		 */
+		return;
+	}
+
 	/*
 	 * Fetch it. This automatically does RPF as we use the source IPv6 address for
          * determining the associated tunnel.
