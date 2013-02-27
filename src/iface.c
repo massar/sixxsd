@@ -244,6 +244,9 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 
 	tunnel_debug(in_tid, out_tid, packet, len, "IPv6 PrepFwd6 %u\n", len);
 
+	/* Is that tunnel enabled? */
+	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_response)) return false;
+
 	/* First check if the packet can actually go out over that output */
 	if (outtun && len > outtun->mtu)
 	{
