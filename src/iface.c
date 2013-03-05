@@ -112,12 +112,8 @@ static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_
 	iov[iovlen].iov_len  = packet_len;
 	iovlen++;
 
-#ifdef DEBUG
-	if ((packet[0] >> 4) != (protocol == ETH_P_IP ? 4 : 6))
-	{
-		assert(false);
-	}
-#endif
+	/* Sanity */
+	assert((packet[0] >> 4) == (protocol == ETH_P_IP ? 4 : 6));
 
 	/* Send the packet to our tun/tap device and let the kernel handle it for the rest */
 	n = writev(g_conf->tuntap, iov, iovlen);

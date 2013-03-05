@@ -280,9 +280,7 @@ VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *pa
 		tun->errors[err].orgplen = len;
 	}
 
-#ifndef DEBUG
 	if (g_conf->debugging)
-#endif
 	{
 		struct sixxsd_context	*ctx;
 		char			hst[64];
