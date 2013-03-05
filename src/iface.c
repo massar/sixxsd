@@ -368,7 +368,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 
 	assert(protocol == IPPROTO_IP || protocol == IPPROTO_IPV6);
 
-	tunnel_debug(in_tid, out_tid, packet, len, "iface_routetun() kicking it out%s\n", is_response ? " [response]" : " [normal]");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_routetun(%s)\n", is_response ? "[response]" : "[normal]");
 
 	/* No way to get out */
 	if (!outtun)
@@ -556,62 +556,50 @@ VOID iface_route6_local(const uint16_t in_tid, const uint16_t out_tid, uint8_t *
 	uint8_t		ipe_type;
 	uint32_t	plen;
 
-	tunnel_debug(in_tid, out_tid, packet, len, "Local (sixxsd) Address\n");
-
 	if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen)) return;
 
 	/* What does it contain? */
 	tunnel_debug(in_tid, out_tid, packet, len, "Packet Contains %u (ICMPv6 = %u)\n", ipe_type, IPPROTO_ICMPV6);
 
-	/* Is it being send to us? (even on other tunnels etc) */
-	if (address_is_local((IPADDRESS *)&ip6->ip6_dst))
+	if (ipe_type == IPPROTO_ICMPV6)
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "Local Address\n");
+		struct icmp6_hdr *icmp = (struct icmp6_hdr *)ipe;
 
-		if (ipe_type == IPPROTO_ICMPV6)
+		/* We answer ICMP Echo Request */
+		switch (icmp->icmp6_type)
 		{
-			struct icmp6_hdr *icmp = (struct icmp6_hdr *)ipe;
+		case ICMP6_ECHO_REQUEST:
+			tunnel_debug(in_tid, out_tid, packet, len, "Local Address - echo request\n");
+			iface_send_icmpv6(in_tid, out_tid, packet, len, ICMP6_ECHO_REPLY, 0, 0, NULL);
+			break;
 
-			/* We answer ICMP Echo Request */
-			switch (icmp->icmp6_type)
+		case ICMP6_ECHO_REPLY:
+			tunnel_debug(in_tid, out_tid, packet, len, "Local Address - echo reply\n");
+			/* We only care about these if they came from the remote tunnel endpoint on the tunnel */
+			if (in_tid == out_tid && address_is_remote((IPADDRESS *)&ip6->ip6_src))
 			{
-			case ICMP6_ECHO_REQUEST:
-				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - echo request\n");
-				iface_send_icmpv6(in_tid, out_tid, packet, len, ICMP6_ECHO_REPLY, 0, 0, NULL);
-				break;
-
-			case ICMP6_ECHO_REPLY:
-				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - echo reply\n");
-				/* We only care about these if they came from the remote tunnel endpoint on the tunnel */
-				if (in_tid == out_tid && address_is_remote((IPADDRESS *)&ip6->ip6_src))
-				{
-					iface_got_icmpv6_reply(in_tid, packet, len, icmp, plen);
-				}
-				break;
-
-			case ND_NEIGHBOR_SOLICIT:
-				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - Neigh %u\n", ip6->ip6_hlim);
-				if (ip6->ip6_hlim == 255) iface_send_icmpv6_neigh(in_tid, out_tid, packet, len);
-				break;
-
-			default:
-				/* Ignore all other ICMP message types */
-				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - other %u\n", icmp->icmp6_type);
-				break;
+				iface_got_icmpv6_reply(in_tid, packet, len, icmp, plen);
 			}
+			break;
 
-			return;
+		case ND_NEIGHBOR_SOLICIT:
+			tunnel_debug(in_tid, out_tid, packet, len, "Local Address - Neigh %u\n", ip6->ip6_hlim);
+			if (ip6->ip6_hlim == 255) iface_send_icmpv6_neigh(in_tid, out_tid, packet, len);
+			break;
+
+		default:
+			/* Ignore all other ICMP message types */
+			tunnel_debug(in_tid, out_tid, packet, len, "Local Address - other %u\n", icmp->icmp6_type);
+			break;
 		}
 
-		/* Nothing to see here, please move along */
-		tunnel_debug(in_tid, out_tid, packet, len, "Unreachable - no port\n");
-		iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOPORT);
 		return;
 	}
 
-	/* Unknown address, thus no route */
-	tunnel_debug(in_tid, out_tid, packet, len, "Unreachable - no route\n");
-	iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOROUTE);
+	/* Nothing to see here, please move along */
+	tunnel_debug(in_tid, out_tid, packet, len, "Unreachable - no port\n");
+	iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOPORT);
+	return;
 }
 
 VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl, BOOL nosrcchk)
@@ -630,7 +618,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	}
 
 	/* We might want to show every packet */
-	tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s/%s)\n", is_response ? "error" : "normal", nosrcchk ? "nosrcchk" : "srcchk");
+	tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s/%s)\n", is_response ? "[response]" : "[normal]", nosrcchk ? "nosrcchk" : "srcchk");
 
 	/* Ignore unspecified source (XXX: Check for IGMP listener / Multicast) */
 	if (IN6_IS_ADDR_UNSPECIFIED(&ip6->ip6_src))
@@ -691,15 +679,22 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 
 	out_tid = address_find((IPADDRESS *)&ip6->ip6_dst, &istunnel);
 
-	/* Local (sixxsd) destination? */
-	if (istunnel && out_tid == SIXXSD_TUNNEL_NONE)
+	/* Local destination? (thus <tunnel-prefix>:<tid>::1) */
+	if (istunnel && address_is_local((IPADDRESS *)&ip6->ip6_dst))
 	{
 		iface_route6_local(in_tid, out_tid, packet, len);
 		return;
 	}
 
+	/* <tunnel>::1 is handled above, <tunnel>::2 below, this is thus for the rest in that /64 */
+	if (istunnel && !address_is_remote((IPADDRESS *)&ip6->ip6_dst))
+	{
+		iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOROUTE);
+		return;
+	}
+
 	/* Don't route out over the same interface as that would just cause a routing loop */
-	if (!nosrcchk && out_tid == in_tid)
+	if (!is_response && !nosrcchk && out_tid == in_tid)
 	{
 		/* Trying to send packets to itself, just drop it on the floor */
 		tunnel_log(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_SAME_IO, (IPADDRESS *)&ip6->ip6_src);
@@ -718,13 +713,6 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	}
 
 	tunnel_debug(in_tid, out_tid, packet, len, "Tunneled-Packet\n");
-
-	/* <tunnel>::1 is handled above, <tunnel>::2 below, this is thus for the rest in that /64 */
-	if (istunnel && !address_is_remote((IPADDRESS *)&ip6->ip6_dst))
-	{
-		iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOROUTE);
-		return;
-	}
 
 	/* <tunnel>::2 and subnets routed behind that */
 	tunnel_debug(in_tid, out_tid, packet, len, "Routing to tunnel\n");
