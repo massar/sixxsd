@@ -279,25 +279,25 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, co
 	tun = tunnel_grab(in_tid);
 	if (!tun || tun->state == SIXXSD_TSTATE_DISABLED)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_DISABLED, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_DISABLED, src);
 		return;
 	}
 
 	if (tun->type != SIXXSD_TTYPE_AYIYA)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_AYIYA_FOR_NON_AYIYA, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_AYIYA_FOR_NON_AYIYA, src);
 		return;
 	}
 
 	if (s->ayh.ayh_nextheader == IPPROTO_IPV6 && ((s->payload[0] >> 4) != 0x6))
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6, src);
 		return;
 	}
 
 	if (s->ayh.ayh_nextheader == IPPROTO_IPV4 && ((s->payload[0] >> 4) != 0x4))
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV4, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV4, src);
 		return;
 	}
 
@@ -311,7 +311,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, co
 	/* Compare the clock offset */
 	if (i > MAX_CLOCK_OFF)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_CLOCK_OFF, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_CLOCK_OFF, src);
 		return;
 	}
 
@@ -332,7 +332,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, co
 	/* Compare the SHA1's */
 	if (memcmp(&their_hash, &our_hash, sizeof(their_hash)) != 0)
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_AYIYA_HASHFAIL, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_AYIYA_HASHFAIL, src);
 		return;
 	}
 
@@ -370,7 +370,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, co
 		}
 		else
 		{
-			tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_AYIYA_INVALIDFORWARD, src);
+			tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_AYIYA_INVALIDFORWARD, src);
 		}
 	}
 	else if (s->ayh.ayh_opcode == ayiya_op_noop)
