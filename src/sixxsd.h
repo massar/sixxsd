@@ -66,7 +66,9 @@ VOID terminate(const char *who);
 #include "icmpv4.h"
 #include "proto41.h"
 
-BOOL l3_ipv6_parse(const uint8_t *packet, const uint32_t len, uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen);
+BOOL l3_ipv6_parse(const uint16_t in_tid, const uint16_t out_tid,
+		   const uint8_t *packet, const uint32_t len,
+		   uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen);
 
 #endif /* SIXXSD_H */
 
