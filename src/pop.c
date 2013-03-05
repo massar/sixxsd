@@ -19,7 +19,7 @@ static int pop_cmd_show_version(struct sixxsd_context *ctx, const unsigned int U
 	ctx_printdf(ctx, "Build Information: %s\n", BUILDINFO);
 	ctx_printdf(ctx, "SixXSd Version: %s\n", SIXXSD_VERSION);
 	ctx_printdf(ctx, "SixXSd Release: %s\n", SIXXSD_RELEASE);
-	ctx_printdf(ctx, "OS BITS: %u\n", OS_BITS);
+	ctx_printdf(ctx, "OS/CPU Bits: %u\n", OS_BITS);
 	return 200;
 }
 
