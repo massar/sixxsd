@@ -9,11 +9,11 @@
 
 #include "sixxsd.h"
 
-#define SIXXSD_TUNNEL_NONE	0xffff
-#define SIXXSD_TUNNEL_UPLINK	0xfffe
+#define SIXXSD_TUNNEL_NONE		0xffff				/* No tunnel (sixxsd address) */
+#define SIXXSD_TUNNEL_UPLINK		0xfffe				/* Uplink of the tunnel */
 
-#define SIXXSD_TUNNEL_IP_US	1
-#define SIXXSD_TUNNEL_IP_THEM	2
+#define SIXXSD_TUNNEL_IP_US		0x0001				/* Our side of the tunnel */
+#define SIXXSD_TUNNEL_IP_THEM		0x0002				/* Their side of the tunnel */
 
 enum sixxsd_tunnel_type
 {
