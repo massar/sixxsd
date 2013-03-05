@@ -786,7 +786,7 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	uint16_t			t16;
 	uint8_t				hlim = 64;
 
-	tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u\n", type, code);
+	tunnel_debug(in_tid, out_tid, NULL, 0, "ICMPv6 %u::%u\n", type, code);
 
 	/* Fill in the payload */
 	if (type == ICMP6_ECHO_REPLY)
@@ -867,10 +867,10 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	{
 		/* How much are we willing to send back of the original packet? */
 		plen = 1280 - (sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr));
-		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Other - possible plen = %u, len = %u\n", type, code, plen, len);
+		tunnel_debug(in_tid, out_tid, NULL, 0, "ICMPv6 %u::%u - Other - possible plen = %u, len = %u\n", type, code, plen, len);
 
 		plen = len > plen ? plen : len;
-		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Other - possible plen = %u\n", type, code, plen);
+		tunnel_debug(in_tid, out_tid, NULL, 0, "ICMPv6 %u::%u - Other - possible plen = %u\n", type, code, plen);
 
 		memcpy(&pkt.payload, packet, plen);
 
