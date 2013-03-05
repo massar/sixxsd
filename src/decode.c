@@ -11,7 +11,9 @@
 const char module_decode[] = "decode";
 #define module module_decode
 
-BOOL l3_ipv6_parse(const uint8_t *packet, const uint32_t len, uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen)
+BOOL l3_ipv6_parse(const uint16_t in_tid, const uint16_t out_tid,
+		   const uint8_t *packet, const uint32_t len,
+		   uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen)
 {
 	struct ip6_hdr		*ip = (struct ip6_hdr *)packet;
 	struct ip6_ext		*ipe;
@@ -20,13 +22,25 @@ BOOL l3_ipv6_parse(const uint8_t *packet, const uint32_t len, uint8_t *_ipe_type
 
 	if (len < sizeof(*ip))
 	{
-		mdolog(LOG_WARNING, "IPv6: Short IPv6 packet received of len %u\n", len);
+		tunnel_debug(in_tid, out_tid, packet, len,
+				"IPv6: Short IPv6 packet received of len %u\n",
+				len);
 		return false;
 	}
 
-	if ((ip->ip6_ctlun.ip6_un2_vfc>>4) != 6)
+	if ((ip->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
 	{
-		mdolog(LOG_WARNING, "IPv6: Corrupt IP version %u packet found\n", (ip->ip6_ctlun.ip6_un2_vfc>>4));
+		tunnel_debug(in_tid, out_tid, packet, len,
+				"IPv6: Corrupt IP version %u packet found\n",
+				(ip->ip6_ctlun.ip6_un2_vfc>>4));
+		return false;
+	}
+
+	/* Drop packets with a 0 TTL as they should have never been forwarded */
+	if (ip->ip6_ctlun.ip6_un1.ip6_un1_hlim == 0)
+	{
+		tunnel_debug(in_tid, out_tid, packet, len,
+				"HopLimit == 0 -> dropping it\n");
 		return false;
 	}
 
