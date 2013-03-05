@@ -16,6 +16,43 @@ struct pingtest
 	uint8_t		message[1000];
 };
 
+#define ADDRESS_ISX(name, X)					\
+BOOL address_is_##name(IPADDRESS *addr);			\
+BOOL address_is_##name(IPADDRESS *addr)				\
+{								\
+	return ( addr->a32[2] == htonl(0) &&			\
+		 addr->a32[3] == htonl(X)) ? true : false;	\
+}
+
+ADDRESS_ISX(local,	SIXXSD_TUNNEL_IP_US)
+ADDRESS_ISX(remote,	SIXXSD_TUNNEL_IP_THEM)
+
+uint16_t address_find(IPADDRESS *addr, BOOL *istunnel)
+{
+	struct sixxsd_subnet	*s;
+	uint16_t		tid;
+
+	/* Force it not to be a tunnel */
+	*istunnel = false;
+
+	/* Try to get it from the tunnel ranges */
+	tid = tunnel_get(addr, istunnel);
+	if (tid != SIXXSD_TUNNEL_NONE)
+	{
+		return tid;
+	}
+
+	/* Subnet then? */
+	s = subnet_get(addr);
+	if (s)
+	{
+		return s->tunnel_id;
+	}
+
+	/* Not ours thus must be on the uplink */
+	return SIXXSD_TUNNEL_UPLINK;
+}
+
 static VOID os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
 static VOID os_exec(const char *fmt, ...)
 {
@@ -511,6 +548,72 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, uint8_t *packet, const ui
 	mutex_release(g_conf->mutex_pinger);
 }
 
+VOID iface_route6_local(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len);
+VOID iface_route6_local(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len)
+{
+	struct ip6_hdr	*ip6 = (struct ip6_hdr *)packet;
+	struct ip6_ext	*ipe;
+	uint8_t		ipe_type;
+	uint32_t	plen;
+
+	tunnel_debug(in_tid, out_tid, packet, len, "Local (sixxsd) Address\n");
+
+	if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen)) return;
+
+	/* What does it contain? */
+	tunnel_debug(in_tid, out_tid, packet, len, "Packet Contains %u (ICMPv6 = %u)\n", ipe_type, IPPROTO_ICMPV6);
+
+	/* Is it being send to us? (even on other tunnels etc) */
+	if (address_is_local((IPADDRESS *)&ip6->ip6_dst))
+	{
+		tunnel_debug(in_tid, out_tid, packet, len, "Local Address\n");
+
+		if (ipe_type == IPPROTO_ICMPV6)
+		{
+			struct icmp6_hdr *icmp = (struct icmp6_hdr *)ipe;
+
+			/* We answer ICMP Echo Request */
+			switch (icmp->icmp6_type)
+			{
+			case ICMP6_ECHO_REQUEST:
+				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - echo request\n");
+				iface_send_icmpv6(in_tid, out_tid, packet, len, ICMP6_ECHO_REPLY, 0, 0, NULL);
+				break;
+
+			case ICMP6_ECHO_REPLY:
+				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - echo reply\n");
+				/* We only care about these if they came from the remote tunnel endpoint on the tunnel */
+				if (in_tid == out_tid && address_is_remote((IPADDRESS *)&ip6->ip6_src))
+				{
+					iface_got_icmpv6_reply(in_tid, packet, len, icmp, plen);
+				}
+				break;
+
+			case ND_NEIGHBOR_SOLICIT:
+				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - Neigh %u\n", ip6->ip6_hlim);
+				if (ip6->ip6_hlim == 255) iface_send_icmpv6_neigh(in_tid, out_tid, packet, len);
+				break;
+
+			default:
+				/* Ignore all other ICMP message types */
+				tunnel_debug(in_tid, out_tid, packet, len, "Local Address - other %u\n", icmp->icmp6_type);
+				break;
+			}
+
+			return;
+		}
+
+		/* Nothing to see here, please move along */
+		tunnel_debug(in_tid, out_tid, packet, len, "Unreachable - no port\n");
+		iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOPORT);
+		return;
+	}
+
+	/* Unknown address, thus no route */
+	tunnel_debug(in_tid, out_tid, packet, len, "Unreachable - no route\n");
+	iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOROUTE);
+}
+
 VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packet, const uint16_t len, BOOL is_response, BOOL decrease_ttl, BOOL nosrcchk)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
@@ -588,53 +691,10 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 
 	out_tid = address_find((IPADDRESS *)&ip6->ip6_dst, &istunnel);
 
-	/* Is it being send to us? (even on other tunnels etc) */
-	if (istunnel && address_islocal((IPADDRESS *)&ip6->ip6_dst))
+	/* Local (sixxsd) destination? */
+	if (istunnel && out_tid == SIXXSD_TUNNEL_NONE)
 	{
-		struct ip6_ext	*ipe;
-		uint8_t		ipe_type;
-		uint32_t	plen;
-
-		tunnel_debug(in_tid, out_tid, packet, len, "Local Address\n");
-
-		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen)) return;
-
-		/* ICMP packet? */
-		tunnel_debug(in_tid, out_tid, packet, len, "Packet Contains %u (ICMPv6 = %u)\n", ipe_type, IPPROTO_ICMPV6);
-
-		if (ipe_type == IPPROTO_ICMPV6)
-		{
-			struct icmp6_hdr *icmp = (struct icmp6_hdr *)ipe;
-
-			/* We answer ICMP Echo Request */
-			switch (icmp->icmp6_type)
-			{
-			case ICMP6_ECHO_REQUEST:
-				iface_send_icmpv6_echo_reply(in_tid, out_tid, packet, len);
-				break;
-
-			case ICMP6_ECHO_REPLY:
-				/* We only care about these if they came from the remote tunnel endpoint on the tunnel */
-				if (istunnel && address_isremote((IPADDRESS *)&ip6->ip6_src) && in_tid == out_tid)
-				{
-					iface_got_icmpv6_reply(in_tid, packet, len, icmp, plen);
-				}
-				break;
-
-			case ND_NEIGHBOR_SOLICIT:
-				if (ip6->ip6_hlim == 255) iface_send_icmpv6_neigh(in_tid, out_tid, packet, len);
-				break;
-
-			default:
-				/* Ignore all other ICMP message types */
-				break;
-			}
-
-			return;
-		}
-
-		/* Nothing to see here, please move along */
-		iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOPORT);
+		iface_route6_local(in_tid, out_tid, packet, len);
 		return;
 	}
 
@@ -660,7 +720,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	tunnel_debug(in_tid, out_tid, packet, len, "Tunneled-Packet\n");
 
 	/* <tunnel>::1 is handled above, <tunnel>::2 below, this is thus for the rest in that /64 */
-	if (istunnel && !address_isremote((IPADDRESS *)&ip6->ip6_dst))
+	if (istunnel && !address_is_remote((IPADDRESS *)&ip6->ip6_dst))
 	{
 		iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_NOROUTE);
 		return;
@@ -726,8 +786,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	return;
 }
 
-static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst);
-static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst)
+VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const uint8_t type, const uint8_t code, const uint32_t param, struct in6_addr *dst)
 {
 	struct
 	{
@@ -750,7 +809,7 @@ static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, con
 
 		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Echo Request\n", type, code);
 
-		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen))
+		if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen))
 		{
 			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is broken\n");
 			return;
@@ -794,7 +853,7 @@ static VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, con
 
 		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Neighbor Advertisement\n", type, code);
 
-		if (!l3_ipv6_parse(packet, len, &ipe_type, &ipe, &plen))
+		if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen))
 		{
 			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is broken\n");
 			return;
@@ -1681,39 +1740,5 @@ int iface_init(struct sixxsd_context *ctx)
 	iface_upnets();
 
 	return 200;
-}
-
-uint16_t address_find(IPADDRESS *addr, BOOL *istunnel)
-{
-	struct sixxsd_subnet	*s;
-	uint16_t		tid;
-
-	/* Try to get it from the tunnel ranges */
-	tid = tunnel_get(addr, istunnel);
-	if (tid != SIXXSD_TUNNEL_NONE)
-	{
-		return tid;
-	}
-
-	/* Subnet then? */
-	s = subnet_get(addr);
-	if (s)
-	{
-		*istunnel = false;
-		return s->tunnel_id;
-	}
-
-	/* Not ours thus must be on the uplink */
-	return SIXXSD_TUNNEL_UPLINK;
-}
-
-BOOL address_islocal(IPADDRESS *addr)
-{
-	return (addr->a32[2] == htonl(0) && addr->a32[3] == htonl(SIXXSD_TUNNEL_IP_US)) ? true : false;
-}
-
-BOOL address_isremote(IPADDRESS *addr)
-{
-	return (addr->a32[2] == htonl(0) && addr->a32[3] == htonl(SIXXSD_TUNNEL_IP_THEM)) ? true : false;
 }
 
