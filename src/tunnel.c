@@ -100,7 +100,7 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 
 	/* Bits 48-63 describe the tunnel id */
 	tid = ntohs(addr->a16[(48/16)]);
-	if (tid <= t->tunnel_hi)
+	if (tid <= t->tunnel_hi || tid == SIXXSD_TUNNEL_NONE)
 	{
 		*is_tunnel = true;
 		return tid;
@@ -148,7 +148,6 @@ uint16_t tunnel_find(IPADDRESS *addr)
 
 VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, const char *fmt, ...)
 {
-#ifndef DEBUG
 	assert((packet && len != 0) || (!packet && len == 0));
 
 	/* Toggled globally when something is debugging or not */
@@ -159,7 +158,6 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 	else
 	{
 		struct sixxsd_context	*ctx;
-#endif
 		struct sixxsd_tunnel	*intun, *outtun;
 		va_list			ap;
 		char 			src[NI_MAXHOST], dst[NI_MAXHOST], buf[256];
@@ -175,11 +173,18 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 		intun = tunnel_grab(in_tid);
 		outtun = tunnel_grab(out_tid);
 
-#ifndef DEBUG
-		if (intun && intun->debug_ctx) ctx = intun->debug_ctx;
-		else if (outtun && outtun->debug_ctx) ctx = outtun->debug_ctx;
-		else return;
-#endif
+		if (intun && intun->debug_ctx)
+		{
+			ctx = intun->debug_ctx;
+		}
+		else if (outtun && outtun->debug_ctx)
+		{
+			ctx = outtun->debug_ctx;
+		}
+		else
+		{
+			return;
+		}
 
 		if (packet && len > 20 && (ip->ip_v == 4 || ip->ip_v == 6))
 		{
@@ -197,7 +202,7 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 				inet_ntopA(&d, dst, sizeof(dst));
 				ttl = ip->ip_ttl;
 				proto = ip->ip_p;
-				plen = ip->ip_len;
+				plen = ntohs(ip->ip_len);
 			}
 			else
 			{
@@ -207,7 +212,7 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 				inet_ntopA((IPADDRESS *)&ip6->ip6_dst, dst, sizeof(dst));
 				ttl = ip6->ip6_hlim;
 
-				l3_ipv6_parse(packet, len, &proto, &ipe, &plen);
+				l3_ipv6_parse(in_tid, out_tid, packet, len, &proto, &ipe, &plen);
 			}
 		}
 		else
@@ -229,16 +234,11 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 		vsnprintf(&buf[k], sizeof(buf) - k, fmt, ap);
 		va_end(ap);
 
-#ifndef DEBUG
 		ctx_lock(ctx);
 		ctx_printf(ctx, "%s", buf);
 		ctx_flush(ctx, 200);
 		ctx_release(ctx);
-		assert(plen < 30000);
 	}
-#else
-		fprintf(stderr, "tunnel_debug: %s", buf);
-#endif
 }
 
 VOID tunnel_log(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, enum sixxsd_tunnel_errors err, const IPADDRESS *src)
