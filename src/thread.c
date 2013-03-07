@@ -27,26 +27,21 @@ const char *ts_names[20] = {
 static struct sixxsd_thread *thread_getbyid(os_thread_id thread_id);
 static struct sixxsd_thread *thread_getbyid(os_thread_id thread_id)
 {
-	struct sixxsd_thread	*tt = NULL, *t = NULL;
+	struct sixxsd_thread	*t = NULL;
 
 	if (!g_conf || !g_conf->threads) return NULL;
 
 	rwl_lockR(&g_conf->rwl_threads);
 
-	if (g_conf->threads && g_conf->threads->thread_id == thread_id)
-	{
-		/* Just get it */
-		t = g_conf->threads;
-	}
-	else
+	if (g_conf->threads)
 	{
 		/* Walk through the list */
-		for (tt = g_conf->threads, t = tt->next; t && t->thread_id != thread_id; tt=t, t = t->next);
-	}
+		for (t = g_conf->threads; t && t->thread_id != thread_id; t = t->next);
 
-	/* Really found? */
-	if (t && t->thread_id == thread_id) mutex_lock(t->mutex);
-	else t = NULL;
+		/* Really found? */
+		if (t && t->thread_id == thread_id) mutex_lock(t->mutex);
+		else t = NULL;
+	}
 
 	/* Release the global thread list lock */
 	rwl_releaseR(&g_conf->rwl_threads);
@@ -79,19 +74,28 @@ VOID thread_remove(struct sixxsd_thread *thread, BOOL dolock)
 
 	if (dolock) rwl_lockW(&g_conf->rwl_threads);
 
-	if (g_conf->threads && g_conf->threads->thread_id == thread->thread_id)
+	if (g_conf->threads)
 	{
-		t = g_conf->threads;
-		g_conf->threads = t->next;
-	}
-	else
-	{
-		for (tt = g_conf->threads, t = tt->next; t && t->thread_id != thread->thread_id; tt=t, t = t->next);
-		if (t && t->thread_id == thread->thread_id)
+		if (g_conf->threads->thread_id == thread->thread_id)
 		{
-			tt->next = t->next;
+			t = g_conf->threads;
+			g_conf->threads = t->next;
 		}
-		else t = NULL;
+		else
+		{
+			for (	tt = g_conf->threads, t = tt->next;
+				t && t->thread_id != thread->thread_id;
+				tt=t, t = t->next);
+
+			if (t && t->thread_id == thread->thread_id)
+			{
+				tt->next = t->next;
+			}
+			else
+			{
+				t = NULL;
+			}
+		}
 	}
 
 	if (t && t->thread_id == thread->thread_id)
