@@ -815,7 +815,6 @@ static int ctx_commandA(struct sixxsd_context *ctx, const char *command)
 		}
 
 		memcpy(buf, &cmd[o], j);
-		o = 0;
 	}
 
 	/* buf now contains our commands */
