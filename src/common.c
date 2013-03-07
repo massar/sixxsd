@@ -466,7 +466,6 @@ static int sock_listen(char *buf, unsigned int buflen, const char *hostname, con
 
 		/* Try to open socket with each address getaddrinfo returned,
  		   until we get one valid listening socket. */
-		sock = INVALID_SOCKET;
 
 		while (res)
 		{
@@ -554,7 +553,6 @@ static int sock_listen(char *buf, unsigned int buflen, const char *hostname, con
 				if (sock != INVALID_SOCKET)
 				{
 					closesocket(sock);
-					sock = INVALID_SOCKET;
 				}
 			}
 
