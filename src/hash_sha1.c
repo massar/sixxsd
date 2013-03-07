@@ -89,14 +89,13 @@ static VOID SHA1_Transform(sha1_quadbyte state[5], sha1_byte buffer[64]) {
 	R4(c,d,e,a,b,68); R4(b,c,d,e,a,69); R4(a,b,c,d,e,70); R4(e,a,b,c,d,71);
 	R4(d,e,a,b,c,72); R4(c,d,e,a,b,73); R4(b,c,d,e,a,74); R4(a,b,c,d,e,75);
 	R4(e,a,b,c,d,76); R4(d,e,a,b,c,77); R4(c,d,e,a,b,78); R4(b,c,d,e,a,79);
+
 	/* Add the working vars back into context.state[] */
 	state[0] += a;
 	state[1] += b;
 	state[2] += c;
 	state[3] += d;
 	state[4] += e;
-	/* Wipe variables */
-	a = b = c = d = e = 0;
 }
 
 
@@ -135,7 +134,7 @@ VOID SHA1_Update(SHA_CTX *context, sha1_byte *data, unsigned int len, sha1_byte 
 
 /* Add padding and return the message digest. */
 VOID SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX *context) {
-	sha1_quadbyte	i, j;
+	sha1_quadbyte	i;
 	sha1_byte	finalcount[8], tmp[128];
 
 	for (i = 0; i < 8; i++) {
@@ -152,8 +151,7 @@ VOID SHA1_Final(sha1_byte digest[SHA1_DIGEST_LENGTH], SHA_CTX *context) {
 	    digest[i] = (sha1_byte)
 	     ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
 	}
-	/* Wipe variables */
-	i = j = 0;
+
 	memzero(context->buffer, SHA1_BLOCK_LENGTH);
 	memzero(context->state, SHA1_DIGEST_LENGTH);
 	memzero(context->count, 8);
