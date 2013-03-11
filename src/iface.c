@@ -1536,7 +1536,16 @@ VOID iface_upnets(VOID)
 	if (!ipaddress_is_unspecified(&tuns->prefix) && !tuns->online)
 	{
 #ifdef _LINUX
-		os_exec("/sbin/ip -6 ro add %s:/48 dev sixxs", tuns->prefix_asc);
+		/* Add the 'sixxsd' route as a direct route */
+		os_exec("/sbin/ip -6 ro add %sffff::1/128 dev sixxs",
+			tuns->prefix_asc);
+
+		/*
+		 * Point the tunnel prefix to the 'sixxsd' address (above)
+		 * this avoids a /48 of neighbour caching in the Linux kernel
+		 */
+		os_exec("/sbin/ip -6 ro add %s:/48 via %sffff::1 dev sixxs",
+			tuns->prefix_asc, tuns->prefix_asc);
 #else /* FREEBSD */
 		os_exec("/sbin/route add -inet6 %s:/48 -interface sixxs", tuns->prefix_asc);
 #endif
@@ -1553,13 +1562,17 @@ VOID iface_upnets(VOID)
 		}
 
 #ifdef _LINUX
-		os_exec("/sbin/ip -6 ro add %s%s::/%u dev sixxs",
+		os_exec("/sbin/ip -6 ro add %s%s::/%u via %sffff::1 dev sixxs",
 #else /* FREEBSD */
 		os_exec("/sbin/route add -inet6 %s%s::/%u -interface sixxs",
 #endif
 			subs->prefix_asc,
 			subs->prefix_length == 40 ? "00" : "",
-			subs->prefix_length);
+			subs->prefix_length
+#ifdef _LINUX
+			,tuns->prefix_asc
+#endif
+			);
 
 		subs->online = true;
 	}
