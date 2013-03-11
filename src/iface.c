@@ -1549,6 +1549,7 @@ VOID iface_upnets(VOID)
 		if (subs->online)
 		{
 			mdolog(LOG_INFO, "Subnet %u is already online\n", i);
+			continue;
 		}
 
 #ifdef _LINUX
