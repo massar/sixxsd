@@ -269,7 +269,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 			lc->ctx.socket = accept(sn->socket, (struct sockaddr *)&sa, &sa_len);
 			if (lc->ctx.socket == -1)
 			{
-				mdoelog(LOG_WARNING, errno, "Socket Accept failed\n");
+				mdoelog(LOG_WARNING, errno, "Socket Accept failed on %s\n", sock_name(sn->socktype));
 
 				/* Close ctx */
 				ctx_exit(&lc->ctx);
@@ -304,11 +304,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					inet_ntopA(&g_conf->cli_acl[j], buf, sizeof(buf));
 					if (memcmp(&g_conf->cli_acl[j], &ip, sizeof(ip)) != 0) continue;
 
-					k = snprintf(buf, sizeof(buf), "Client (%s %s)",
-						hst,
-						sn->socktype == SOCK_DGRAM ? "DGRAM" :
-							(sn->socktype == SOCK_SEQPACKET ? "SEQPACKET" :
-							(sn->socktype == SOCK_STREAM ? "STREAM" : "UNKNOWN")));
+					k = snprintf(buf, sizeof(buf), "Client (%s %s)", hst, sock_name(sn->socktype));
 					if (!snprintfok(k, sizeof(buf))) snprintf(buf, sizeof(buf), "Client (long)");
 
 					if (thread_add(ctx, buf, sixxsd_handleclient_thread, (PTR *)lc, NULL, false))

@@ -112,7 +112,7 @@ const char *af_name(uint8_t af)
 	{
 		"UNSPEC",
 		"LOCAL",
-		"INET",
+		"INET (IPv4)",
 		"AX25",
 		"IPX",
 		"APPLETALK",
@@ -120,7 +120,7 @@ const char *af_name(uint8_t af)
 		"BRIDGE",
 		"ATMPVC",
 		"X25",
-		"INET6",
+		"INET6 (IPv6)",
 	};
 
 	return af < lengthof(afs) ? afs[af] : "<unknown>";
@@ -348,13 +348,9 @@ SOCKET sock_connect(char *buf, unsigned int buflen, const char *hostname, const 
 		else
 		{
 			snprintef(buf, buflen, errno, "connect_client() - couldn't get a socket of family %s (%u), type %s (%u), proto %u\n",
-				(res->ai_family == AF_INET ? "IPv4" :
-				(res->ai_family == AF_INET6 ? "IPv6" : "unknown")),
+				af_name(res->ai_family),
 				res->ai_family,
-
-				(res->ai_socktype == SOCK_STREAM ? "stream" :
-				(res->ai_socktype == SOCK_DGRAM ? "datagram" :
-				(res->ai_socktype == SOCK_SEQPACKET ? "seqpacket" : "unknown"))),
+				sock_name(res->ai_socktype),
 				res->ai_socktype,
 
 				res->ai_protocol);
@@ -499,17 +495,13 @@ static int sock_listen(char *buf, unsigned int buflen, const char *hostname, con
 					if (res->ai_socktype == SOCK_DGRAM || listen(sock, LISTEN_QUEUE) == 0)
 					{
 						snprintf(buf, buflen, "Listening on %s://%s%s%s:%s (proto:%u, socktype:%s/%u)\n",
-							res->ai_protocol == IPPROTO_UDP ? "udp" :
-							(res->ai_protocol == IPPROTO_TCP ? "tcp" :
-							(res->ai_protocol == IPPROTO_SCTP ? "sctp" : "??")),
+							protocol_name(res->ai_protocol),
 							res->ai_family == AF_INET6 ? "[" : "",
 							hostname ? hostname : (res->ai_family == AF_INET6 ? "::" : "."),
 							res->ai_family == AF_INET6 ? "]" : "",
 							service,
 							res->ai_protocol,
-							(res->ai_socktype == SOCK_STREAM ? "stream" :
-							(res->ai_socktype == SOCK_DGRAM ? "datagram" :
-							(res->ai_socktype == SOCK_SEQPACKET ? "seqpacket" : "unknown"))),
+							sock_name(res->ai_socktype),
 							res->ai_socktype);
 
 						socketpool_add(pool, sock, tag, res->ai_family, res->ai_protocol, res->ai_socktype);
@@ -538,16 +530,12 @@ static int sock_listen(char *buf, unsigned int buflen, const char *hostname, con
 				snprintef(buf, buflen, errno, "Couldn't %s() on %s for %s://%s%s%s:%s (%s:%u)\n",
 					errfunc,
 					hst,
-					res->ai_protocol == IPPROTO_UDP ? "udp" :
-					(res->ai_protocol == IPPROTO_TCP ? "tcp" :
-					(res->ai_protocol == IPPROTO_SCTP ? "sctp" : "??")),
+					protocol_name(res->ai_protocol),
 					res->ai_family == AF_INET6 ? "[" : "",
 					hostname ? hostname : (res->ai_family == AF_INET6 ? "::" : "."),
 					res->ai_family == AF_INET6 ? "]" : "",
 					service,
-					(res->ai_socktype == SOCK_STREAM ? "stream" :
-					(res->ai_socktype == SOCK_DGRAM ? "datagram" :
-					(res->ai_socktype == SOCK_SEQPACKET ? "seqpacket" : "unknown"))),
+					sock_name(res->ai_socktype),
 					res->ai_socktype);
 
 				if (sock != INVALID_SOCKET)
@@ -566,13 +554,11 @@ static int sock_listen(char *buf, unsigned int buflen, const char *hostname, con
 	{
 		snprintef(buf, buflen, errno, "listen setup: socket error: could not open a socket of %s:%s over %s (%u) using protocol: %s (%u) sockettype: %s (%u)\n",
 			hostname, service,
-			family == AF_INET ? "IPv4" :
-			(family == AF_INET6 ? "IPv6" :
-			(family == AF_UNSPEC ? "unspecified" : "??")),
+			af_name(family),
 			family,
-			protocol == IPPROTO_UDP ? "UDP" : (protocol == IPPROTO_TCP ? "TCP" : (protocol == IPPROTO_SCTP ? "SCTP" : "??")),
+			protocol_name(protocol),
 			protocol,
-			socktype == SOCK_DGRAM ? "datagram" : (socktype == SOCK_STREAM ? "stream" :  (socktype == SOCK_SEQPACKET ? "seqpacket" : "??")),
+			sock_name(socktype),
 			socktype);
 	}
 
