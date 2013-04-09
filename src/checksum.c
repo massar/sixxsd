@@ -60,7 +60,7 @@ uint16_t in_checksum(const unsigned char *buf, uint16_t len)
 			while (count);
 
 			result += carry;
-			result = (result & 0xffff) + (result >> 16);
+			result = (result & UINT16_MAX) + (result >> 16);
 		}
 
 		if (len & 2)
@@ -80,10 +80,10 @@ uint16_t in_checksum(const unsigned char *buf, uint16_t len)
 	}
 
 	/* add up 16-bit and 16-bit for 16+c bit */
-	result = (result & 0xffff) + (result >> 16);
+	result = (result & UINT16_MAX) + (result >> 16);
 
 	/* add up carry.. */
-	result = (result & 0xffff) + (result >> 16);
+	result = (result & UINT16_MAX) + (result >> 16);
 
 	if (odd) result = ((result >> 8) & 0xff) | ((result & 0xff) << 8);
 
@@ -126,7 +126,7 @@ uint16_t ipv6_checksum(const struct ip6_hdr *ip6, const uint8_t protocol, const 
 	chksum += ipv6_checksumA(data,				length);
 
 	/* Wrap in the carries to reduce chksum to 16 bits. */
-	chksum = (chksum & 0xffff) + (chksum >> 16);
+	chksum = (chksum & UINT16_MAX) + (chksum >> 16);
 
 	/* Ones complement */
 	chksum = ~chksum;

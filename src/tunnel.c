@@ -109,7 +109,7 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 	/* If the high-bit is set it it is a /64 subnet from the tunnel range */
 	if (tid && 0x8000)
 	{
-		tid -= 0x8000;
+		tid &= 0x7fff;
 		if (tid <= t->tunnel_hi) return tid;
 	}
 	/* Otherwise it is not there */
@@ -853,7 +853,7 @@ static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct si
 	ctx_printf(ctx, " %u %u %2.2f %2.2f %2.2f %2.2f\n",
 			latency->num_sent,
 			latency->num_recv,
-			latency->num_sent == 0 ? 0 : (float)(latency->num_sent - latency->num_recv) * 100 / latency->num_sent,
+			latency->num_sent == 0 ?  0 : (float)(latency->num_sent - latency->num_recv) * 100 / latency->num_sent,
 			latency->num_recv == 0 ? -1 : time_us_msec(latency->min),
 			latency->num_recv == 0 ? -1 : time_us_msec(latency->tot / latency->num_recv),
 			latency->num_recv == 0 ? -1 : time_us_msec(latency->max)

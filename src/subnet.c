@@ -74,7 +74,14 @@ static int subnet_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 		ctx_printf(ctx, "Tunnel-ID %s is not a number\n", args[1]);
 		return 400;
 	}
-	tid = tmp;
+
+	if (tmp > UINT16_MAX)
+	{
+		ctx_printf(ctx, "Tunnel-ID (%s) is out of range\n", args[1]);
+		return 400;
+	}
+
+	tid = (uint16_t)tmp;
 
 	tun = tunnel_grab(tid);
 	if (!tun || tun->state == SIXXSD_TSTATE_NONE)

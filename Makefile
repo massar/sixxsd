@@ -97,6 +97,9 @@ CFLAGS += -D_REENTRANT -D_THREAD_SAFE
 CFLAGS += -pipe
 CFLAGS += -Wunused -Winit-self -Wextra -Wno-long-long -Wmissing-include-dirs
 
+# For a rainy day, get rid of all warnings caused by:
+#CFLAGS += -Wconversion
+
 # Compile 'sixxsd' (which resides in 'src')
 TARGETS+=src
 

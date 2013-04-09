@@ -366,12 +366,14 @@ int thread_list(struct sixxsd_context *ctx, const unsigned int UNUSED argc, cons
 	struct tm		teem;
 	uint64_t		now = gettime();
 	unsigned int		cnt = 0;
+	time_t			tee;
 
 	rwl_lockR(&g_conf->rwl_threads);
 
 	for (t = g_conf->threads; t; t = t->next)
 	{
-		localtime_r(&t->starttime, &teem);
+		tee = (time_t)t->starttime;
+		localtime_r(&tee, &teem);
 
 		ctx_printdf(ctx,
 				"0x%" PRIx64 " %4u-%02u-%02u %02u:%02u:%02u (%4" PRIu64 " seconds) : %s%s%s%s%s [%s]%s\n",

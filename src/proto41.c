@@ -65,7 +65,7 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_response, packet, len);
 }
 
-VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
+VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
 {
 	struct ip6_hdr		*ip = (struct ip6_hdr *)packet;
 	struct sixxsd_tunnel	*tun;
@@ -128,7 +128,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint32_t len)
 			struct ip	ip;
 			uint8_t		payload[1480];
 		}			pkt;
-		unsigned int		plen;
+		uint16_t		plen;
 
 		plen = len > sizeof(pkt.payload) ? sizeof(pkt.payload) : len;
 

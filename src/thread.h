@@ -28,7 +28,7 @@ struct sixxsd_thread
 	os_thread		thread;				/* The thread */
 	os_thread_id		thread_id;			/* Thread Identifier */
 	uint64_t		state;				/* Sleeping? */
-	time_t			starttime;			/* Time we started running this thread */
+	uint64_t		starttime;			/* Time we started running this thread */
 	mutex			mutex;				/* Lock protecting this thread */
 	pthread_cond_t		cond;				/* Condition variable for this thread */
 	BOOL			cancelable;			/* Directly cancel this thread at exit time? */

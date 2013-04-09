@@ -44,7 +44,7 @@ struct sixxsd_stats
 	{				\
 		(l)->num_sent = 0;	\
 		(l)->num_recv = 0;	\
-		(l)->min = -1;		\
+		(l)->min = UINT64_MAX;	\
 		(l)->max = 0;		\
 		(l)->tot = 0;		\
 	}

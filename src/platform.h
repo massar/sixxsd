@@ -403,7 +403,7 @@ typedef uint32_t	addressnum_t;
 
 #ifndef htonll
 #if BYTE_ORDER == LITTLE_ENDIAN
-#define htonll(x) ((htonl((x >> 32) & 0xffffffff) + ((uint64_t) (htonl(x & 0xffffffff)) << 32)))
+#define htonll(x) ((htonl((x >> 32) & UINT32_MAX) + ((uint64_t) (htonl(x & UINT32_MAX)) << 32)))
 #else
 #define htonll(x) (x)
 #endif

@@ -462,7 +462,7 @@ static VOID iface_got_icmpv6_reply(const uint16_t tid, uint8_t *packet, const ui
 	}
 
 	/* The sequence number from the packet */
-	seq = parm & 0xffff;
+	seq = parm & UINT16_MAX;
 
 	mutex_lock(g_conf->mutex_pinger);
 
