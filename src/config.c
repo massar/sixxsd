@@ -78,6 +78,8 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 		/* Reset statistics */
 		reset_traffic(&tun->stats.traffic[0]);
 		reset_traffic(&tun->stats.traffic[1]);
+		reset_traffic_tot(&tun->stats.traffic[0]);
+		reset_traffic_tot(&tun->stats.traffic[0]);
 		reset_latency(&tun->stats.latency);
 	}
 

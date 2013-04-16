@@ -308,9 +308,16 @@ VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packet_len, uint64_t currtime);
 static VOID tunnel_update_stat(struct sixxsd_traffic *t, unsigned int packet_len, uint64_t currtime)
 {
+	/* Last packet seen */
 	t->last = currtime;
+
+	/* Last x mins (collected and reset every X mins) */
 	t->packets++;
 	t->octets += packet_len;
+
+	/* Total packets */
+	t->packets_tot++;
+	t->octets_tot += packet_len;
 }
 
 static VOID tunnel_account_pkt(const uint16_t tid, unsigned int direction, unsigned int packet_len);
@@ -655,7 +662,9 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	{
 		tunnel_ago(ctx, tun->stats.traffic[d].last, "Packet %-3s              : ", ds[d]);
 		ctx_printf(ctx, "Packets %-3s             : %" PRIu64 "\n", ds[d], tun->stats.traffic[d].packets);
+		ctx_printf(ctx, "Packets %-3s (Total)     : %" PRIu64 "\n", ds[d], tun->stats.traffic[d].packets_tot);
 		ctx_printf(ctx, "Octets %-3s              : %" PRIu64 "\n", ds[d], tun->stats.traffic[d].octets);
+		ctx_printf(ctx, "Octets %-3s (Total)      : %" PRIu64 "\n", ds[d], tun->stats.traffic[d].octets_tot);
 	}
 
 	/* Current latency information */
@@ -848,16 +857,24 @@ static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct si
 			out->packets,
 			latency ? "" : "\n");
 
-	if (!latency) return;
+	if (latency)
+	{
+		ctx_printf(ctx, " %u %u %2.2f %2.2f %2.2f %2.2f",
+				latency->num_sent,
+				latency->num_recv,
+				latency->num_sent == 0 ?  0 : (float)(latency->num_sent - latency->num_recv) * 100 / latency->num_sent,
+				latency->num_recv == 0 ? -1 : time_us_msec(latency->min),
+				latency->num_recv == 0 ? -1 : time_us_msec(latency->tot / latency->num_recv),
+				latency->num_recv == 0 ? -1 : time_us_msec(latency->max)
+		);
+	}
 
-	ctx_printf(ctx, " %u %u %2.2f %2.2f %2.2f %2.2f\n",
-			latency->num_sent,
-			latency->num_recv,
-			latency->num_sent == 0 ?  0 : (float)(latency->num_sent - latency->num_recv) * 100 / latency->num_sent,
-			latency->num_recv == 0 ? -1 : time_us_msec(latency->min),
-			latency->num_recv == 0 ? -1 : time_us_msec(latency->tot / latency->num_recv),
-			latency->num_recv == 0 ? -1 : time_us_msec(latency->max)
-	);
+	/* Append the totals */
+	ctx_printf(ctx, " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+			in->octets_tot,
+			out->octets_tot,
+			in->packets_tot,
+			out->packets_tot);
 }
 
 static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);

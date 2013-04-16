@@ -16,9 +16,11 @@
 struct sixxsd_traffic
 {
 	uint64_t			last;				/* Last time packet in this direction was seen */
-	uint64_t			packets;			/* Number of packets seen */
-	uint64_t			octets;				/* Number of octets seen */
+	uint64_t			packets, packets_tot;		/* Number of packets seen (last x min / total) */
+	uint64_t			octets, octets_tot;		/* Number of octets seen (last x min / total) */
 };
+
+/* The 'last x min' are collected by popstatd and reset */
 
 struct sixxsd_latency
 {
@@ -38,6 +40,12 @@ struct sixxsd_stats
 	{				\
 		(t)->packets = 0;	\
 		(t)->octets = 0;	\
+	}
+
+#define reset_traffic_tot(t)		\
+	{				\
+		(t)->packets_tot = 0;	\
+		(t)->octets_tot = 0;	\
 	}
 
 #define reset_latency(l)		\
