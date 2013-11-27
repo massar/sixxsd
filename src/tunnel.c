@@ -33,7 +33,7 @@ const char *tunnel_state_name(enum sixxsd_tunnel_state state)
 		"up",
 	};
 
-	return state < lengthof(states) ? states[state] : "<unknown>";
+	return ((unsigned long)state) < lengthof(states) ? states[state] : "<unknown>";
 }
 
 static const char *tunnel_err_names[] =
@@ -107,7 +107,7 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 	}
 
 	/* If the high-bit is set it it is a /64 subnet from the tunnel range */
-	if (tid && 0x8000)
+	if (tid & 0x8000)
 	{
 		tid &= 0x7fff;
 		if (tid <= t->tunnel_hi) return tid;

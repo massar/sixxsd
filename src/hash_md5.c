@@ -131,7 +131,7 @@ MD5Final(md5byte digest[16], struct MD5Context *ctx)
 
 	byteSwap(ctx->buf, 4);
 	memcpy(digest, ctx->buf, 16);
-	memzero(ctx, sizeof(ctx));	/* In case it's sensitive */
+	memzero(ctx, sizeof(*ctx));	/* In case it's sensitive */
 }
 
 #ifndef ASM_MD5

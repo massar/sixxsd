@@ -134,14 +134,32 @@ static int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int 
 		else ctx_printdf(ctx, "Uptime: %s\n", "(bad details in /proc/version)");
 		fclose(f);
 	}
-#else /* *BSD */
+#else
+#ifdef _FREEBSD
 	struct timespec tp;
 	if (clock_gettime(CLOCK_MONOTONIC, &tp) != -1)
 	{
 		pop_uptimeA(ctx, "Uptime: ", tp.tv_sec);
 	}
-#endif
-	else ctx_printdf(ctx, "Uptime: %s\n", "(not available)");
+#else /* _FREEBSD */
+	/* OS X does not have clock_gettime, use clock_get_time */
+	clock_serv_t    cclock;
+	mach_timespec_t mts;
+
+	if (1)
+	{
+		host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
+		clock_get_time(cclock, &mts);
+		mach_port_deallocate(mach_task_self(), cclock);
+
+		pop_uptimeA(ctx, "Uptime: ", mts.tv_sec);
+	}
+#endif /* _FREEBSD */
+#endif /* _LINUX */
+	else
+	{
+		ctx_printdf(ctx, "Uptime: %s\n", "(not available)");
+	}
 
 #ifdef _SC_NPROCESSORS_ONLN
 	/* When the system can provide the information, use it */

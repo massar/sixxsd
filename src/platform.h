@@ -45,6 +45,25 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#ifdef _DARWIN
+#include <netinet/in_systm.h>
+#define O_LARGEFILE 0
+#define ENODATA EFTYPE
+#define _BSD_SOCKLEN_T_
+#include <mach/mach_host.h>
+#include <mach/mach_port.h>
+#include <mach/clock.h>
+#include <sys/uio.h>
+/*
+ * Darwin doesn't have TUN/TAP support per default
+ * It is available from http://www-user.rhrk.uni-kl.de/~nissler/tuntap/
+ * which is a port made by Mattias Nissler
+ * for compiling convienience we have included the ioctl's here
+ */
+#define TUNSIFHEAD _IOW('t', 96, int)
+#define TUNGIFHEAD _IOR('t', 97, int)
+#endif
+
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/times.h>
@@ -60,7 +79,7 @@
 #include <netinet/ip_icmp.h>
 
 #ifndef ICMP_PKT_FILTERED
-#ifdef _FREEBSD
+#ifdef ICMP_UNREACH_FILTER_PROHIB
 #define ICMP_PKT_FILTERED ICMP_UNREACH_FILTER_PROHIB
 #else
 #error "No definition for ICMP_PKT_FILTERED"
@@ -68,7 +87,7 @@
 #endif
 
 #ifndef ICMP_DEST_UNREACH
-#ifdef _FREEBSD
+#ifdef ICMP_UNREACH
 #define ICMP_DEST_UNREACH ICMP_UNREACH
 #else
 #error "No definition for ICMP_DEST_UNREACH"
@@ -76,7 +95,7 @@
 #endif
 
 #ifndef ICMP_NET_UNREACH
-#ifdef _FREEBSD
+#ifdef ICMP_UNREACH_NET
 #define ICMP_NET_UNREACH ICMP_UNREACH_NET
 #else
 #error "No definition for ICMP_NET_UNREACH"
@@ -84,7 +103,7 @@
 #endif
 
 #ifndef ICMP_PARAMETERPROB
-#ifdef _FREEBSD
+#ifdef ICMP_PARAMPROB
 #define ICMP_PARAMETERPROB ICMP_PARAMPROB
 #else
 #error "No definition for ICMP_PARAMETERPROB"
@@ -92,7 +111,7 @@
 #endif
 
 #ifndef ICMP_TIME_EXCEEDED
-#ifdef _FREEBSD
+#ifdef ICMP_TIMXCEED
 #define ICMP_TIME_EXCEEDED ICMP_TIMXCEED
 #else
 #error "No definition for ICMP_TIME_EXCEEDED"
@@ -100,7 +119,7 @@
 #endif
 
 #ifndef ICMP_EXC_TTL
-#ifdef _FREEBSD
+#ifdef ICMP_TIMXCEED_INTRANS
 #define ICMP_EXC_TTL ICMP_TIMXCEED_INTRANS
 #else
 #error "No definition for ICMP_EXC_TTL"
@@ -108,7 +127,7 @@
 #endif
 
 #ifndef ICMP_FRAG_NEEDED
-#ifdef _FREEBSD
+#ifdef ICMP_UNREACH_NEEDFRAG
 #define ICMP_FRAG_NEEDED ICMP_UNREACH_NEEDFRAG
 #else
 #error "No definition for ICMP_FRAG_NEEDED"
@@ -116,10 +135,66 @@
 #endif
 
 #ifndef ICMP_PROT_UNREACH
-#ifdef _FREEBSD
+#ifdef ICMP_UNREACH_PROTOCOL
 #define ICMP_PROT_UNREACH ICMP_UNREACH_PROTOCOL
 #else
 #error "No definition for ICMP_PROT_UNREACH"
+#endif
+#endif
+
+#ifndef ICMP_SOURCE_QUENCH
+#ifdef ICMP_SOURCEQUENCH
+#define ICMP_SOURCE_QUENCH ICMP_SOURCEQUENCH
+#else
+#error "No definition for ICMP_SOURCE_QUENCH"
+#endif
+#endif
+
+#ifndef ICMP_TIMESTAMP
+#ifdef ICMP_TSTAMP
+#define ICMP_TIMESTAMP ICMP_TSTAMP
+#else
+#error "No definition for ICMP_TIMESTAMP"
+#endif
+#endif
+
+#ifndef ICMP_TIMESTAMPREPLY
+#ifdef ICMP_TSTAMPREPLY
+#define ICMP_TIMESTAMPREPLY ICMP_TSTAMPREPLY
+#else
+#error "No definition for ICMP_TIMESTAMPREPLY"
+#endif
+#endif
+
+#ifndef ICMP_INFO_REQUEST
+#ifdef ICMP_IREQ
+#define ICMP_INFO_REQUEST ICMP_IREQ
+#else
+#error "No definition for ICMP_INFO_REQUEST"
+#endif
+#endif
+
+#ifndef ICMP_INFO_REPLY
+#ifdef ICMP_IREQREPLY
+#define ICMP_INFO_REPLY ICMP_IREQREPLY
+#else
+#error "No definition for ICMP_INFO_REPLY"
+#endif
+#endif
+
+#ifndef ICMP_ADDRESS
+#ifdef ICMP_MASKREQ
+#define ICMP_ADDRESS ICMP_MASKREQ
+#else
+#error "No definition for ICMP_ADDRESS"
+#endif
+#endif
+
+#ifndef ICMP_ADDRESSREPLY
+#ifdef ICMP_MASKREPLY
+#define ICMP_ADDRESSREPLY ICMP_MASKREPLY
+#else
+#error "No definition for ICMP_ADDRESS_REPLY"
 #endif
 #endif
 
@@ -176,12 +251,6 @@ struct nd_neigh_advert
 
 #include <getopt.h>
 #define GOT_GETOPT_LONG 1
-
-#ifdef _DARWIN
-#include <netinet/in_systm.h>
-#define O_LARGEFILE 0
-#define ENODATA EFTYPE
-#endif
 
 #include <net/if_arp.h>
 #include <net/if.h>

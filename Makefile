@@ -68,6 +68,26 @@ endif
 CC_VERSION=$(shell $(CC) -v 2>&1 | grep "gcc version" | cut -f3 -d' ')
 
 ifeq ($(CC_VERSION),)
+ifeq ($(OS_NAME),Darwin)
+# OSX 10.6 Snow Leopard
+# gcc version 4.2.1 (Apple Inc. build 5666) (dot 3)
+#
+# OSX 10.7 Lion (Xcode 3.1)
+# Apple clang version 3.1 (tags/Apple/clang-318.0.58) (based on LLVM 3.1svn)
+#
+# OSX 10.8 Mountain Lion (Xcode 4.2)
+# Apple LLVM version 4.2 (clang-425.0.28) (based on LLVM 3.2svn)
+#
+# OSX 10.9 Mavericks (XCode 5)
+# Apple LLVM version 5.0 (clang-500.1.69) (based on LLVM 3.3svn)
+CC_VERSION=$(shell $(CC) -v 2>&1 | head -n1 | cut -f4 -d' ')
+CC_TYPE=clang
+# Don't report unused arguments
+CFLAGS+=-Qunused-arguments
+endif
+endif
+
+ifeq ($(CC_VERSION),)
 error "We don't have a compiler?"
 endif
 
@@ -103,22 +123,26 @@ CFLAGS += -Wunused -Winit-self -Wextra -Wno-long-long -Wmissing-include-dirs
 # Compile 'sixxsd' (which resides in 'src')
 TARGETS+=src
 
-LDFLAGS+=-lrt
-
 # http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
 # Describes the various standard toggles (_LARGEFILE_SOURCE, _LARGEFILE64_SOURCE, _FILE_OFFSET_BITS=64)
 # See also http://www.suse.de/~aj/linux_lfs.html for Long File Support (LFS) / 64bit support documentation
 ifeq ($(OS_NAME),Linux)
-	LDFLAGS += -lpthread -lm
+	LDFLAGS += -lpthread -lm -lrt
 	CFLAGS += -DHAS_IFHEAD=1
 	CFLAGS += -D_XOPEN_SOURCE=600 -D_BSD_SOURCE
 	CFLAGS += -D_LINUX -pthread -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
 endif
 
 ifeq ($(OS_NAME),FreeBSD)
-LDFLAGS += -lpthread -lm
-CFLAGS += -DNEED_IFHEAD=1
+LDFLAGS += -lpthread -lm -lrt
+CFLAGS += -DNEED_IFHEAD=1 -DNEED_RAWSOCKETS
 CFLAGS += -D_FREEBSD -pthread
+endif
+
+# Darwin
+ifeq ($(OS_NAME),Darwin)
+CFLAGS += -DNEED_IFHEAD -DNEED_RAWSOCKETS
+CFLAGS += -D_DARWIN
 endif
 
 ifeq ($(OS_BITS),64)

@@ -93,7 +93,7 @@ struct sixxsd_configuration
 #ifdef _LINUX
 	SOCKET			rawsocket_ipv4;				/* Need to do raw packets as otherwise we need to do a bind per send... */
 #endif
-#ifdef _FREEBSD
+#ifdef NEED_RAWSOCKETS
 	SOCKET			rawsocket_proto41;			/* For sending proto41 packets */
 	SOCKET			rawsocket_icmpv4;			/* For sending ICMPv4 packets */
 #endif

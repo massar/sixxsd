@@ -166,7 +166,7 @@ VOID ctx_printedfA(struct sixxsd_context *ctx, int errnum, const char *fmt, va_l
 	}
 
 	/* Take a quick guess that this should be enough */
-	size = (strlen(fmt) + 512), j;
+	size = (strlen(fmt) + 512);
 
 	ctx_lock(ctx);
 
@@ -485,11 +485,14 @@ int ctx_exec(struct sixxsd_context *ctx, const char *args, BOOL mainmenu, const 
 	{
 		/* What goes in front + space */
 		memzero(buf, sizeof(buf));
-		strncat(buf, precmd, sizeof(buf));
-		strncat(buf, " ", sizeof(buf));
+		strncat(buf, precmd, sizeof(buf) - 1);
+		strncat(buf, " ", sizeof(buf) - 1);
 		o = strlen(buf);
 	}
-	else o = 0;
+	else
+	{
+		o = 0;
+	}
 
 	/* They expect to be running from the root */
 	if (mainmenu) ctx_popmenu(ctx);

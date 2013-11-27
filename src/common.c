@@ -982,7 +982,9 @@ int sock_getline(SOCKET sock, char *rbuf, uint64_t rbuflen, uint64_t *filled, ch
 			DD(ddolog("common", "gl() - Seeking newline (filled %" PRIu64 ")\n", *filled);)
 
 			/* Walk to the end or until we reach a \n */
-			for (j=0; (j < (*filled-1)) && (rbuf[j] != '\n'); j++);
+			for (j=0; (j < (*filled-1)) && (rbuf[j] != '\n'); j++)
+			{
+			}
 
 			DD(ddolog("common", "gl() - Seeking newline - end\n");)
 
@@ -1572,18 +1574,85 @@ int get_utc_offset(VOID)
 
 uint64_t gettime(VOID)
 {
+#ifdef __MACH__
+	/* OS X does not have clock_gettime, use clock_get_time */
+	clock_serv_t    cclock;
+	mach_timespec_t mts;
+
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+
+	return mts.tv_sec;
+#else
+#ifndef _WIN32
 	struct timespec ts;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
+
 	return ts.tv_sec;
+#else
+	LARGE_INTEGER   t;
+	FILETIME        f;
+	uint64_t        ret;
+
+	GetSystemTimeAsFileTime(&f);
+	t.LowPart = f.dwLowDateTime;
+	t.HighPart = f.dwHighDateTime;
+	ret = t.QuadPart;
+	ret -= 116444736000000000LL; /* Convert from file time to UNIX epoch time. */
+	ret /= 10000000; /* From 100 nano seconds (10^-7) to seconds */
+
+	return ret;
+#endif /* _WIN32 */
+#endif /* __MACH__ */
 }
 
+/*
+ *             1 sec          ( sec) =
+ *         1.000 milliseconds (msec) =
+ *     1.000.000 microseconds (usec) =
+ * 1.000.000.000 nanoseconds  (nsec)
+ *
+ * win32 Sleep() uses milliseconds
+ */
 uint64_t gettime_us(VOID)
 {
+#ifdef __MACH__
+	/* OS X does not have clock_gettime, use clock_get_time */
+	clock_serv_t    cclock;
+	mach_timespec_t mts;
+
+	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+	clock_get_time(cclock, &mts);
+	mach_port_deallocate(mach_task_self(), cclock);
+
+	return (mts.tv_sec * 1000000) + (mts.tv_nsec / 1000);
+#else
+#ifndef _WIN32
 	struct timespec ts;
 
 	clock_gettime(CLOCK_REALTIME, &ts);
 	return (ts.tv_sec * 1000000) + (ts.tv_nsec / 1000);
+#else
+	LARGE_INTEGER   t;
+	FILETIME        f;
+	uint64_t        ret;
+
+	GetSystemTimeAsFileTime(&f);
+	t.LowPart = f.dwLowDateTime;
+	t.HighPart = f.dwHighDateTime;
+	ret = t.QuadPart;
+
+	/* Convert from file time to UNIX epoch time. */
+	ret -= 116444736000000000LL;
+
+	/* From 100 nano seconds (10^-7) to microseconds */
+	ret /= 10;
+
+	return ret;
+#endif /* _WIN32 */
+#endif /* __MACH__ */
 }
 
 #if defined(DEBUG) || defined(DEBUG_LOCKS) || defined(DEBUG_STACK)

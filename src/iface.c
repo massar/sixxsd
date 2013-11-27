@@ -165,7 +165,7 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 	iov[iovlen].iov_len  = header_len;
 	iovlen++;
 #else
-	/* For FreeBSD, skip the IPv4 header */
+	/* For FreeBSD/Darwin, skip the IPv4 header */
 	if (header_len > 20)
 	{
 		iov[iovlen].iov_base = (char *)&header[20];
@@ -1408,11 +1408,13 @@ static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *s
 	const char	*tuntapdev = "/dev/net/tun";
 #else /* FreeBSD */
 	const char	*tuntapdev = "/dev/tun";
+#ifdef SIOCSIFNAME
 	int		reqfd;
 	struct stat	stats;
 
 	/* Destroy any existing devices if they are there */
 	os_exec("ifconfig %s destroy 2>/dev/null >/dev/null", wantname);
+#endif
 #endif
 #ifdef NEED_IFHEAD
 	int		mode;
@@ -1436,16 +1438,20 @@ static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *s
 
 	if (ioctl(sock->socket, TUNSETIFF, &ifr) != 0)
 #else /* BSD */
-
+#ifdef SIOCSIFNAME
 	reqfd = socket(AF_INET6, SOCK_DGRAM, 0);
 	fstat(sock->socket, &stats);
 	devname_r(stats.st_rdev, S_IFCHR, ifr.ifr_name, sizeof(ifr.ifr_name));
 	ifr.ifr_data = wantname;
 
 	if (ioctl(reqfd, SIOCSIFNAME, &ifr) != 0)
+#else
+	/* No interface re-naming support */
+	if (1)
+#endif
 #endif
 	{
-		ctx_printef(ctx, errno, "Couldn't set interface name of TUN/TAP device\n");
+		ctx_printef(ctx, errno, "Couldn't set interface name of TUN/TAP device to %s\n", wantname);
 		closesocket(sock->socket);
 		return 400;
 	}
@@ -1546,7 +1552,7 @@ VOID iface_upnets(VOID)
 		 */
 		os_exec("/sbin/ip -6 ro add %s:/48 via %sffff::1 dev sixxs",
 			tuns->prefix_asc, tuns->prefix_asc);
-#else /* FREEBSD */
+#else /* FreeBSD/OSX */
 		os_exec("/sbin/route add -inet6 %s:/48 -interface sixxs", tuns->prefix_asc);
 #endif
 		tuns->online = true;
@@ -1563,7 +1569,7 @@ VOID iface_upnets(VOID)
 
 #ifdef _LINUX
 		os_exec("/sbin/ip -6 ro add %s%s::/%u via %sffff::1 dev sixxs",
-#else /* FREEBSD */
+#else /* FreeBSD/OSX */
 		os_exec("/sbin/route add -inet6 %s%s::/%u -interface sixxs",
 #endif
 			subs->prefix_asc,
@@ -1645,7 +1651,7 @@ int iface_init(struct sixxsd_context *ctx)
 		case SIXXSD_SOCK_PROTO41:
 			ret = iface_init_proto41(ctx, s, types[i].af);
 			if (ret != 200) return ret;
-#ifdef _FREEBSD
+#ifdef NEED_RAWSOCKETS
 			g_conf->rawsocket_proto41 = s->socket;
 #endif
 			break;
@@ -1653,7 +1659,7 @@ int iface_init(struct sixxsd_context *ctx)
 		case SIXXSD_SOCK_ICMPV4:
 			ret = iface_init_icmpv4(ctx, s, types[i].af);
 			if (ret != 200) return ret;
-#ifdef _FREEBSD
+#ifdef NEED_RAWSOCKETS
 			g_conf->rawsocket_icmpv4 = s->socket;
 #endif
 			break;
