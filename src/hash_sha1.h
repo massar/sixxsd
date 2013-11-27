@@ -39,8 +39,8 @@ extern "C" {
 */
 
 /* Make sure you define these types for your architecture: */
-typedef unsigned int sha1_quadbyte;	/* 4 byte type */
-typedef unsigned char sha1_byte;	/* single byte type */
+typedef uint32_t	sha1_quadbyte;	/* 4 byte type */
+typedef uint8_t		sha1_byte;	/* single byte type */
 
 /*
  * Be sure to get the above definitions right.  For instance, on my
