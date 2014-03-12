@@ -38,7 +38,7 @@ SD_LIBS		=
 PS_EXE		=	../../../sbin/popstatd
 ifeq ($(OS_BITS),64)
 ifeq ($(OS_NAME),Linux)
-# Only build popstat for 64bits platform as that is what noc.sixxs.net is
+# Only build popstat for 64bits platform as that is what our backends are
 BINS		+=	$(PS_EXE)
 endif
 endif
