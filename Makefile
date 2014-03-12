@@ -279,7 +279,7 @@ endif
 	@echo "Building done"
 ifeq ($(OS_BITS),32)
 ifeq ($(OS_NAME),Linux)
-	@echo "Note: We only build popstatd for 64bits platform which noc.sixxs.net is (use OS_BITS=64)"
+	@echo "Note: We only build popstatd for 64bits platforms as that is what our backends are (thus use OS_BITS=64)"
 endif
 endif
 
