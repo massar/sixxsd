@@ -530,7 +530,7 @@ static int pop_cmd_tunnelprefix_list(struct sixxsd_context *ctx, const unsigned 
 		return 404;
 	}
 
-	ctx_printf(ctx, "%s/48\n", tuns->prefix_asc);
+	ctx_printf(ctx, "%s:/48\n", tuns->prefix_asc);
 
 	return 200;
 }
@@ -587,7 +587,7 @@ static int pop_cmd_subnetprefix_list(struct sixxsd_context *ctx, const unsigned 
 	{
 		subs = &g_conf->subnets[i];
 
-		ctx_printf(ctx, "%s%s:/%u\n", subs->prefix_asc, subs->prefix_length == 40 ? "00" : "", subs->prefix_length);
+		ctx_printf(ctx, "%s%s::/%u\n", subs->prefix_asc, subs->prefix_length == 40 ? "00" : "", subs->prefix_length);
 	}
 
 	return 200;
@@ -673,7 +673,7 @@ static int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned i
 		/* Bring them up if possible */
 		iface_upnets();
 
-		ctx_printf(ctx, "Subnet Prefix %s00:/%u added\n", subs->prefix_asc, subs->prefix_length);
+		ctx_printf(ctx, "Subnet Prefix %s00::/%u added\n", subs->prefix_asc, subs->prefix_length);
 		return 200;
 	}
 
