@@ -296,6 +296,9 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					break;
 				}
 
+				/* Store the Remote IP */
+				memcpy(&lc->ctx.ip, &ip, sizeof(lc->ctx.ip));
+
 				inet_ntopA(&ip, hst, sizeof(hst));
 
 				/* Check ACL */
@@ -304,7 +307,6 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					/* Does it match? */
 					if (memcmp(&g_conf->cli_acl[j], &ip, sizeof(ip)) != 0) continue;
 
-					inet_ntopA(&g_conf->cli_acl[j], buf, sizeof(buf));
 					k = snprintf(buf, sizeof(buf), "Client (%s %s)", hst, sock_name(sn->socktype));
 					if (!snprintfok(k, sizeof(buf))) snprintf(buf, sizeof(buf), "Client (long)");
 
@@ -333,9 +335,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					sock_printf(lc->ctx.socket, "Location: https://www.sixxs.net/\n");
 					sock_printf(lc->ctx.socket, "Content-Type: text/html\n");
 					sock_printf(lc->ctx.socket, "\n");
-					sock_printf(lc->ctx.socket, "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>\n");
-					sock_printf(lc->ctx.socket, "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n");
-					sock_printf(lc->ctx.socket, "<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\">\n");
+					sock_printf(lc->ctx.socket, "<html lang=\"en\">\n");
 					sock_printf(lc->ctx.socket, "<head>\n");
 					sock_printf(lc->ctx.socket, "<title>SixXSd</title>\n");
 					sock_printf(lc->ctx.socket, "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=iso-8859-1\" />\n");
@@ -351,10 +351,12 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					/* Cleanup */
 					ctx_exit(&lc->ctx);
 				}
-			}
-		}
 
-	}
+			} /* if (lc->ctx.socket == -1) */
+
+		} /* List_For (&pool->sockets, sn, sn2, struct socketnode *) */
+
+	} /* while (g_conf && g_conf->running) */
 
 	if (lc)
 	{
