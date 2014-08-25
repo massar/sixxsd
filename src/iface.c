@@ -1045,7 +1045,7 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 	uint16_t		tid, t16;
 	unsigned int		plen;
 	struct in6_addr		dst;
-	const char		hi[] = "Thank you for actually looking at the packets, if you need further help don't hesitate to read http://www.sixxs.net/contact/ and peruse the forums!\n";
+	const char		hi[] = "Thank you for actually looking at the packets, if you need further help don't hesitate to read https://www.sixxs.net/contact/ and peruse the forums!\n";
 	const char		rep[] = "You Got Pinged by SixXS!\n";
 	struct pingtest		payload;
 
