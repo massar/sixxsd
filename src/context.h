@@ -26,6 +26,7 @@ struct sixxsd_context
 	uint64_t		debugging_tunnels;		/* How many tunnels we are debugging with this session */
 
 	SOCKET			socket;				/* The socket for output messages/warnings/etc */
+	IPADDRESS		ip;				/* The remote address of this context */
 };
 
 struct ctx_menu

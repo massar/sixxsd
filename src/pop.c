@@ -628,6 +628,7 @@ static int pop_cmd_subnetprefix_add(struct sixxsd_context *ctx, const unsigned i
 	{
 		subs = &g_conf->subnets[i];
 
+		/* Already set, then skip it */
 		if (!ipaddress_is_unspecified(&subs->prefix)) continue;
 
 		memcpy(&subs->prefix, &ip, sizeof(subs->prefix));
@@ -729,8 +730,10 @@ static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int arg
 	/* Find empty slot and add it */
 	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
 	{
+		/* Skip it if the slot is already in use */
 		if (!ipaddress_is_unspecified(&g_conf->cli_acl[i])) continue;
 
+		/* Configure it */
 		memcpy(&g_conf->cli_acl[i], &ip, sizeof(g_conf->cli_acl[i]));
 
 		ctx_printf(ctx, "CLI ACL added\n");
@@ -741,11 +744,41 @@ static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int arg
 	return 400;
 }
 
+static void pop_cliacl_cleanup(void);
+static void pop_cliacl_cleanup(void)
+{
+	unsigned int	i;
+	int		empty = -1;
+
+	/* Find it */
+	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
+	{
+		if (ipaddress_is_unspecified(&g_conf->cli_acl[i]))
+		{
+			/* Don't know about an empty one yet */
+			if (empty == -1) empty = 1;
+			continue;
+		}
+
+		if (empty == -1)
+		{
+			/* No previous empties */
+			continue;
+		}
+
+		/* This slot has entries, but we know about an empty one, move it there */
+		memmove(&g_conf->cli_acl[empty], &g_conf->cli_acl[i], sizeof(g_conf->cli_acl[empty]));
+
+		/* The next slot is now the empty one */
+		empty++;
+	}
+}
+
 static int pop_cmd_cliacl_remove(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
 static int pop_cmd_cliacl_remove(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
 {
-	IPADDRESS		ip;
-	unsigned int		i;
+	IPADDRESS	ip;
+	unsigned int	i;
 
 	if (!inet_ptonA(args[0], &ip, NULL))
 	{
@@ -756,15 +789,35 @@ static int pop_cmd_cliacl_remove(struct sixxsd_context *ctx, const unsigned int 
 	/* Find it */
 	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
 	{
+		/* Not this address? */
 		if (memcmp(&g_conf->cli_acl[i], &ip, sizeof(ip)) != 0) continue;
 
+		/* Clean it out */
 		memzero(&g_conf->cli_acl[i], sizeof(g_conf->cli_acl[i]));
+
+		/* Clean up the ACL */
+		pop_cliacl_cleanup();
+
 		ctx_printf(ctx, "CLI ACL removed\n");
 		return 200;
 	}
 	
 	ctx_printf(ctx, "CLI ACL %s not found\n", args[0]);
-	return 400;
+	return 404;
+}
+
+static int pop_cmd_cliacl_reset(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
+static int pop_cmd_cliacl_reset(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
+{
+	unsigned int i;
+
+	/* Remove them all, except current connection */
+	memzero(&g_conf->cli_acl, sizeof(g_conf->cli_acl));
+
+	memcpy(&g_conf->cli_acl[0], &ctx->ip, sizeof(g_conf->cli_acl[i]));
+
+	ctx_printf(ctx, "CLI ACL has been reset\n");
+	return 200;
 }
 
 struct ctx_menu ctx_menu_pop_set[] =
@@ -804,8 +857,9 @@ struct ctx_menu ctx_menu_pop_cliacl[] =
 {
 	{"show",	NULL,				0,0,	NULL,		NULL },
 	{"add",		pop_cmd_cliacl_add,		1,1,	"<prefix>",	"Add/Refresh CLI ACL" },
-	{"remove",	pop_cmd_cliacl_remove,		1,1,	"<prefix>",	"Remove CLI ACL" },
 	{"list",	pop_cmd_cliacl_list,		0,0,	NULL,		"List configured CLI ACLs" },
+	{"remove",	pop_cmd_cliacl_remove,		1,1,	"<prefix>",	"Remove CLI ACL" },
+	{"reset",	pop_cmd_cliacl_reset,		0,0,	NULL,		"Reset the CLI ACL (keeps current connection in ACL)" },
 	{NULL,		NULL,				0,0,	NULL,		NULL },
 };
 
