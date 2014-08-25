@@ -722,13 +722,6 @@ static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int arg
 	{
 		if (memcmp(&g_conf->cli_acl[i], &ip, sizeof(ip)) != 0) continue;
 
-		if (argc == 2)
-		{
-			memzero(&g_conf->cli_acl[i], sizeof(g_conf->cli_acl[i]));
-			ctx_printf(ctx, "CLI ACL removed\n");
-			return 200;
-		}
-
 		ctx_printf(ctx, "CLI ACL already present\n");
 		return 200;
 	}
@@ -745,6 +738,32 @@ static int pop_cmd_cliacl_add(struct sixxsd_context *ctx, const unsigned int arg
 	}
 
 	ctx_printf(ctx, "No more available empty CLI ACL slots!!!\n");
+	return 400;
+}
+
+static int pop_cmd_cliacl_remove(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
+static int pop_cmd_cliacl_remove(struct sixxsd_context *ctx, const unsigned int argc, const char *args[])
+{
+	IPADDRESS		ip;
+	unsigned int		i;
+
+	if (!inet_ptonA(args[0], &ip, NULL))
+	{
+		ctx_printf(ctx, "Invalid IP address %s\n", args[0]);
+		return 400;
+	}
+
+	/* Find it */
+	for (i = 0; i < lengthof(g_conf->cli_acl); i++)
+	{
+		if (memcmp(&g_conf->cli_acl[i], &ip, sizeof(ip)) != 0) continue;
+
+		memzero(&g_conf->cli_acl[i], sizeof(g_conf->cli_acl[i]));
+		ctx_printf(ctx, "CLI ACL removed\n");
+		return 200;
+	}
+	
+	ctx_printf(ctx, "CLI ACL %s not found\n", args[0]);
 	return 400;
 }
 
@@ -784,7 +803,8 @@ struct ctx_menu ctx_menu_pop_show[] =
 struct ctx_menu ctx_menu_pop_cliacl[] =
 {
 	{"show",	NULL,				0,0,	NULL,		NULL },
-	{"add",		pop_cmd_cliacl_add,		1,1,	"<prefix>",	"Add/Refresh Cli ACL" },
+	{"add",		pop_cmd_cliacl_add,		1,1,	"<prefix>",	"Add/Refresh CLI ACL" },
+	{"remove",	pop_cmd_cliacl_remove,		1,1,	"<prefix>",	"Remove CLI ACL" },
 	{"list",	pop_cmd_cliacl_list,		0,0,	NULL,		"List configured CLI ACLs" },
 	{NULL,		NULL,				0,0,	NULL,		NULL },
 };
