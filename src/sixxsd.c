@@ -207,7 +207,7 @@ static PTR *sixxsd_handleclient_thread(PTR *lc_)
 static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool);
 static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 {
-	int			i;
+	int			n;
 	fd_set			fd_read;
 	struct sixxsd_client	*lc = NULL;
 	struct timeval		timeout;
@@ -233,10 +233,10 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 		timeout.tv_usec = 0;
 
 		thread_setstate(thread_state_selectwait);
-		i = select(pool->hi+1, &fd_read, NULL, NULL, &timeout);
+		n = select(pool->hi+1, &fd_read, NULL, NULL, &timeout);
 		thread_setstate(thread_state_running);
 
-		if (i < 0)
+		if (n < 0)
 		{
 			/* Ignore signals, appropriate flags will be set to handle them */
 			if (errno == EINTR) continue;
@@ -277,7 +277,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 			else
 			{
 				IPADDRESS	ip;
-				unsigned int	j;
+				unsigned int	i;
 				char		buf[1024], hst[128];
 				int		k;
 
@@ -302,10 +302,17 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 				inet_ntopA(&ip, hst, sizeof(hst));
 
 				/* Check ACL */
-				for (j = 0; j < lengthof(g_conf->cli_acl); j++)
+				for (i = 0; i < lengthof(g_conf->cli_acl); i++)
 				{
+					/* As we clean the list, unspecified is the end of the list */
+					if (ipaddress_is_unspecified(&g_conf->cli_acl[i]))
+					{
+						i = lengthof(g_conf->cli_acl);
+						break;
+					}
+
 					/* Does it match? */
-					if (memcmp(&g_conf->cli_acl[j], &ip, sizeof(ip)) != 0) continue;
+					if (memcmp(&g_conf->cli_acl[i], &ip, sizeof(ip)) != 0) continue;
 
 					k = snprintf(buf, sizeof(buf), "Client (%s %s)", hst, sock_name(sn->socktype));
 					if (!snprintfok(k, sizeof(buf))) snprintf(buf, sizeof(buf), "Client (long)");
@@ -326,7 +333,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					}
 				}
 
-				if (j >= lengthof(g_conf->cli_acl))
+				if (i >= lengthof(g_conf->cli_acl))
 				{
 					/* Not in the ACL - give the little hax0r only a bit of info :) */
 					sock_printf(lc->ctx.socket, "HTTP/1.1 301 Content Moved\n");
