@@ -301,9 +301,10 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 				/* Check ACL */
 				for (j = 0; j < lengthof(g_conf->cli_acl); j++)
 				{
-					inet_ntopA(&g_conf->cli_acl[j], buf, sizeof(buf));
+					/* Does it match? */
 					if (memcmp(&g_conf->cli_acl[j], &ip, sizeof(ip)) != 0) continue;
 
+					inet_ntopA(&g_conf->cli_acl[j], buf, sizeof(buf));
 					k = snprintf(buf, sizeof(buf), "Client (%s %s)", hst, sock_name(sn->socktype));
 					if (!snprintfok(k, sizeof(buf))) snprintf(buf, sizeof(buf), "Client (long)");
 
@@ -329,7 +330,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					sock_printf(lc->ctx.socket, "HTTP/1.1 301 Content Moved\n");
 					sock_printf(lc->ctx.socket, "Date: Sat, 25 Feb 1978 06:06:06\n");
 					sock_printf(lc->ctx.socket, "Server: SixXSd\n");
-					sock_printf(lc->ctx.socket, "Location: http://www.sixxs.net/\n");
+					sock_printf(lc->ctx.socket, "Location: https://www.sixxs.net/\n");
 					sock_printf(lc->ctx.socket, "Content-Type: text/html\n");
 					sock_printf(lc->ctx.socket, "\n");
 					sock_printf(lc->ctx.socket, "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>\n");
@@ -341,7 +342,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					sock_printf(lc->ctx.socket, "</head>\n");
 					sock_printf(lc->ctx.socket, "\n");
 					sock_printf(lc->ctx.socket, "<body>\n");
-					sock_printf(lc->ctx.socket, "Information about SixXS can be found on the <a href=\"http://www.sixxs.net/\">SixXS website</a>.\n");
+					sock_printf(lc->ctx.socket, "Information about SixXS can be found on the <a href=\"https://www.sixxs.net/\">SixXS website</a>.\n");
 					sock_printf(lc->ctx.socket, "</body>\n");
 					sock_printf(lc->ctx.socket, "</html>\n");
 
