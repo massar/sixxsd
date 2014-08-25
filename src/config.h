@@ -52,7 +52,7 @@ struct sixxsd_configuration
 				pop_ipv6_asc[NI_MAXHOST];		/* ""                        IPv6 "" */
 	uint8_t			__padding[6];
 
-	IPADDRESS		cli_acl[32];				/* ACLs for the CLI */
+	IPADDRESS		cli_acl[64];				/* ACLs for the CLI */
 
 	BOOL			daemonize;				/* Daemonized? */
 	uint64_t		debugging;				/* Are we debugging? */
