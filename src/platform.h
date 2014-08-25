@@ -56,8 +56,8 @@
 #include <sys/uio.h>
 /*
  * Darwin doesn't have TUN/TAP support per default
- * It is available from http://www-user.rhrk.uni-kl.de/~nissler/tuntap/
- * which is a port made by Mattias Nissler
+ * Use Homebrew (http://brew.sh) to install it:
+ *   brew install tuntap
  * for compiling convienience we have included the ioctl's here
  */
 #define TUNSIFHEAD _IOW('t', 96, int)
