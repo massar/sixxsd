@@ -411,8 +411,8 @@ static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNU
 		fprintf(f, "\t\tdetails %u %s %s %s\n", i, pop->name, v4, v6);
 	}
 
-	fprintf(f, "\tid %" PRIu64 "\n", g_conf->pop_id);
-	fprintf(f, "end\n");
+	fprintf(f, "\t\tid %" PRIu64 "\n", g_conf->pop_id);
+	fprintf(f, "\tend\n");
 	fprintf(f, "\n");
 
 	/* Tunnel prefixes */
