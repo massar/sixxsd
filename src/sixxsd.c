@@ -114,7 +114,7 @@ static PTR *sixxsd_handleclient_thread(PTR *lc_)
 	if (lc->ctx.socket > hifd) hifd = lc->ctx.socket;
 
 	/* Introduce ourselves */
-	ctx_printdf(&lc->ctx, "%s SixXSd %s by Jeroen Massar <jeroen@sixxs.net>\n", g_conf->pop_name, SIXXSD_VERSION);
+	ctx_printdf(&lc->ctx, "%s.sixxs.net SixXSd %s by Jeroen Massar <jeroen@sixxs.net>\n", POPNAME, SIXXSD_VERSION);
 	ctx_flush(&lc->ctx, 200);
 
 	while (!close_socket && lc->ctx.socket != -1 && g_conf && g_conf->running)

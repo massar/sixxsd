@@ -41,12 +41,22 @@ struct sixxsd_packet
 	uint8_t			buf[1532];				/* The packet */
 };
 
+/* PoP description */
+struct sixxsd_pop
+{
+	uint8_t			id;					/* ID of the PoP */
+	char			name[15];				/* Name of the PoP */
+	IPADDRESS		ipv4, ipv6;				/* IPv4 + IPv6 address */
+
+	struct sixxsd_latency	lat4, lat6;				/* Latency between this PoP and them */
+};
+
 /* Our configuration structure */
 struct sixxsd_configuration
 {
 	/* Settings */
-	char			pop_name[128];				/* The name of this installation */
-	IPADDRESS		pop_ipv4, pop_ipv6;			/* Used for ICMP Source Address and listen */
+	uint64_t		pop_id;					/* The ID of this PoP */
+	struct sixxsd_pop	pops[SIXXSD_POP_MAX];			/* All the PoPs */
 
 	char			pop_ipv4_asc[NI_MAXHOST],		/* Textual representation of IPv4 address */
 				pop_ipv6_asc[NI_MAXHOST];		/* ""                        IPv6 "" */

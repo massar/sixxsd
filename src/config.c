@@ -38,9 +38,6 @@ int cfg_init(struct sixxsd_context *ctx, uint32_t verbose)
 	g_conf->starttime	= time(NULL);
 	g_conf->running		= true;
 
-	/* Use the hostname as the default identity */
-	gethostname(g_conf->pop_name, sizeof(g_conf->pop_name));
-
 	/* Configure verbosity levels */
 	g_conf->verbose = verbose;
 

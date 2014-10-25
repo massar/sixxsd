@@ -128,8 +128,8 @@ VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	pkt.ip.ip_off = htons(IP_DF);
 	pkt.ip.ip_ttl = 64;
 	pkt.ip.ip_p = IPPROTO_UDP;
-	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pop_ipv4),	sizeof(pkt.ip.ip_src));
-	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),		sizeof(pkt.ip.ip_dst));
+	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(pkt.ip.ip_src));
+	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),				sizeof(pkt.ip.ip_dst));
 
 	/* UDP */
 	pkt.udp.uh_sport = htons(tun->ayiya_port_us);
@@ -163,8 +163,8 @@ VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
         pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = 64;
         pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = IPPROTO_UDP;
 
-	memcpy(&pkt.ip.ip6_src, &g_conf->pop_ipv6,	sizeof(pkt.ip.ip6_src));
-	memcpy(&pkt.ip.ip6_dst, &tun->ip_them,		sizeof(pkt.ip.ip6_dst));
+	memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
+	memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));
 
 	/* UDP */
 	pkt.udp.uh_sport = htons(tun->ayiya_port_us);

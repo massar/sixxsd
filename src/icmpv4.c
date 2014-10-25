@@ -73,7 +73,7 @@ VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 	ip = (struct ip *)(packet + sizeof(*icmp));
 
 	/* Check if it is us - should be, otherwise why do we get it? */
-	if (memcmp(ipaddress_ipv4(&g_conf->pop_ipv4), &ip->ip_src, sizeof(ip->ip_src)) != 0)
+	if (memcmp(ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4), &ip->ip_src, sizeof(ip->ip_src)) != 0)
 	{
 		/* Ignore it, not us anyway */
 		return;

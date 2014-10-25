@@ -59,8 +59,8 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 	ip.ip_p = IPPROTO_IPV6;
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
-	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pop_ipv4),	sizeof(ip.ip_src));
-	memcpy(&ip.ip_dst, ipaddress_ipv4(&tun->ip_them),	sizeof(ip.ip_dst));
+	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(ip.ip_src));
+	memcpy(&ip.ip_dst, ipaddress_ipv4(&tun->ip_them),			sizeof(ip.ip_dst));
 
 	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_response, packet, len);
 }
@@ -143,8 +143,8 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
 		pkt.ip.ip_p = IPPROTO_IPV6;
 
 		/* Fill in the IP header from the original packet, swapping source & dest */
-		memcpy(&pkt.ip.ip_src, ipaddress_ipv4(src),			sizeof(pkt.ip.ip_src));
-		memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&g_conf->pop_ipv4),	sizeof(pkt.ip.ip_dst));
+		memcpy(&pkt.ip.ip_src, ipaddress_ipv4(src),				sizeof(pkt.ip.ip_src));
+		memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(pkt.ip.ip_dst));
 
 		/* The payload */
 		memcpy(&pkt.payload, packet, plen);

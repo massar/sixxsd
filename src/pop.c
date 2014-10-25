@@ -90,7 +90,7 @@ static int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUS
 static int pop_cmd_show_info(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
 	/* Parsed by the UI */
-	ctx_printdf(ctx, "PoP Name                : %s\n", g_conf->pop_name);
+	ctx_printdf(ctx, "PoP Name                : %s\n", POPNAME);
 	ctx_printdf(ctx, "Running                 : %s\n", yesno(g_conf->running));
 
 	ctx_printdf(ctx, "Verbosity Level         : %" PRIu64 "\n", g_conf->verbose);
@@ -122,7 +122,7 @@ static int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int 
 	platform = uts_name.sysname;
 	version = uts_name.release;
 
-	ctx_printdf(ctx, "PoP Name: %s\n", g_conf->pop_name);
+	ctx_printdf(ctx, "PoP Name: %s\n", POPNAME);
 	ctx_printdf(ctx, "Platform: %s\n", platform);
 	ctx_printdf(ctx, "Release: %s\n", version);
 
@@ -254,6 +254,32 @@ static int pop_cmd_show_hostinfo(struct sixxsd_context *ctx, const unsigned int 
 	return 200;
 }
 
+static int pop_cmd_show_pops(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_show_pops(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+{
+	unsigned int		i;
+	struct sixxsd_pop	*pop;
+	char			v4[NI_MAXHOST], v6[NI_MAXHOST];
+
+	for (i = 0; i < lengthof(g_conf->pops); i++)
+	{
+		pop = &g_conf->pops[i];
+
+		/* Not configured */
+		if (IN6_IS_ADDR_UNSPECIFIED(&pop->ipv6))
+		{
+			continue;
+		}
+
+		inet_ntopA(&pop->ipv4, v4, sizeof(v4));
+		inet_ntopA(&pop->ipv6, v6, sizeof(v6));
+
+		ctx_printdf(ctx, "%u %s %s %s\n", i, pop->name, v4, v6);
+	}
+
+	return 200;
+}
+
 static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
 static int pop_cmd_show_status(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
@@ -353,8 +379,10 @@ static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNU
 {
 	FILE			*f;
 	char			buf[128];
+	char			v4[NI_MAXHOST], v6[NI_MAXHOST];
 	const char		*pw;
 	unsigned int		i, j;
+	struct sixxsd_pop	*pop;
 	struct sixxsd_tunnels	*tuns = &g_conf->tunnels;
 	struct sixxsd_tunnel	*tun;
 	struct sixxsd_subnets	*subs;
@@ -365,9 +393,26 @@ static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNU
 	fprintf(f, "# SixXS PoP dump stored by SixXSd\n");
 	fprintf(f, "\n");
 	fprintf(f, "pop\n");
-	fprintf(f, "\tset name %s\n", g_conf->pop_name);
-	fprintf(f, "\tset ipv4 %s\n", g_conf->pop_ipv4_asc);
-	fprintf(f, "\tset ipv6 %s\n", g_conf->pop_ipv6_asc);
+	fprintf(f, "\tset\n");
+
+	for (i = 0; i < lengthof(g_conf->pops); i++)
+	{
+		pop = &g_conf->pops[i];
+
+		/* Not configured */
+		if (IN6_IS_ADDR_UNSPECIFIED(&pop->ipv6))
+		{
+			continue;
+		}
+
+		inet_ntopA(&pop->ipv4, v4, sizeof(v4));
+		inet_ntopA(&pop->ipv6, v6, sizeof(v6));
+
+		fprintf(f, "\t\tdetails %u %s %s %s\n", i, pop->name, v4, v6);
+	}
+
+	fprintf(f, "\tid %" PRIu64 "\n", g_conf->pop_id);
+	fprintf(f, "end\n");
 	fprintf(f, "\n");
 
 	/* Tunnel prefixes */
@@ -473,50 +518,89 @@ static int pop_cmd_shutdown(struct sixxsd_context *ctx, const unsigned int UNUSE
 	return 666;
 }
 
-static int pop_cmd_set_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-static int pop_cmd_set_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+static int pop_cmd_set_id(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_id(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
 {
-	strncpy(g_conf->pop_name, args[0], sizeof(g_conf->pop_name));
-	ctx_printf(ctx, "Name updated\n");
+	uint64_t		pop_id;
+
+	if (sscanf(args[0], "%" PRIu64, &pop_id) != 1)
+	{
+		ctx_printf(ctx, "Non-numeric ID (%s)\n", args[0]);
+		return 400;
+	}
+
+	if (pop_id >= lengthof(g_conf->pops))
+	{
+		ctx_printf(ctx, "PoP ID out of range (%s / %" PRIu64 " > %" PRIu64 ")", args[0], pop_id, lengthof(g_conf->pops));
+		return 400;
+	}
+
+	/* Set the PoP ID */
+	g_conf->pop_id = pop_id;
+
+	ctx_printf(ctx, "Configured to ID %" PRIu64 "\n", g_conf->pop_id);
+	return 200;
+}
+
+static int pop_cmd_set_details(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
+static int pop_cmd_set_details(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
+{
+	uint64_t		pop_id;
+	struct sixxsd_pop	*pop;
+
+	if (sscanf(args[0], "%" PRIu64, &pop_id) != 1)
+	{
+		ctx_printf(ctx, "Non-numeric ID (%s)\n", args[0]);
+		return 400;
+	}
+
+	if (pop_id >= lengthof(g_conf->pops))
+	{
+		ctx_printf(ctx, "PoP ID out of range (%s / %" PRIu64 " > %" PRIu64 ")", args[0], pop_id, lengthof(g_conf->pops));
+		return 400;
+	}
+
+	pop = &g_conf->pops[pop_id];
+
+	/* The name */
+	strncpy(pop->name, args[1], sizeof(pop->name));
+
+	/* IPv4 address */
+	if (!inet_ptonA(args[2], &pop->ipv4, NULL))
+	{
+		ctx_printf(ctx, "Invalid IPv4 address %s\n", args[0]);
+		return 400;
+	}
+
+	/* IPv6 address */
+	if (!inet_ptonA(args[3], &pop->ipv6, NULL))
+	{
+		ctx_printf(ctx, "Invalid IPv6 address %s\n", args[0]);
+		return 400;
+	}
+
+	/* Pre-generate human-readable versions */
+	if (pop_id == g_conf->pop_id)
+	{
+		inet_ntopA(&pop->ipv4, g_conf->pop_ipv4_asc, sizeof(g_conf->pop_ipv4_asc));
+		inet_ntopA(&pop->ipv6, g_conf->pop_ipv6_asc, sizeof(g_conf->pop_ipv6_asc));
+	}
+
+	ctx_printf(ctx, "PoP details updated\n");
+	return 200;
+}
+
+static int pop_cmd_get_id(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
+static int pop_cmd_get_id(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
+{
+	ctx_printf(ctx, "%" PRIu64 "\n", g_conf->pop_id);
 	return 200;
 }
 
 static int pop_cmd_get_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[]);
 static int pop_cmd_get_name(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char UNUSED *args[])
 {
-	ctx_printf(ctx, "%s\n", g_conf->pop_name);
-	return 200;
-}
-
-static int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-static int pop_cmd_set_ipv4(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
-{
-	if (!inet_ptonA(args[0], &g_conf->pop_ipv4, NULL))
-	{
-		ctx_printf(ctx, "Invalid IPv4 address %s\n", args[0]);
-		return 400;
-	}
-
-	/* Pre-generate a human-readable version */
-	inet_ntopA(&g_conf->pop_ipv4, g_conf->pop_ipv4_asc, sizeof(g_conf->pop_ipv4_asc));
-
-	ctx_printf(ctx, "IPv4 address updated\n");
-	return 200;
-}
-
-static int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[]);
-static int pop_cmd_set_ipv6(struct sixxsd_context *ctx, const unsigned int UNUSED argc, const char *args[])
-{
-	if (!inet_ptonA(args[0], &g_conf->pop_ipv6, NULL))
-	{
-		ctx_printf(ctx, "Invalid IPv6 address %s\n", args[0]);
-		return 400;
-	}
-
-	/* Pre-generate a human-readable version */
-	inet_ntopA(&g_conf->pop_ipv6, g_conf->pop_ipv6_asc, sizeof(g_conf->pop_ipv6_asc));
-
-	ctx_printf(ctx, "IPv6 address updated\n");
+	ctx_printf(ctx, "%s\n", POPNAME);
 	return 200;
 }
 
@@ -832,9 +916,8 @@ struct ctx_menu ctx_menu_pop_set[] =
 {
 	{"set",			NULL,				0,0,	NULL,			NULL },
 	{"debug",		pop_cmd_set_debug,		2,2,	"<section> {on|off}",	"Enable or disable output from a program section" },
-	{"ipv4",		pop_cmd_set_ipv4,		1,1,	"<ipv4",		"Set PoP IPv4" },
-	{"ipv6",		pop_cmd_set_ipv6,		1,1,	"<ipv6>",		"Set PoP IPv6" },
-	{"name",		pop_cmd_set_name,		1,1,	"<name>",		"Set PoP name" },
+	{"id",			pop_cmd_set_id,			1,1,	"<id>",			"Configure the ID of this PoP" },
+	{"details",		pop_cmd_set_details,		4,4,	"<id> <name> <ipv4> <ipv6>", "Configure PoP details" },
 	{"verbosity",		pop_cmd_set_verbosity,		1,1,	"<level>",		"Change verbosity level" },
 
 	{NULL,			NULL,				0,0,	NULL,			NULL },
@@ -843,6 +926,7 @@ struct ctx_menu ctx_menu_pop_set[] =
 struct ctx_menu ctx_menu_pop_get[] =
 {
 	{"get",			NULL,				0,0,	NULL,			NULL },
+	{"id",			pop_cmd_get_id,			0,0,	NULL,			"Get PoP ID" },
 	{"name",		pop_cmd_get_name,		0,0,	NULL,			"Get PoP name" },
 	{NULL,			NULL,				0,0,	NULL,			NULL },
 };
@@ -852,6 +936,7 @@ struct ctx_menu ctx_menu_pop_show[] =
 	{"show",	NULL,				0,0,	NULL,		NULL },
 	{"info",	pop_cmd_show_info,		0,0,	NULL,		"Show information" },
 	{"hostinfo",	pop_cmd_show_hostinfo,		0,0,	NULL,		"Show host information" },
+	{"pops",	pop_cmd_show_pops,		0,0,	NULL,		"Show configured PoPs" },
 	{"status",	pop_cmd_show_status,		0,0,	NULL,		"Show status" },
 	{"threads",	thread_list,			0,0,	NULL,		"Show running threads" },
 	{"timeinfo",	pop_cmd_show_timeinfo,		0,0,	NULL,		"Show time information" },

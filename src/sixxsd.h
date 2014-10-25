@@ -8,10 +8,15 @@
 #define SIXXSD_H "The Daemon Of SixXS"
 
 /* How much is a clock allowed to be off? */
-#define MAX_CLOCK_OFF 120
+#define MAX_CLOCK_OFF		120
 
 /* How many tunnels does a single sixxsd support? */
-#define SIXXSD_TUNNELS_MAX 8192
+#define SIXXSD_TUNNELS_MAX	8192
+
+/* The maximum number of PoPs (2**6) */
+#define SIXXSD_POP_MAX		64
+
+#define POPNAME ((g_conf->pop_id >= SIXXSD_POP_MAX) ? "notconf" : g_conf->pops[g_conf->pop_id].name)
 
 #include "platform.h"
 
