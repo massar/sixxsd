@@ -393,7 +393,7 @@ typedef uint32_t	addressnum_t;
 #define memzero(obj,len) memset(obj,0,len)
 
 /* Length handling */
-#define lengthof(x) (sizeof(x)/sizeof(x[0]))
+#define lengthof(x) ((uint64_t)(sizeof(x)/sizeof(x[0])))
 
 #if !defined(__GNUC__)
     #define __builtin_expect(foo,bar) (foo)
