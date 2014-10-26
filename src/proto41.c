@@ -3,30 +3,12 @@
  by Jeroen Massar <jeroen@sixxs.net>
  (C) Copyright SixXS 2000-2013 All Rights Reserved
 ************************************************************
- Heartbeat
+ Protocol 41 - RFC2473
 ***********************************************************/
 #include "sixxsd.h"
 
 const char module_proto41[] = "proto41";
 #define module module_proto41
-
-static VOID p41_log(int level, const IPADDRESS *src, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 3, 4);
-static VOID p41_log(int level, const IPADDRESS *src, const char *fmt, ...)
-{
-	char	buf[1024];
-	char	srca[NI_MAXHOST];
-	va_list	ap;
-
-	inet_ntopA(src, srca, sizeof(srca));
-
-	/* Print the log message behind it */
-	va_start(ap, fmt);
-	vsnprintf(buf, sizeof(buf), fmt, ap);
-	va_end(ap);
-	
-	/* Actually Log it */
-	mdolog(level, "[%s]: %s", srca, buf);
-}
 
 VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
@@ -73,13 +55,6 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
 	BOOL			istunnel, fail = false;
 	uint16_t		code = 0;
 
-	/* Quick sanity check */
-	if (len < sizeof(*ip))
-	{
-		p41_log(LOG_WARNING, src, "Short IPv6 packet received of len %u\n", len);
-		return;
-	}
-
 	/* Unspecified or link-local address? */
 	if (IN6_IS_ADDR_UNSPECIFIED(&ip->ip6_src) ||
 	    IN6_IS_ADDR_LINKLOCAL(&ip->ip6_src))
@@ -107,7 +82,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
 		fail = true;
 	}
 
-	else if (tun->type != SIXXSD_TTYPE_PROTO41 && tun->type != SIXXSD_TTYPE_PROTO41_HB)
+	else if (tun->type != SIXXSD_TTYPE_DIRECT && tun->type != SIXXSD_TTYPE_DIRECT_HB)
 	{
 		code = ICMP_PKT_FILTERED;
 		fail = true;

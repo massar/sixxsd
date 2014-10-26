@@ -29,6 +29,7 @@ SD_OBJS		=	sixxsd.o 							\
 			icmpv4.o							\
 			iface.o								\
 			pop.o								\
+			proto4.o							\
 			proto41.o							\
 			rwl.o								\
 			subnet.o							\

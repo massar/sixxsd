@@ -457,16 +457,16 @@ static int pop_cmd_saveconfig(struct sixxsd_context *ctx, const unsigned int UNU
 
 		inet_ntopA(&tun->ip_them, buf, sizeof(buf));
 
-		if (tun->type == SIXXSD_TTYPE_PROTO41) pw = "";
+		if (tun->type == SIXXSD_TTYPE_DIRECT) pw = "";
 		else pw = (const char *)tun->hb_password;
 
 		fprintf(f, "\t\tconfig %x T%u %s %s %u%s%s\n",
 			i,
 			tun->tunnel_id,
-			tun->type == SIXXSD_TTYPE_PROTO41 ? buf : tunnel_type_name(tun->type),
+			tun->type == SIXXSD_TTYPE_DIRECT ? buf : tunnel_type_name(tun->type),
 			tun->state == SIXXSD_TSTATE_DISABLED ? tunnel_state_name(tun->state) : tunnel_state_name(SIXXSD_TSTATE_UP),
 			tun->mtu,
-			tun->type == SIXXSD_TTYPE_PROTO41 ? "" : " ",
+			tun->type == SIXXSD_TTYPE_DIRECT ? "" : " ",
 			pw);
 	}
 

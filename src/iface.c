@@ -85,11 +85,15 @@ static const char *iface_socket_name(enum sixxsd_sockets type)
 	const char *types[] =
 	{
 		"Tun/Tap",
-		"Protocol-41",
+		"IPv4 (proto-4)",
+		"IPv6 (proto-41)",
 		"ICMPv4",
 		"AYIYA",
 		"Heartbeat",
 	};
+
+	/* Just in case we ever bring them out of sync accidentally */
+	assert(lengthof(types) == SIXXSD_SOCK_MAX);
 
 	return type < lengthof(types) ? types[type] : "<unknown>";
 }
@@ -111,7 +115,7 @@ static VOID iface_sendtap(const uint16_t in_tid, const uint16_t out_tid, uint16_
 	iov[iovlen].iov_len  = sizeof(pi);
 
 #else /* BSD */
-	uint32_t type = htonl(protocol == ETH_P_IP ? AF_INET : AF_INET6);
+	uint32_t type = htonl(protocol == ETH_P_IP ? AF_INET4 : AF_INET6);
 
 	memzero(iov, sizeof(iov));
 	iov[iovlen].iov_base = (void *)&type;
@@ -164,7 +168,7 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 
 	memzero(iov, sizeof(iov));
 	memzero(&dst, sizeof(dst));
-	dst.sin_family = AF_INET;
+	dst.sin_family = AF_INET4;
 	memcpy(&dst.sin_addr, &ip->ip_dst, sizeof(dst.sin_addr));
 
 #ifdef _LINUX
@@ -209,19 +213,24 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 #else
 	/*
 	 * On FreeBSD we apparently cannot do sendmsg() and include
-	 * a header even if we set HDRINCL on, as such use two separate
-	 * sockets: one for proto-41 and one for ICMP.
-	 * This also means that other protocols are not supported.
+	 * a header even if we set HDRINCL on, as such use separate
+	 * sockets. This also means that other protocols are not supported.
 	 * And if we ever send those they will be dropped...
 	 */
 	switch (ip->ip_p)
 	{
-	case IPPROTO_IPV6:
-		n = sendmsg(g_conf->rawsocket_proto41, &msg, MSG_NOSIGNAL);
+	case IPPROTO_IPV4:
+		n = sendmsg(g_conf->rawsocket_proto4_v4, &msg, MSG_NOSIGNAL);
 		break;
-	case IPPROTO_ICMP:
+
+	case IPPROTO_IPV6:
+		n = sendmsg(g_conf->rawsocket_proto41_v4, &msg, MSG_NOSIGNAL);
+		break;
+
+	case IPPROTO_ICMPV4:
 		n = sendmsg(g_conf->rawsocket_icmpv4, &msg, MSG_NOSIGNAL);
 		break;
+
 	default:
 		tunnel_debug(in_tid, out_tid, packet, packet_len, "send4 unknown proto %u\n", ip->ip_p);
 		return;
@@ -366,7 +375,7 @@ static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, cons
 		break;
 	}
 
-	if (protocol == IPPROTO_IP)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, code4);
+	if (protocol == IPPROTO_IPV4)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, code4);
 	else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, code6);
 }
 
@@ -375,7 +384,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 {
 	struct sixxsd_tunnel	*outtun = tunnel_grab(out_tid);
 
-	assert(protocol == IPPROTO_IP || protocol == IPPROTO_IPV6);
+	assert(protocol == IPPROTO_IPV4 || protocol == IPPROTO_IPV6);
 
 	tunnel_debug(in_tid, out_tid, packet, len, "iface_routetun(%s)\n", is_response ? "[response]" : "[normal]");
 
@@ -384,7 +393,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 	{
 		if (!is_response)
 		{
-			if (protocol == IPPROTO_IP)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_NET_UNREACH);
+			if (protocol == IPPROTO_IPV4)	iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_NET_UNREACH);
 			else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_ADDR);
 		}
 
@@ -394,7 +403,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 	/* Same input as output? */
 	if (!is_response && in_tid == out_tid)
 	{
-		if (protocol == IPPROTO_IP)
+		if (protocol == IPPROTO_IPV4)
 		{
 			struct ip *ip = (struct ip *)packet;
 			tunnel_log4(in_tid, out_tid, packet, len, SIXXSD_TERR_TUN_SAME_IO, &ip->ip_src);
@@ -411,19 +420,26 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 	if (outtun->state == SIXXSD_TSTATE_UP)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "Tunnel up, forwarding to %s (%u)\n",
-			(outtun->type == SIXXSD_TTYPE_PROTO41 ||
-				outtun->type == SIXXSD_TTYPE_PROTO41_HB ? "proto41" : "ayiya"),
+			(outtun->type == SIXXSD_TTYPE_DIRECT ||
+				outtun->type == SIXXSD_TTYPE_DIRECT_HB ? "direct" : "ayiya"),
 			outtun->type);
 
 		switch (outtun->type)
 		{
-			case SIXXSD_TTYPE_PROTO41:
-			case SIXXSD_TTYPE_PROTO41_HB:
-				/* Can only send IPv6 inside of this */
-				if (protocol == IPPROTO_IPV6)
+			case SIXXSD_TTYPE_DIRECT:
+			case SIXXSD_TTYPE_DIRECT_HB:
+				switch (protocol)
 				{
+				case IPPROTO_IPV4:
+					proto4_out(in_tid, out_tid, packet, len, is_response);
+					return;
+
+				case IPPROTO_IPV6:
 					proto41_out(in_tid, out_tid, packet, len, is_response);
 					return;
+
+				default:
+					break;
 				}
 
 				/* Fall through to sending an unreachable below */
@@ -561,18 +577,17 @@ VOID iface_route6_local(const uint16_t in_tid, const uint16_t out_tid, uint8_t *
 VOID iface_route6_local(const uint16_t in_tid, const uint16_t out_tid, uint8_t *packet, const uint16_t len)
 {
 	struct ip6_hdr	*ip6 = (struct ip6_hdr *)packet;
-	struct ip6_ext	*ipe;
-	uint8_t		ipe_type;
+	uint8_t		*payload, payload_type;
 	uint32_t	plen;
 
-	if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen)) return;
+	if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &payload_type, &payload, &plen)) return;
 
 	/* What does it contain? */
-	tunnel_debug(in_tid, out_tid, packet, len, "Packet Contains %u (ICMPv6 = %u)\n", ipe_type, IPPROTO_ICMPV6);
+	tunnel_debug(in_tid, out_tid, packet, len, "Packet Contains %u (ICMPv6 = %u)\n", payload_type, IPPROTO_ICMPV6);
 
-	if (ipe_type == IPPROTO_ICMPV6)
+	if (payload_type == IPPROTO_ICMPV6)
 	{
-		struct icmp6_hdr *icmp = (struct icmp6_hdr *)ipe;
+		struct icmp6_hdr *icmp = (struct icmp6_hdr *)payload;
 
 		/* We answer ICMP Echo Request */
 		switch (icmp->icmp6_type)
@@ -620,7 +635,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	assert((is_response && !decrease_ttl) || !is_response);
 
 	/* Make sure it is actually an IPv6 packet */
-	if ((ip6->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
+	if (!IS_IPV6(ip6))
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_response ? "error" : "normal", ip6->ip6_ctlun.ip6_un2_vfc >> 4);
 		return;
@@ -780,7 +795,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	if (out_tid != SIXXSD_TUNNEL_UPLINK)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "Routing to tunnel\n");
-		iface_routetun(in_tid, out_tid, IPPROTO_IP, packet, len, is_response);
+		iface_routetun(in_tid, out_tid, IPPROTO_IPV4, packet, len, is_response);
 		return;
 	}
 
@@ -807,21 +822,20 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	/* Fill in the payload */
 	if (type == ICMP6_ECHO_REPLY)
 	{
-		struct ip6_ext		*ipe;
 		struct icmp6_hdr	*icmp;
-		uint8_t			ipe_type;
+		uint8_t			*payload, payload_type;
 
 		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Echo Request\n", type, code);
 
-		if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen))
+		if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &payload_type, &payload, &plen))
 		{
 			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is broken\n");
 			return;
 		}
 
-		if (ipe_type != IPPROTO_ICMPV6)
+		if (payload_type != IPPROTO_ICMPV6)
 		{
-			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request with unknown extension %04x != ICMP (%04x)\n", ipe_type, IPPROTO_ICMPV6);
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request with unknown extension %04x != ICMP (%04x)\n", payload_type, IPPROTO_ICMPV6);
 			return;
 		}
 
@@ -842,35 +856,34 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 		/* We just want to know the size of the payload */
 		plen -= sizeof(*icmp);
 
-		memcpy(pkt.payload, ((uint8_t *)ipe) + sizeof(*icmp), plen);
+		memcpy(pkt.payload, payload + sizeof(*icmp), plen);
 
 		/* Steal the parameter out of the ICMPv6 header */
-		icmp = (struct icmp6_hdr *)ipe;
+		icmp = (struct icmp6_hdr *)payload;
 		pkt.icmp.icmp6_dataun.icmp6_un_data32[0] = icmp->icmp6_dataun.icmp6_un_data32[0];
 	}
 	else if (type == ND_NEIGHBOR_ADVERT)
 	{
-		struct ip6_ext			*ipe;
-		uint8_t				ipe_type;
+		uint8_t				*payload, payload_type;
 		struct nd_neigh_advert		*adv;
 		struct nd_neigh_solicit		*sol;
 
 		tunnel_debug(in_tid, out_tid, packet, len, "ICMPv6 %u::%u - Neighbor Advertisement\n", type, code);
 
-		if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &ipe_type, &ipe, &plen))
+		if (!l3_ipv6_parse(in_tid, out_tid, packet, len, &payload_type, &payload, &plen))
 		{
 			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request that is broken\n");
 			return;
 		}
 
-		if (ipe_type != IPPROTO_ICMPV6)
+		if (payload_type != IPPROTO_ICMPV6)
 		{
-			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request with unknown extension %04x != ICMP (%04x)\n", ipe_type, IPPROTO_ICMPV6);
+			tunnel_debug(in_tid, out_tid, packet, len, "ICMP Echo Request with unknown extension %04x != ICMP (%04x)\n", payload_type, IPPROTO_ICMPV6);
 			return;
 		}
 
 		adv = (struct nd_neigh_advert *)&pkt.payload;
-		sol = (struct nd_neigh_solicit *)(((uint8_t *)ipe) + sizeof(struct icmp6_hdr));
+		sol = (struct nd_neigh_solicit *)(payload + sizeof(struct icmp6_hdr));
 
 		hlim = 255;
 		plen = sizeof(*adv);
@@ -964,7 +977,7 @@ static VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, con
 	pkt.ip.ip_id = 0x42;
 	pkt.ip.ip_off = htons(IP_DF);
 	pkt.ip.ip_ttl = 64;
-	pkt.ip.ip_p = IPPROTO_ICMP;
+	pkt.ip.ip_p = IPPROTO_ICMPV4;
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
 	memcpy(&pkt.ip.ip_src, &ip->ip_dst, sizeof(pkt.ip.ip_src));
@@ -1129,50 +1142,56 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 	return NULL;
 }
 
-static unsigned int iface_check_ipv4(struct ip *ip, unsigned int len, enum sixxsd_sockets type);
-static unsigned int iface_check_ipv4(struct ip *ip, unsigned int len, enum sixxsd_sockets type)
+static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype);
+static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype)
 {
-	unsigned int hlen;
+	struct ip6_hdr	*ip6 = (struct ip6_hdr *)packet;
+	uint8_t		*payload, payload_type;
+	uint32_t	plen;
 
-	if (len < sizeof(*ip))
+	if (!l3_ipv6_parse(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, packet, len, &payload_type, &payload, &plen))
 	{
-		mdolog(LOG_ERR,
-			"Received short IPv4(%s) packet (len = %u < IPv4 = %u)\n",
-			iface_socket_name(type),
-			len, (unsigned int)sizeof(*ip));
-		return 0;
+		/* Parsing failed in some way or another */
+		return NULL;
 	}
 
-	hlen = ip->ip_hl * 4;
-	if (hlen < sizeof(*ip))
+	/* Should be the correct payload type */
+	if (payload_type != ptype)
 	{
-		mdolog(LOG_ERR,
-			"Received short IPv4(%s) packet (hlen = %u < IPv4 = %u)\n",
-			iface_socket_name(type),
-			hlen, (unsigned int)sizeof(*ip));
-		return 0;
-	}
-
-	if (hlen > len)
-	{
-		mdolog(LOG_ERR,
-			"Received long IPv4(%s) packet (hlen = %u < len = %u)\n",
-			iface_socket_name(type),
-			hlen, len);
-		return 0;
-	}
-
-	if (hlen >= len)
-	{
-		mdolog(LOG_ERR,
-			"Received empty IPv4(%s) packet (hlen = %u < len = %u)\n",
-			iface_socket_name(type),
-			hlen, len);
-		return 0;
+		tunnel_log(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, packet, len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, NULL);
+		return NULL;
 	}
 
 	/* All looks okay */
-	return hlen;
+	ipaddress_set_ipv6(src, &ip6->ip6_src);
+	*_plen = plen;
+	return payload;
+}
+
+static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype);
+static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype)
+{
+	struct ip	*ip = (struct ip *)packet;
+	uint8_t		*payload, payload_type;
+	uint32_t	plen;
+
+	if (!l3_ipv4_parse(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, packet, len, &payload_type, &payload, &plen))
+	{
+		/* Parsing failed in some way or another */
+		return NULL;
+	}
+
+	/* Should be the correct payload type */
+	if (payload_type != ptype)
+	{
+		tunnel_log(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, packet, len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, NULL);
+		return NULL;
+	}
+
+	/* All looks okay */
+	ipaddress_set_ipv4(src, &ip->ip_src);
+	*_plen = plen;
+	return payload;
 }
 
 /* This thread reads from the interfaces, passing the packets to the decoder and onward */
@@ -1180,12 +1199,11 @@ static PTR *iface_read_thread(PTR *__sock);
 static PTR *iface_read_thread(PTR *__sock)
 {
 	struct sixxsd_socket	*sock = (struct sixxsd_socket *)__sock;
-	uint8_t			buffer[4096];
-	struct ip		*ip = (struct ip *)buffer;
+	uint8_t			buffer[4096], *payload;
+	uint32_t		plen;
 	struct sockaddr_storage	ss;
 	socklen_t		sslen;
 	int			len;
-	unsigned int		hlen;
 	uint16_t		proto, port;
 	IPADDRESS		src;
 
@@ -1210,7 +1228,7 @@ static PTR *iface_read_thread(PTR *__sock)
 #ifndef _LINUX
 			switch (proto)
 			{
-			case AF_INET:
+			case AF_INET4:
 				proto = ETH_P_IP;
 				break;
 
@@ -1263,34 +1281,38 @@ static PTR *iface_read_thread(PTR *__sock)
 		/* Pass it through the correct decoder */
 		switch (sock->af)
 		{
-		case AF_INET:
+		case AF_INET4:
 			switch (sock->type)
 			{
-			case SIXXSD_SOCK_PROTO41:
-				hlen = iface_check_ipv4(ip, len, sock->type);
-				if (hlen == 0) break;
+			case SIXXSD_SOCK_PROTO4:
+				/* Raw packet includes the full IPv4 header and then payload etc */
+				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_IPV4);
+				if (payload == NULL) break;
 
-				ipaddress_set_ipv4(&src, &ip->ip_src);
-				proto41_in(&src, &buffer[hlen], len - hlen);
+				proto4_in(&src, payload, plen);
+				break;
+
+			case SIXXSD_SOCK_PROTO41:
+				/* Raw packet includes the full IPv4 header and then payload etc */
+				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_IPV6);
+				if (payload == NULL) break;
+
+				proto41_in(&src, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_ICMPV4:
-				hlen = iface_check_ipv4(ip, len, sock->type);
-				if (hlen == 0) break;
+				/* Raw packet includes the full IPv4 header and then payload etc */
+				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_ICMPV4);
+				if (payload == NULL) break;
 
-				/*
-				 * Source of the packet might be intermediate
-				 * thus we pass it as the 'origin'
-				 */
-				ipaddress_set_ipv4(&src, &ip->ip_src);
-				icmpv4_in(&src, &buffer[hlen], len - hlen);
+				icmpv4_in(&src, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
 				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
 				port = ntohs(port);
-				ayiya_in(&src, AF_INET, sock->socktype, sock->proto, port, sock->port, buffer, len);
+				ayiya_in(&src, AF_INET4, sock->socktype, sock->proto, port, sock->port, buffer, len);
 				break;
 
 			case SIXXSD_SOCK_HB:
@@ -1308,6 +1330,22 @@ static PTR *iface_read_thread(PTR *__sock)
 		case AF_INET6:
 			switch (sock->type)
 			{
+			case SIXXSD_SOCK_PROTO4:
+				/* Raw packet includes the full IPv6 header and then payload etc */
+				payload = iface_getpayload_ipv6(buffer, len, &src, &plen, IPPROTO_IPV4);
+				if (payload == NULL) break;
+
+				proto4_in(&src, payload, plen);
+				break;
+
+			case SIXXSD_SOCK_PROTO41:
+				/* Raw packet includes the full IPv6 header and then payload etc */
+				payload = iface_getpayload_ipv6(buffer, len, &src, &plen, IPPROTO_IPV6);
+				if (payload == NULL) break;
+
+				proto41_in(&src, payload, plen);
+				break;
+
 			case SIXXSD_SOCK_AYIYA:
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in6, sin6_port), sizeof(port));
 				port = ntohs(port);
@@ -1353,7 +1391,7 @@ static int iface_init_bindsock(struct sixxsd_context *ctx, SOCKET sock, unsigned
 	on = (8*1024*1024);
 	setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &on, sizeof(on));
 
-	if (af == AF_INET)
+	if (af == AF_INET4)
 	{
 		sa = (struct sockaddr *)&localaddr;
 		sa_len = sizeof(localaddr);
@@ -1396,7 +1434,7 @@ static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 	 * the kernel then takes care of the MAC addresses and the routing
 	 * For some magic reason this can't be done for IPv6...
 	 */
-	*sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+	*sock = socket(AF_INET4, SOCK_RAW, IPPROTO_RAW);
 	if (*sock == INVALID_SOCKET)
 	{
 		ctx_printef(ctx, errno, "Couldn't create RAW socket\n");
@@ -1408,7 +1446,7 @@ static int iface_init_rawsock(struct sixxsd_context *ctx, SOCKET *sock)
 
 	/* We supply packets including the IPv4 header */
 	on = 1;
-	if (setsockopt(*sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
+	if (setsockopt(*sock, IPPROTO_IPV4, IP_HDRINCL, &on, sizeof(on)) < 0)
 	{
 		ctx_printef(ctx, errno, "Couldn't set IP_HDRINCL on RAW IPv4 socket\n");
 		closesocket(*sock);
@@ -1513,7 +1551,7 @@ static int iface_init_icmpv4(struct sixxsd_context *ctx, struct sixxsd_socket *s
 {
 	socklen_t	on;
 
-	sock->socket = socket(af, SOCK_RAW, IPPROTO_ICMP);
+	sock->socket = socket(af, SOCK_RAW, IPPROTO_ICMPV4);
 	if (sock->socket == INVALID_SOCKET)
 	{
 		ctx_printef(ctx, errno, "Could not create ICMPv4 socket (%u)\n", af);
@@ -1641,11 +1679,14 @@ int iface_init(struct sixxsd_context *ctx)
 	} types[] =
 	{
 		{ SIXXSD_SOCK_TUNTAP,	0,		0,		0,		0		},
-		{ SIXXSD_SOCK_PROTO41,	AF_INET,	0,		IPPROTO_IPV6,	0		},
-		{ SIXXSD_SOCK_ICMPV4,	AF_INET,	0,		IPPROTO_ICMP,	0		},
-		{ SIXXSD_SOCK_AYIYA,	AF_INET,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
+		{ SIXXSD_SOCK_PROTO4,	AF_INET4,	0,		IPPROTO_IPV4,	0		},
+		{ SIXXSD_SOCK_PROTO4,	AF_INET6,	0,		IPPROTO_IPV4,	0		},
+		{ SIXXSD_SOCK_PROTO41,	AF_INET4,	0,		IPPROTO_IPV6,	0		},
+		{ SIXXSD_SOCK_PROTO41,	AF_INET6,	0,		IPPROTO_IPV6,	0		},
+		{ SIXXSD_SOCK_ICMPV4,	AF_INET4,	0,		IPPROTO_ICMPV4,	0		},
+		{ SIXXSD_SOCK_AYIYA,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
 		{ SIXXSD_SOCK_AYIYA,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
-		{ SIXXSD_SOCK_HB,	AF_INET,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
+		{ SIXXSD_SOCK_HB,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
 	};
 
 	/* Should not be initialized yet */
@@ -1668,11 +1709,21 @@ int iface_init(struct sixxsd_context *ctx)
 			g_conf->tuntap = s->socket;
 			break;
 
+		case SIXXSD_SOCK_PROTO4:
+			ret = iface_init_proto41(ctx, s, types[i].af);
+			if (ret != 200) return ret;
+#ifdef NEED_RAWSOCKETS
+			if (af == AF_INET4) g_conf->rawsocket_proto4_v4 = s->socket;
+			if (af == AF_INET6) g_conf->rawsocket_proto4_v6 = s->socket;
+#endif
+			break;
+
 		case SIXXSD_SOCK_PROTO41:
 			ret = iface_init_proto41(ctx, s, types[i].af);
 			if (ret != 200) return ret;
 #ifdef NEED_RAWSOCKETS
-			g_conf->rawsocket_proto41 = s->socket;
+			if (af == AF_INET4) g_conf->rawsocket_proto41_v4 = s->socket;
+			if (af == AF_INET6) g_conf->rawsocket_proto41_v6 = s->socket;
 #endif
 			break;
 

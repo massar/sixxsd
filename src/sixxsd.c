@@ -283,7 +283,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 
 				switch (sa.ss_family)
 				{
-				case AF_INET:
+				case AF_INET4:
 					ipaddress_make_ipv4(&ip, &((struct sockaddr_in *)&sa)->sin_addr);
 					break;
 

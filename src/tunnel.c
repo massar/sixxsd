@@ -59,6 +59,7 @@ static const char *tunnel_err_names[] =
 		"HB Missing Time",
 		"ICMPv4 Errors Received",
 		"ICMPv4 Echo Req. Recv.",
+		"Wrong Payload",
 };
 
 static const char *tunnel_error_name(unsigned int err);
@@ -322,13 +323,11 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 			}
 			else
 			{
-				struct ip6_ext *ipe;
-
 				inet_ntopA((IPADDRESS *)&ip6->ip6_src, src, sizeof(src));
 				inet_ntopA((IPADDRESS *)&ip6->ip6_dst, dst, sizeof(dst));
 				ttl = ip6->ip6_hlim;
 
-				l3_ipv6_parse(in_tid, out_tid, packet, len, &proto, &ipe, &plen);
+				l3_ipv6_parse(in_tid, out_tid, packet, len, &proto, NULL, &plen);
 			}
 		}
 		else
@@ -555,10 +554,10 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 	}
 
 	if	(strcasecmp(args[2], "ayiya"		) == 0) tun->type = SIXXSD_TTYPE_AYIYA;
-	else if (strcasecmp(args[2], "heartbeat"	) == 0) tun->type = SIXXSD_TTYPE_PROTO41_HB;
+	else if (strcasecmp(args[2], "heartbeat"	) == 0) tun->type = SIXXSD_TTYPE_DIRECT_HB;
 	else
 	{
-		tun->type = SIXXSD_TTYPE_PROTO41;
+		tun->type = SIXXSD_TTYPE_DIRECT;
 
 		if (!inet_ptonA(args[2], &tun->ip_them, NULL))
 		{
@@ -567,7 +566,7 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 		}
 	}
 
-	if (tun->type == SIXXSD_TTYPE_PROTO41)
+	if (tun->type == SIXXSD_TTYPE_DIRECT)
 	{
 		tun->state = strcasecmp(args[3], "disabled") == 0 ? SIXXSD_TSTATE_DISABLED : SIXXSD_TSTATE_UP;
 	}
@@ -767,7 +766,7 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	}
 
 	/* When the last heartbeat was seen */
-	if (tun->type == SIXXSD_TTYPE_AYIYA || tun->type == SIXXSD_TTYPE_PROTO41_HB)
+	if (tun->type == SIXXSD_TTYPE_AYIYA || tun->type == SIXXSD_TTYPE_DIRECT_HB)
 	{
 		tunnel_ago(ctx, tun->lastbeat, "Last Heartbeat          : ");
 		ctx_printf(ctx, "Heartbeat Password      : %s\n", tun->hb_password);
@@ -1173,7 +1172,7 @@ static PTR *tunnel_beat_check(PTR UNUSED *arg)
 			if (tun->state != SIXXSD_TSTATE_UP) continue;
 
 			/* If it is not a dynamic tunnel skip it */
-			if (tun->type != SIXXSD_TTYPE_PROTO41_HB && tun->type != SIXXSD_TTYPE_AYIYA) continue;
+			if (tun->type != SIXXSD_TTYPE_DIRECT_HB && tun->type != SIXXSD_TTYPE_AYIYA) continue;
 
 			/* It beat recently? */
 			if ((tun->lastbeat > currtime) || ((currtime - tun->lastbeat) < MAX_CLOCK_OFF)) continue;

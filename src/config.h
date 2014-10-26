@@ -12,6 +12,7 @@
 enum sixxsd_sockets
 {
 	SIXXSD_SOCK_TUNTAP = 0,						/* In/out for native packets */
+	SIXXSD_SOCK_PROTO4,						/* In for proto-4 packets */
 	SIXXSD_SOCK_PROTO41,						/* In for proto-41 packets */
 	SIXXSD_SOCK_ICMPV4,						/* In for ICMPv4 packets */
 	SIXXSD_SOCK_AYIYA,						/* In for AYIYA packets */
@@ -104,6 +105,7 @@ struct sixxsd_configuration
 	SOCKET			rawsocket_ipv4;				/* Need to do raw packets as otherwise we need to do a bind per send... */
 #endif
 #ifdef NEED_RAWSOCKETS
+	SOCKET			rawsocket_proto4;			/* For sending proto4 packets */
 	SOCKET			rawsocket_proto41;			/* For sending proto41 packets */
 	SOCKET			rawsocket_icmpv4;			/* For sending ICMPv4 packets */
 #endif

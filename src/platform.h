@@ -439,12 +439,32 @@ typedef uint32_t	addressnum_t;
 #define IPPROTO_IPV4		IPPROTO_IP
 #endif
 
+#ifndef IPPROTO_ICMPV4
+#define IPPROTO_ICMPV4		IPPROTO_ICMP
+#endif
+
+#ifndef AF_INET4
+#define AF_INET4		AF_INET
+#endif
+
 #ifndef SOL_IPV6
 #define SOL_IPV6		IPPROTO_IPV6
 #endif
 
 #ifndef IPPROTO_PIM
 #define IPPROTO_PIM		103
+#endif
+
+#ifndef IPPROTO_MH
+#define IPPROTO_MH		135
+#endif
+
+#ifndef IPPROTO_HIP
+#define IPPROTO_HIP		139
+#endif
+
+#ifndef IPPROTO_SHIM6
+#define IPPROTO_SHIM6		140
 #endif
 
 #ifndef O_LARGEFILE

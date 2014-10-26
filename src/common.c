@@ -520,11 +520,11 @@ static int sock_listen(char *buf, unsigned int buflen, const char *hostname, con
 				struct sockaddr_in6	res6;
 				char			hst[42];
 
-				if (res->ai_family == AF_INET) memcpy(&res4, res->ai_addr, sizeof(res4));
+				if (res->ai_family == AF_INET4) memcpy(&res4, res->ai_addr, sizeof(res4));
 				else memcpy(&res6, res->ai_addr, sizeof(res6));
 
 				inet_ntop(res->ai_family,
-					res->ai_family == AF_INET ? (VOID *)&res4.sin_addr : (VOID *)&res6.sin6_addr,
+					res->ai_family == AF_INET4 ? (VOID *)&res4.sin_addr : (VOID *)&res6.sin6_addr,
 					hst, sizeof(hst));
 
 				snprintef(buf, buflen, errno, "Couldn't %s() on %s for %s://%s%s%s:%s (%s:%u)\n",
@@ -751,7 +751,7 @@ static SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const cha
 	}
 	else if (strncmp(uri, "tcp4://", 7) == 0)
 	{
-		family = AF_INET;
+		family = AF_INET4;
 		socktype = SOCK_STREAM;
 		protocol = IPPROTO_TCP;
 		u+=7;
@@ -771,7 +771,7 @@ static SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const cha
 	}
 	else if (strncmp(uri, "udp4://", 7) == 0)
 	{
-		family = AF_INET;
+		family = AF_INET4;
 		socktype = SOCK_DGRAM;
 		u+=7;
 	}
@@ -790,7 +790,7 @@ static SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const cha
 	}
 	else if (strncmp(uri, "sctp4://", 8) == 0)
 	{
-		family = AF_INET;
+		family = AF_INET4;
 		socktype = SOCK_SEQPACKET;
 		protocol = IPPROTO_SCTP;
 		u+=8;
@@ -817,7 +817,7 @@ static SOCKET use_uriA(char *buf, unsigned int buflen, BOOL doconnect, const cha
 	else if (strncmp(uri, "all4://", 7) == 0 ||
 		 strncmp(uri, "any4://", 7) == 0)
 	{
-		family = AF_INET;
+		family = AF_INET4;
 		u+=7;
 	}
 	else if (strncmp(uri, "all6://", 7) == 0 ||
@@ -1273,7 +1273,7 @@ BOOL ipaddress_is_unspecified(const IPADDRESS *a)
  */
 const char *inet_ntopA(const IPADDRESS *addr, char *dst, socklen_t cnt)
 {
-	if (ipaddress_is_ipv4(addr)) inet_ntop(AF_INET, (char *)ipaddress_ipv4(addr), dst, cnt);
+	if (ipaddress_is_ipv4(addr)) inet_ntop(AF_INET4, (char *)ipaddress_ipv4(addr), dst, cnt);
 	else inet_ntop(AF_INET6, (char *)addr, dst, cnt);
 
 	return dst;
@@ -1283,7 +1283,7 @@ const char *inet_ntopAL(const IPADDRESS *addr, unsigned int len, char *dst, sock
 {
 	unsigned int l;
 
-	if (ipaddress_is_ipv4(addr)) inet_ntop(AF_INET, (char *)ipaddress_ipv4(addr), dst, cnt);
+	if (ipaddress_is_ipv4(addr)) inet_ntop(AF_INET4, (char *)ipaddress_ipv4(addr), dst, cnt);
 	else inet_ntop(AF_INET6, (char *)addr, dst, cnt);
 
 	l = strlen(dst);
@@ -1309,7 +1309,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 	}
 
 	/* When it includes a ':' it is an IPv6 address */
-	af = strstr(src, ":") ? AF_INET6 : AF_INET;
+	af = strstr(src, ":") ? AF_INET6 : AF_INET4;
 
 	/* Copy the address till the end or '/' */
 	memzero(tmp, sizeof(tmp));
@@ -1325,7 +1325,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 	if (ret <= 0) return ret;
 
 	/* Move IPv4 address to the back and set the ::ffff in front of it */
-	if (af == AF_INET)
+	if (af == AF_INET4)
 	{
 		ipaddress_set_ipv4(dst, (const struct in_addr *)&dst->a8[0]);
 		memcpy(&dst->a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
@@ -1359,7 +1359,7 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 			/* Add 96 bits as that is where IPv4 starts inside IPv6 */
 			/* Users specify a /24, but then it is a /120 to us */
 			/* Only do this when it is not a /0 and when it is IPv4 */
-			if (af == AF_INET) l += 96;
+			if (af == AF_INET4) l += 96;
 		}
 		/* No Prefix length, thus a /128 */
 		else l = 128;
@@ -1393,7 +1393,7 @@ VOID sock_cleanss(struct sockaddr_storage *ss)
 				(char *)(&((struct sockaddr_in6 *)ss)->sin6_addr)+12, 4);
 
 		/* It's IPv4 now */
-		ss->ss_family = AF_INET;
+		ss->ss_family = AF_INET4;
 	}
 }
 

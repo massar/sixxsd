@@ -34,6 +34,8 @@
 #define TOFOUR_SEL_SUB_TUNID(a) ((a >> 8) & 0x3fff)
 #define TOFOUR_SEL_TUNID(a) (TOFOUR_SEL_IS_TUN(a) ? TOFOUR_SEL_TUN_TUNID(a) : TOFOUR_SEL_SUB_TUNID(a))
 
+#define IS_IPV6(ip6) ((ip6->ip6_ctlun.ip6_un2_vfc >> 4) == 6)
+
 #include "platform.h"
 
 /* List Code */
@@ -85,11 +87,16 @@ VOID terminate(const char *who);
 #include "ayiya.h"
 #include "hb.h"
 #include "icmpv4.h"
+#include "proto4.h"
 #include "proto41.h"
 
 BOOL l3_ipv6_parse(const uint16_t in_tid, const uint16_t out_tid,
-		   const uint8_t *packet, const uint32_t len,
-		   uint8_t *_ipe_type, struct ip6_ext **_ipe, uint32_t *_plen);
+                   const uint8_t *packet, const uint32_t len,
+                   uint8_t *_payload_type, uint8_t **_payload, uint32_t *_plen);
+
+BOOL l3_ipv4_parse(const uint16_t in_tid, const uint16_t out_tid,
+                   const uint8_t *packet, const uint32_t len,
+                   uint8_t *_payload_type, uint8_t **_payload, uint32_t *_plen);
 
 #endif /* SIXXSD_H */
 
