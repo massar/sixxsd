@@ -884,12 +884,10 @@ static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc,
 
 	if (argc == 1 && strcmp(args[0], "RESET") == 0) reset = true;
 
-	snprintf(name, sizeof(name), tunnel_stats_total);
-	tunnel_stats(ctx, name, &g_conf->stats_total.traffic[stats_in], &g_conf->stats_total.traffic[stats_out], NULL);
+	tunnel_stats(ctx, tunnel_stats_total, &g_conf->stats_total.traffic[stats_in], &g_conf->stats_total.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_total, sizeof(g_conf->stats_total));
 
-	snprintf(name, sizeof(name), "uplink");
-	tunnel_stats(ctx, name, &g_conf->stats_uplink.traffic[stats_in], &g_conf->stats_uplink.traffic[stats_out], NULL);
+	tunnel_stats(ctx, "uplink", &g_conf->stats_uplink.traffic[stats_in], &g_conf->stats_uplink.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_uplink, sizeof(g_conf->stats_uplink));
 
 	/* Grab the mutex, to avoid the pinger from pinging more and messing up our stats ;) */
