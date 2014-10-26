@@ -25,6 +25,8 @@ VOID iface_send_icmpv6_echo_reply	(const uint16_t in_tid, const uint16_t out_tid
 VOID iface_send_icmpv6_neigh		(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len);
 
 uint16_t address_find			(IPADDRESS *addr, BOOL *istunnel);
+uint16_t address_find6			(IPADDRESS *addr, BOOL *istunnel);
+uint16_t address_find4			(IPADDRESS *addr, BOOL *istunnel);
 
 #endif /* IFACE_H */
 

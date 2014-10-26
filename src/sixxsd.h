@@ -18,6 +18,22 @@
 
 #define POPNAME ((g_conf->pop_id >= SIXXSD_POP_MAX) ? "notconf" : g_conf->pops[g_conf->pop_id].name)
 
+/* First 4 bits */
+#define TOFOUR_ISPFX(a) 	((a >> 28) != 0xf)
+
+/* Bits 4 - 9 (6 total) */
+#define TOFOUR_POPID(a)		((a >> 22) & 0x3f)
+
+/* Selector is the last 22 bits, hence big numbers */
+#define TOFOUR_SELECTOR(a)	(          a &  0x3fffff)
+
+/* First 7 bits of 22 bits set */
+#define TOFOUR_SEL_IS_TUN(a)	(          a >= 0x3f8000)
+
+#define TOFOUR_SEL_TUN_TUNID(a)	((a >> 1) & 0x3fff)
+#define TOFOUR_SEL_SUB_TUNID(a) ((a >> 8) & 0x3fff)
+#define TOFOUR_SEL_TUNID(a) (TOFOUR_SEL_IS_TUN(a) ? TOFOUR_SEL_TUN_TUNID(a) : TOFOUR_SEL_SUB_TUNID(a))
+
 #include "platform.h"
 
 /* List Code */

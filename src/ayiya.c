@@ -269,7 +269,8 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, co
 		return;
 	}
 
-	in_tid = tunnel_get(&s->identity, &is_tunnel);
+	/* AYIYA identities are always IPv6 based */
+	in_tid = tunnel_get6(&s->identity, &is_tunnel);
 	if (in_tid == SIXXSD_TUNNEL_NONE)
 	{
 		ayiya_log(LOG_WARNING, src, socktype, protocol, sport, dport, &s->identity, "incoming: Unknown endpoint\n");

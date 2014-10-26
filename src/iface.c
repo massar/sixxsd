@@ -27,23 +27,23 @@ BOOL address_is_##name(IPADDRESS *addr)				\
 ADDRESS_ISX(local,	SIXXSD_TUNNEL_IP_US)
 ADDRESS_ISX(remote,	SIXXSD_TUNNEL_IP_THEM)
 
-uint16_t address_find(IPADDRESS *addr, BOOL *istunnel)
+uint16_t address_find6(IPADDRESS *addr, BOOL *istunnel)
 {
 	struct sixxsd_subnet	*s;
 	uint16_t		tid;
 
-	/* Force it not to be a tunnel */
+	/* Force it not to be a tunnel (yet) */
 	*istunnel = false;
 
 	/* Try to get it from the tunnel ranges */
-	tid = tunnel_get(addr, istunnel);
+	tid = tunnel_get6(addr, istunnel);
 	if (tid != SIXXSD_TUNNEL_NONE)
 	{
 		return tid;
 	}
 
 	/* Subnet then? */
-	s = subnet_get(addr);
+	s = subnet_get6(addr);
 	if (s)
 	{
 		return s->tunnel_id;
@@ -51,6 +51,19 @@ uint16_t address_find(IPADDRESS *addr, BOOL *istunnel)
 
 	/* Not ours thus must be on the uplink */
 	return SIXXSD_TUNNEL_UPLINK;
+}
+
+uint16_t address_find4(IPADDRESS *addr, BOOL *istunnel)
+{
+	/* IPv4 only has tunnels with default subnets */
+	return tunnel_get4(addr, istunnel);
+}
+
+uint16_t address_find(IPADDRESS *addr, BOOL *istunnel)
+{
+	return ipaddress_is_ipv4(addr) ?
+			address_find4(addr, istunnel) :
+			address_find6(addr, istunnel);
 }
 
 static VOID os_exec(const char *fmt, ...) ATTR_FORMAT(printf,1,2);
@@ -648,7 +661,8 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	if (!nosrcchk)
 	{
 		/* Do we like the source address coming from this interface? */
-		uint16_t src_tid = address_find((IPADDRESS *)&ip6->ip6_src, &istunnel);
+		uint16_t src_tid = address_find6((IPADDRESS *)&ip6->ip6_src, &istunnel);
+
 		if (src_tid != in_tid)
 		{
 			/* We drop these to the floor as we can never reply to the real source which lives on the wrong interface */
@@ -673,7 +687,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 		return;
 	}
 
-	out_tid = address_find((IPADDRESS *)&ip6->ip6_dst, &istunnel);
+	out_tid = address_find6((IPADDRESS *)&ip6->ip6_dst, &istunnel);
 
 	/* Local destination? (thus <tunnel-prefix>:<tid>::1) */
 	if (istunnel && address_is_local((IPADDRESS *)&ip6->ip6_dst))
@@ -730,10 +744,13 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 		ipaddress_make_ipv4(&s, &ip->ip_src);
 
 		/* Do we like the source address coming from this interface? */
-		out_tid = address_find(&s, &istunnel);
+		out_tid = address_find4(&s, &istunnel);
 		if (out_tid != in_tid)
 		{
-			if (!is_response) iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_UNREACH_SRCFAIL);
+			if (!is_response)
+			{
+				iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_UNREACH_SRCFAIL);
+			}
 			else
 			{
 				char		src[128], dst[128];
@@ -751,10 +768,13 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	}
 
 	/* Where does the packet want to go? */
-	out_tid = address_find((IPADDRESS *)&ip->ip_dst, &istunnel);
+	out_tid = address_find4((IPADDRESS *)&ip->ip_dst, &istunnel);
 
 	/* Prepare the packet for forwarding (MTU and TTL handling) */
-	if (!iface_prepfwd4(in_tid, out_tid, packet, len, is_response, decrease_ttl)) return;
+	if (!iface_prepfwd4(in_tid, out_tid, packet, len, is_response, decrease_ttl))
+	{
+		return;
+	}
 
 	/* It goes out over one of our own tunnels */
 	if (out_tid != SIXXSD_TUNNEL_UPLINK)

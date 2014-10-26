@@ -88,7 +88,15 @@ struct sixxsd_tunnel *tunnel_grab(const uint16_t tid)
 	return tid <= g_conf->tunnels.tunnel_hi ? &g_conf->tunnels.tunnel[tid] : NULL;
 }
 
-uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
+/*
+ * Tunnel Address Space Layout
+ * bits		length	total	description	note
+ *+------------+-------+-------+---------------+-----------------------
+ *  0 - 47	48	-	prefix		ISP-provided
+ * 48 - 63	16	65k	tunnel_id	14 bits due to IPv4 thus max 16k
+ * 64 - 127	64	-	eui-64		::1 == PoP, ::2 == User
+ */
+uint16_t tunnel_get6(IPADDRESS *addr, BOOL *is_tunnel)
 {
 	struct sixxsd_tunnels	*t = &g_conf->tunnels;
 	uint16_t		tid;
@@ -96,11 +104,14 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 	*is_tunnel = false;
 
 	/* Only look at the first 48 bits to match the prefix */
-	if (memcmp(&t->prefix, addr, (48/8)) != 0) return SIXXSD_TUNNEL_NONE;
+	if (memcmp(&t->prefix, addr, (48/8)) != 0)
+	{
+		return SIXXSD_TUNNEL_NONE;
+	}
 
 	/* Bits 48-63 describe the tunnel id */
 	tid = ntohs(addr->a16[(48/16)]);
-	if (tid <= t->tunnel_hi || tid == SIXXSD_TUNNEL_NONE)
+	if (tid <= t->tunnel_hi)
 	{
 		*is_tunnel = true;
 		return tid;
@@ -110,16 +121,118 @@ uint16_t tunnel_get(IPADDRESS *addr, BOOL *is_tunnel)
 	if (tid & 0x8000)
 	{
 		tid &= 0x7fff;
-		if (tid <= t->tunnel_hi) return tid;
-	}
-	/* Otherwise it is not there */
-	else
-	{
-		char buf[64];
-		inet_ntopA(addr, buf, sizeof(buf));
-		mdolog(LOG_ERR, "tunnel_get(%s) is out of tunnel range\n", buf);
+		if (tid <= t->tunnel_hi)
+		{
+			return tid;
+		}
 	}
 
+	/* Not configured */
+	return SIXXSD_TUNNEL_NONE;
+}
+
+/*
+ * IPv4 address Layout
+ *
+ * We abuse the reserved 240.0.0.0/4 = RFC 1112, Section 4
+ * Caveat: some OSs/tools might handle that specially and might not work
+ *
+ * https://tools.ietf.org/html/rfc5735 has:
+ * 100.64.0.0/10 = rfc6598 = shared CGN space
+ * 10.0.0.0/8 =  rfc1918
+ * 172.16.0.0/12 = rfc1918
+ * all of these are heavily in use and it would be bad to re-use them
+ * And we really need those 4 extra bits in the below layout.
+ *
+ * Also we should rename it "To Four space" -> 240/4 ;)
+ *
+ * +-----------------------------------------------------------------+
+ * |                     1                   2                   3   |
+ * | 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 |
+ * +-----------------------------------------------------------------+
+ *
+ * +-----------------------------------------------------------------+
+ * |        |           |                  1                   1     |
+ * | 1 2 3 4|1 2 3 4 5 6|1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 |
+ * +-----------------------------------------------------------------+
+ * | prefix | pop_id    | selector                                   |
+ * +-----------------------------------------------------------------+
+ *
+ * +-----------------------------------------------------------------+
+ * |        |           |             |                   1        | |
+ * | 1 2 3 4|1 2 3 4 5 6|1 2 3 4 5 6 7| 1 2 3 4 5 6 7 8 9 0 1 2 3 4|1|
+ * +--------+-----------+--------------------------------------------+
+ * | 1 1 1 1| pop_id    |1 1 1 1 1 1 1|  tunnel-id                 |T|
+ * +--------+-----------+--------------------------------------------+
+ *
+ * +-----------------------------------------------------------------+
+ * |        |           |                  1        |                |
+ * | 1 2 3 4|1 2 3 4 5 6|1 2 3 4 5 6 7 8 9 0 1 2 3 4|1 2 3 4 5 6 7 8 |
+ * +--------+-----------+--------------------------------------------+
+ * | 1 1 1 1| pop_id    | tunnel-id                 |  user subnet   |
+ * +--------+-----------+--------------------------------------------+
+ *
+ * When selector >= 0x3fc000 it is a tunnel (/31) with T = 0 for the
+ * PoP and T = 1 for the user side of the tunnel.
+ * Otherwise it is a subnet.
+ *
+ * bits		length	total	what		details
+ *+------------+-------+-------+---------------+----------------------------------
+ *  0 -  3	 4	16	prefix		0x1111 aka 240.0.0.0/4
+ *  4 -  9	 6	64	pop		The pop_uid
+ * 10 - 31	22	-	selector	determines tunnel or subnet
+ *
+ * selector = tunnel
+ * 10 - 16	 7	-	selector	0x111111
+ * 17 - 30	14	65536	tunnel_id	due to selector-subnet upto 16256 (0x3f80)
+ * 	31	 1	1	pop/user	0 = pop, 1 = user
+ *
+ * selector = subnet
+ * 10 - 24	14	65536	tunnel_id       see above
+ * 24 - 32	 8	256	user subnet	a /24 per tunnel
+ *
+ * The magic is below for getting the right bits out
+ */
+uint16_t tunnel_get4(IPADDRESS *addr, BOOL *is_tunnel)
+{
+	struct sixxsd_tunnels	*t = &g_conf->tunnels;
+	uint32_t		a4, sel;
+	uint16_t		pop_id, tid;
+
+	*is_tunnel = false;
+
+	/*
+	 * We do not check if the first 96 bits are ::ffff
+	 * Code leading here should be IPv4 only
+	 */
+
+	/* Get the IPv4 address */
+	a4 = addr->a32[3];
+
+	/* Check the prefix if it is 240.0.0.0/4 */
+	if (TOFOUR_ISPFX(a4))
+	{
+		/* Not our special prefix */
+		return SIXXSD_TUNNEL_NONE;
+	}
+
+	/* The PoP ID */
+	pop_id = TOFOUR_POPID(a4);
+	if (pop_id != g_conf->pop_id)
+	{
+		/* Not on this PoP */
+		return SIXXSD_TUNNEL_NONE;
+	}
+
+	sel = TOFOUR_SELECTOR(a4);
+	tid = TOFOUR_SEL_TUNID(sel);
+	if (tid <= t->tunnel_hi)
+	{
+		*is_tunnel = true;
+		return tid;
+	}
+
+	/* Not configured */
 	return SIXXSD_TUNNEL_NONE;
 }
 
@@ -137,7 +250,10 @@ uint16_t tunnel_find(IPADDRESS *addr)
 
 	for (tid = 0; tid <= t->tunnel_hi; tid++)
 	{
-		if (memcmp(addr, &t->tunnel[tid].ip_them, sizeof(*addr)) != 0) continue;
+		if (memcmp(addr, &t->tunnel[tid].ip_them, sizeof(*addr)) != 0)
+		{
+			continue;
+		}
 
 		/* First match */
 		return tid;
@@ -706,7 +822,7 @@ static int tunnel_gettid(struct sixxsd_context *ctx, const char *arg, uint16_t *
 	/* None found yet */
 	*tid_ = tid = SIXXSD_TUNNEL_NONE;
 
-	/* Is it an IPv6 address? */
+	/* Is it an IP address? */
 	if (inet_ptonA(arg, &ip, NULL))
 	{
 		tid = address_find(&ip, &is_tunnel);

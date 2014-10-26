@@ -91,7 +91,8 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 
 	*pnt2 = ' ';
 
-	in_tid = tunnel_get(&identity, &is_tunnel);
+	/* Heartbeat identity is always IPv6 */
+	in_tid = tunnel_get6(&identity, &is_tunnel);
 
 	if (in_tid == SIXXSD_TUNNEL_NONE)
 	{

@@ -9,7 +9,7 @@
 const char module_subnet[] = "subnet";
 #define module module_subnet
 
-struct sixxsd_subnet *subnet_get(IPADDRESS *addr)
+struct sixxsd_subnet *subnet_get6(IPADDRESS *addr)
 {
 	struct sixxsd_subnets	*ss;
 	unsigned int		i, bo;
@@ -62,7 +62,7 @@ static int subnet_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 		return 400;
 	}
 
-	sub = subnet_get(&ip);
+	sub = subnet_get6(&ip);
 	if (!sub)
 	{
 		ctx_printf(ctx, "Route %s with gateway %s doesn't have a master subnet\n", args[0], args[1]);

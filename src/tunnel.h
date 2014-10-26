@@ -114,7 +114,8 @@ struct sixxsd_tunnels
 };
 
 int tunnel_init(struct sixxsd_context *ctx);
-uint16_t tunnel_get(IPADDRESS *addr, BOOL *istunnel);
+uint16_t tunnel_get6(IPADDRESS *addr, BOOL *istunnel);
+uint16_t tunnel_get4(IPADDRESS *addr, BOOL *istunnel);
 uint16_t tunnel_find(IPADDRESS *addr);
 struct sixxsd_tunnel *tunnel_grab(const uint16_t tid);
 BOOL tunnel_state_check(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response);

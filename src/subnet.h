@@ -27,7 +27,7 @@ struct sixxsd_subnets
 	struct sixxsd_subnet		subnet[256];			/* The subnets (256x /56s or /48s) */
 };
 
-struct sixxsd_subnet *subnet_get(IPADDRESS *addr);
+struct sixxsd_subnet *subnet_get6(IPADDRESS *addr);
 
 #endif /* ROUTE_H */
 

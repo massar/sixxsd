@@ -98,7 +98,7 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
          * determining the associated tunnel.
 	 * It also nicely solves the problem of having to search for the IPv4 src/dst pair :)
 	 */
-	in_tid = address_find((IPADDRESS *)&ip->ip6_src, &istunnel);
+	in_tid = address_find6((IPADDRESS *)&ip->ip6_src, &istunnel);
 	tun = in_tid == SIXXSD_TUNNEL_UPLINK ? NULL : tunnel_grab(in_tid);
 
 	if (!tun || tun->state == SIXXSD_TSTATE_NONE)
