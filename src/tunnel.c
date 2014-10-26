@@ -842,13 +842,11 @@ static int tunnel_cmd_get_errorpacket(struct sixxsd_context *ctx, const unsigned
 	return 200;
 }
 
-static const char tunnel_stats_total[] = "total";
-
 static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency);
 static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency)
 {
-	/* Don't report anything for non-total when there is no data */
-	if (in->packets == 0 && out->packets == 0 && name != tunnel_stats_total) return;
+	/* Don't report anything for tunnels when there is no data */
+	if (in->packets == 0 && out->packets == 0 && name[0] == 'T') return;
 
 	/* Name | InOct | OutOct | InPkt | OutPkt | PktSent | PktRecv | Loss | Min | Avg | Max */
 	ctx_printf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "%s",
@@ -884,7 +882,7 @@ static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc,
 
 	if (argc == 1 && strcmp(args[0], "RESET") == 0) reset = true;
 
-	tunnel_stats(ctx, tunnel_stats_total, &g_conf->stats_total.traffic[stats_in], &g_conf->stats_total.traffic[stats_out], NULL);
+	tunnel_stats(ctx, "total", &g_conf->stats_total.traffic[stats_in], &g_conf->stats_total.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_total, sizeof(g_conf->stats_total));
 
 	tunnel_stats(ctx, "uplink", &g_conf->stats_uplink.traffic[stats_in], &g_conf->stats_uplink.traffic[stats_out], NULL);
