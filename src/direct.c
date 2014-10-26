@@ -3,32 +3,16 @@
  by Jeroen Massar <jeroen@sixxs.net>
  (C) Copyright SixXS 2000-2013 All Rights Reserved
 ************************************************************
- Protocol 41 - RFC2473
+ Protocol 4 + 41 - RFC2303 + RFC2473
 ***********************************************************/
 #include "sixxsd.h"
 
-const char module_proto41[] = "proto41";
-#define module module_proto41
+const char module_direct[] = "direct";
+#define module module_direct
 
-VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *packet, const uint16_t len, BOOL is_response)
+VOID direct_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
-	struct sixxsd_tunnel	*tun = tunnel_grab(out_tid);
-	struct ip		ip;
-
-	if (!tun)
-	{
-		if (!is_response) iface_send_icmpv4_unreach(in_tid, out_tid, packet, len, ICMP_PROT_UNREACH);
-		return;
-	}
-
-	if (len > tun->mtu)
-	{
-		tunnel_log(in_tid, out_tid, packet,len, SIXXSD_TERR_TUN_ENCAPS_PACKET_TOO_BIG, &tun->ip_them);
-		if (!is_response) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
-		return;
-	}
-
-	if (!tunnel_state_check(in_tid, out_tid, packet, len, is_response)) return;
+	struct ip ip;
 
 	/* IP version 4 */
 	ip.ip_v = 4;
@@ -38,7 +22,7 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 	ip.ip_id = 0x42;
 	ip.ip_off = htons(IP_DF);
 	ip.ip_ttl = 64;
-	ip.ip_p = IPPROTO_IPV6;
+	ip.ip_p = protocol;
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
 	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(ip.ip_src));
@@ -47,34 +31,54 @@ VOID proto41_out(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_response, packet, len);
 }
 
-VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
+VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
-	struct ip6_hdr		*ip = (struct ip6_hdr *)packet;
+	struct
+	{
+		struct ip6_hdr		ip;
+		uint8_t			payload[2048];
+	} PACKED			pkt;
+
+        /* IPv6 */
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);
+        pkt.ip.ip6_ctlun.ip6_un2_vfc = (6 << 4);
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(len);
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = 64;
+        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = protocol;
+
+        memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
+        memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));
+
+	memcpy(pkt.payload, packet, len);
+
+	/* Send it off: maybe an error, don't decrease the TTL, don't check the source */
+        iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + len, is_response, false, true);
+}
+
+VOID direct_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const uint16_t len)
+{
+	struct ip		*ip4 = (struct ip *)packet;
+	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
 	struct sixxsd_tunnel	*tun;
 	uint16_t		in_tid;
 	BOOL			istunnel, fail = false;
 	uint16_t		code = 0;
-
-	/* Unspecified or link-local address? */
-	if (IN6_IS_ADDR_UNSPECIFIED(&ip->ip6_src) ||
-	    IN6_IS_ADDR_LINKLOCAL(&ip->ip6_src))
-	{
-		/*
-		 * Just ignore the packet, as long we don't do multicast it does not matter.
-		 *
-		 * But if we would process it further it would generate an proto-41
-		 * unreachable as then the source address could not be found.
-		 */
-		return;
-	}
 
 	/*
 	 * Fetch it. This automatically does RPF as we use the source IPv6 address for
          * determining the associated tunnel.
 	 * It also nicely solves the problem of having to search for the IPv4 src/dst pair :)
 	 */
-	in_tid = address_find6((IPADDRESS *)&ip->ip6_src, &istunnel);
-	tun = in_tid == SIXXSD_TUNNEL_UPLINK ? NULL : tunnel_grab(in_tid);
+	if (protocol == AF_INET6)
+	{
+		in_tid = address_find6((IPADDRESS *)&ip6->ip6_src, &istunnel);
+	}
+	else
+	{
+		in_tid = address_find4((IPADDRESS *)&ip4->ip_src, &istunnel);
+	}
+
+	tun = (in_tid == SIXXSD_TUNNEL_UPLINK ? NULL : tunnel_grab(in_tid));
 
 	if (!tun || tun->state == SIXXSD_TSTATE_NONE)
 	{
@@ -133,12 +137,6 @@ VOID proto41_in(const IPADDRESS *src, uint8_t *packet, const uint16_t len)
 	}
 
 	if (!tunnel_state_check(in_tid, SIXXSD_TUNNEL_NONE, packet, len, false)) return;
-
-	if ((ip->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
-	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, packet, len, SIXXSD_TERR_TUN_PAYLOAD_NOT_IPV6, src);
-		return;
-	}
 
 	/* Account the packet */
 	tunnel_account_packet_in(in_tid, len);

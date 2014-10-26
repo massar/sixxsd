@@ -18,9 +18,8 @@
 enum sixxsd_tunnel_type
 {
 	SIXXSD_TTYPE_NONE	= 0,					/* Not a tunnel (aka tunnel is not used) */
-	SIXXSD_TTYPE_IGNORE,						/* Ignore this interface (eg TINC) */
 	SIXXSD_TTYPE_DIRECT,						/* Proto-41 static */
-	SIXXSD_TTYPE_DIRECT_HB,					/* Proto-41 Heartbeat */
+	SIXXSD_TTYPE_DIRECT_HB,						/* Proto-41 Heartbeat */
 	SIXXSD_TTYPE_AYIYA,						/* AYIYA */
 	SIXXSD_TTYPE_MAX
 };

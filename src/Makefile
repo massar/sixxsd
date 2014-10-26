@@ -23,14 +23,12 @@ BINS		+=	$(SD_EXE)
 SD_OBJS		=	sixxsd.o 							\
 			ayiya.o								\
 			checksum.o common.o common_extra.o config.o context.o 		\
-			decode.o							\
+			decode.o direct.o						\
 			hash_md5.o hash_sha1.o						\
 			hb.o								\
 			icmpv4.o							\
 			iface.o								\
 			pop.o								\
-			proto4.o							\
-			proto41.o							\
 			rwl.o								\
 			subnet.o							\
 			thread.o tunnel.o

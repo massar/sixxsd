@@ -215,6 +215,14 @@ BOOL l3_ipv4_parse(const uint16_t in_tid, const uint16_t out_tid,
 		return false;
 	}
 
+	if (ip->ip_v != 4)
+	{
+		tunnel_debug(in_tid, out_tid, packet, len,
+				"IPv4: Version in packet is not 4 (%u)\n",
+				ip->ip_v);
+		return false;
+	}
+
 	hlen = ip->ip_hl * 4;
 	if (hlen < sizeof(*ip))
 	{

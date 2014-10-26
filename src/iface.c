@@ -379,17 +379,28 @@ static VOID iface_unreachtun(const uint16_t in_tid, const uint16_t out_tid, cons
 	else				iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, code6);
 }
 
+struct
+{
+	VOID (*func)(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
+} iface_outs[SIXXSD_TTYPE_MAX][2] = {
+	{ { NULL		}, { NULL } },
+	{ { direct_out_ipv4	}, { direct_out_ipv6 } },
+	{ { direct_out_ipv4	}, { direct_out_ipv6 } },
+	{ { ayiya_out_ipv4	}, { ayiya_out_ipv6 } },
+};
+
 static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
 static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
-	struct sixxsd_tunnel	*outtun = tunnel_grab(out_tid);
+	struct sixxsd_tunnel	*tun = tunnel_grab(out_tid);
+	int			n;
 
 	assert(protocol == IPPROTO_IPV4 || protocol == IPPROTO_IPV6);
 
 	tunnel_debug(in_tid, out_tid, packet, len, "iface_routetun(%s)\n", is_response ? "[response]" : "[normal]");
 
 	/* No way to get out */
-	if (!outtun)
+	if (!tun || tun->type == SIXXSD_TTYPE_NONE)
 	{
 		if (!is_response)
 		{
@@ -417,42 +428,25 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 		return;
 	}
 
-	if (outtun->state == SIXXSD_TSTATE_UP)
+	if (tun->state == SIXXSD_TSTATE_UP)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "Tunnel up, forwarding to %s (%u)\n",
-			(outtun->type == SIXXSD_TTYPE_DIRECT ||
-				outtun->type == SIXXSD_TTYPE_DIRECT_HB ? "direct" : "ayiya"),
-			outtun->type);
+			(tun->type == SIXXSD_TTYPE_DIRECT ||
+				tun->type == SIXXSD_TTYPE_DIRECT_HB ? "direct" : "ayiya"),
+			tun->type);
 
-		switch (outtun->type)
+		if (len > tun->mtu)
 		{
-			case SIXXSD_TTYPE_DIRECT:
-			case SIXXSD_TTYPE_DIRECT_HB:
-				switch (protocol)
-				{
-				case IPPROTO_IPV4:
-					proto4_out(in_tid, out_tid, packet, len, is_response);
-					return;
-
-				case IPPROTO_IPV6:
-					proto41_out(in_tid, out_tid, packet, len, is_response);
-					return;
-
-				default:
-					break;
-				}
-
-				/* Fall through to sending an unreachable below */
-				break;
-
-			case SIXXSD_TTYPE_AYIYA:
-				ayiya_out(in_tid, out_tid, protocol, packet, len, is_response);
-				return;
-
-			default:
-				assert(false);
-				break;
+			if (!is_response) iface_send_icmp_toobig(in_tid, out_tid, packet, len, tun->mtu);
+			return;
 		}
+
+		if (!tunnel_state_check(in_tid, out_tid, packet, len, is_response)) return;
+
+		n = ipaddress_is_ipv4(&tun->ip_them) ? 0 : 1;
+
+		/* Output the packet */
+		iface_outs[tun->type][n].func(tun, in_tid, out_tid, protocol, packet, len, is_response);
 	}
 
 	iface_unreachtun(in_tid, out_tid, protocol, packet, len, is_response);
@@ -1285,19 +1279,12 @@ static PTR *iface_read_thread(PTR *__sock)
 			switch (sock->type)
 			{
 			case SIXXSD_SOCK_PROTO4:
+			case SIXXSD_SOCK_PROTO41:
 				/* Raw packet includes the full IPv4 header and then payload etc */
 				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_IPV4);
 				if (payload == NULL) break;
 
-				proto4_in(&src, payload, plen);
-				break;
-
-			case SIXXSD_SOCK_PROTO41:
-				/* Raw packet includes the full IPv4 header and then payload etc */
-				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_IPV6);
-				if (payload == NULL) break;
-
-				proto41_in(&src, payload, plen);
+				direct_in(&src, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_ICMPV4:
@@ -1331,19 +1318,14 @@ static PTR *iface_read_thread(PTR *__sock)
 			switch (sock->type)
 			{
 			case SIXXSD_SOCK_PROTO4:
-				/* Raw packet includes the full IPv6 header and then payload etc */
-				payload = iface_getpayload_ipv6(buffer, len, &src, &plen, IPPROTO_IPV4);
-				if (payload == NULL) break;
-
-				proto4_in(&src, payload, plen);
-				break;
-
 			case SIXXSD_SOCK_PROTO41:
 				/* Raw packet includes the full IPv6 header and then payload etc */
-				payload = iface_getpayload_ipv6(buffer, len, &src, &plen, IPPROTO_IPV6);
+				payload = iface_getpayload_ipv6(buffer, len, &src, &plen,
+					sock->type == SIXXSD_SOCK_PROTO4 ?
+						 IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				proto41_in(&src, payload, plen);
+				direct_in(&src, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
