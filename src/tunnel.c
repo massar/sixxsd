@@ -842,11 +842,13 @@ static int tunnel_cmd_get_errorpacket(struct sixxsd_context *ctx, const unsigned
 	return 200;
 }
 
+static const char tunnel_stats_total[] = "total";
+
 static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency);
 static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct sixxsd_traffic *in, struct sixxsd_traffic *out, struct sixxsd_latency *latency)
 {
-	/* Nothing counted then we don't need to show stats either */
-	if (in->packets == 0 && out->packets == 0) return;
+	/* Don't report anything for non-total when there is no data */
+	if (in->packets == 0 && out->packets == 0 && name != tunnel_stats_total) return;
 
 	/* Name | InOct | OutOct | InPkt | OutPkt | PktSent | PktRecv | Loss | Min | Avg | Max */
 	ctx_printf(ctx, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "%s",
@@ -859,7 +861,7 @@ static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct si
 
 	if (latency)
 	{
-		ctx_printf(ctx, " %u %u %2.2f %2.2f %2.2f %2.2f",
+		ctx_printf(ctx, " %u %u %2.2f %2.2f %2.2f %2.2f\n",
 				latency->num_sent,
 				latency->num_recv,
 				latency->num_sent == 0 ?  0 : (float)(latency->num_sent - latency->num_recv) * 100 / latency->num_sent,
@@ -868,13 +870,6 @@ static VOID tunnel_stats(struct sixxsd_context *ctx, const char *name, struct si
 				latency->num_recv == 0 ? -1 : time_us_msec(latency->max)
 		);
 	}
-
-	/* Append the totals */
-	ctx_printf(ctx, " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
-			in->octets_tot,
-			out->octets_tot,
-			in->packets_tot,
-			out->packets_tot);
 }
 
 static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc, const char *args[]);
@@ -889,7 +884,7 @@ static int tunnel_cmd_stats(struct sixxsd_context *ctx, const unsigned int argc,
 
 	if (argc == 1 && strcmp(args[0], "RESET") == 0) reset = true;
 
-	snprintf(name, sizeof(name), "total");
+	snprintf(name, sizeof(name), tunnel_stats_total);
 	tunnel_stats(ctx, name, &g_conf->stats_total.traffic[stats_in], &g_conf->stats_total.traffic[stats_out], NULL);
 	if (reset) memzero(&g_conf->stats_total, sizeof(g_conf->stats_total));
 
