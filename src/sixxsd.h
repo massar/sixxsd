@@ -86,6 +86,7 @@ VOID terminate(const char *who);
 /* Protocols */
 #include "ayiya.h"
 #include "direct.h"
+#include "gre.h"
 #include "hb.h"
 #include "icmpv4.h"
 

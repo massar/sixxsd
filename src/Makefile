@@ -24,6 +24,7 @@ SD_OBJS		=	sixxsd.o 							\
 			ayiya.o								\
 			checksum.o common.o common_extra.o config.o context.o 		\
 			decode.o direct.o						\
+			gre.o								\
 			hash_md5.o hash_sha1.o						\
 			hb.o								\
 			icmpv4.o							\

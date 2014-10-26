@@ -9,17 +9,18 @@
 const char module_tunnel[] = "tunnel";
 #define module module_tunnel
 
+static const char *types[] =
+{
+	"none",
+	"proto4",
+	"proto41",
+	"heartbeat",
+	"ayiya",
+	"gre",
+};
+
 const char *tunnel_type_name(enum sixxsd_tunnel_type type)
 {
-	const char *types[] =
-	{
-		"none",
-		"ignore",
-		"proto41",
-		"heartbeat",
-		"ayiya",
-	};
-
 	return type < lengthof(types) ? types[type] : "<unknown>";
 }
 
@@ -555,6 +556,7 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 
 	if	(strcasecmp(args[2], "ayiya"		) == 0) tun->type = SIXXSD_TTYPE_AYIYA;
 	else if (strcasecmp(args[2], "heartbeat"	) == 0) tun->type = SIXXSD_TTYPE_DIRECT_HB;
+	else if (strcasecmp(args[2], "gre"		) == 0) tun->type = SIXXSD_TTYPE_GRE;
 	else
 	{
 		tun->type = SIXXSD_TTYPE_DIRECT;

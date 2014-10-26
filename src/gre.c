@@ -3,39 +3,49 @@
  by Jeroen Massar <jeroen@sixxs.net>
  (C) Copyright SixXS 2000-2013 All Rights Reserved
 ************************************************************
- Protocol 4 + 41 - RFC2303 + RFC2473
+ Generic Routing Encapsulation (GRE) - RFC2784 - proto-47
 ***********************************************************/
 #include "sixxsd.h"
 
-const char module_direct[] = "direct";
-#define module module_direct
+const char module_gre[] = "gre";
+#define module module_gre
 
-VOID direct_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
+VOID gre_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
-	struct ip ip;
+	struct
+	{
+		struct ip	ip;
+		struct grehdr	gre;
+	} PACKED pkt;
+
+	memzero(&pkt, sizeof(pkt));
 
 	/* IP version 4 */
-	ip.ip_v = 4;
-	ip.ip_hl = sizeof(ip) / 4;
-	ip.ip_tos = 0;
-	ip.ip_len = htons(sizeof(ip) + len);
-	ip.ip_id = 0x42;
-	ip.ip_off = htons(IP_DF);
-	ip.ip_ttl = 64;
-	ip.ip_p = protocol;
+	pkt.ip.ip_v = 4;
+	pkt.ip.ip_hl = sizeof(pkt.ip) / 4;
+	pkt.ip.ip_tos = 0;
+	pkt.ip.ip_len = htons(sizeof(pkt) + len);
+	pkt.ip.ip_id = 0x42;
+	pkt.ip.ip_off = htons(IP_DF);
+	pkt.ip.ip_ttl = 64;
+	pkt.ip.ip_p = IPPROTO_GRE;
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
-	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(ip.ip_src));
-	memcpy(&ip.ip_dst, ipaddress_ipv4(&tun->ip_them),			sizeof(ip.ip_dst));
+	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),sizeof(pkt.ip.ip_src));
+	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),			sizeof(pkt.ip.ip_dst));
 
-	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_response, packet, len);
+	/* GRE is mostly zeros, even the version number */
+	pkt.gre.proto = ntohs(protocol == IPPROTO_IPV4 ? ETHERTYPE_IP : ETHERTYPE_IPV6);
+
+	iface_send4(in_tid, out_tid, (const uint8_t *)&pkt, sizeof(pkt), packet, len, is_response, packet, len);
 }
 
-VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
+VOID gre_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response)
 {
 	struct
 	{
 		struct ip6_hdr		ip;
+		struct grehdr		gre;
 		uint8_t			payload[2048];
 	} PACKED			pkt;
 
@@ -49,13 +59,16 @@ VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
         memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
         memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));
 
+	/* GRE is mostly zeros, even the version number */
+	pkt.gre.proto = ntohs(protocol == IPPROTO_IPV4 ? ETHERTYPE_IP : ETHERTYPE_IPV6);
+
 	memcpy(pkt.payload, packet, len);
 
 	/* Send it off: maybe an error, don't decrease the TTL, don't check the source */
         iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + len, is_response, false, true);
 }
 
-VOID direct_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const uint16_t len)
+VOID gre_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const uint16_t len)
 {
 	struct ip		*ip4 = (struct ip *)packet;
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;

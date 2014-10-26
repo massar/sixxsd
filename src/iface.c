@@ -387,6 +387,7 @@ struct
 	{ { direct_out_ipv4	}, { direct_out_ipv6 } },
 	{ { direct_out_ipv4	}, { direct_out_ipv6 } },
 	{ { ayiya_out_ipv4	}, { ayiya_out_ipv6 } },
+	{ { gre_out_ipv4	}, { gre_out_ipv6 } },
 };
 
 static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const uint8_t protocol, const uint8_t *packet, const uint16_t len, BOOL is_response);
@@ -431,9 +432,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 	if (tun->state == SIXXSD_TSTATE_UP)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "Tunnel up, forwarding to %s (%u)\n",
-			(tun->type == SIXXSD_TTYPE_DIRECT ||
-				tun->type == SIXXSD_TTYPE_DIRECT_HB ? "direct" : "ayiya"),
-			tun->type);
+			tunnel_type_name(tun->type), tun->type);
 
 		if (len > tun->mtu)
 		{

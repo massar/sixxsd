@@ -498,6 +498,15 @@ typedef uint32_t	addressnum_t;
 #endif
 #endif
 
+struct grehdr
+{
+	uint8_t		chksum_present;		/* Actually only the first bit */
+	uint8_t		version;		/* Actually only the last 3 bits */
+	uint16_t	proto;			/* The protocol */
+	/* opt: uint16_t checksum */
+	/* opt: reserved 1 */
+};
+
 /* Debug uncommenting mechanism */
 #ifdef DEBUG
 #define D(x) x
