@@ -174,7 +174,7 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 #ifdef _LINUX
 	/* Update the checksum */
 	ip->ip_sum = htons(0);
-	ip->ip_sum = in_checksum((unsigned char *)ip, sizeof(*ip));
+	ip->ip_sum = ipv4_checksum((unsigned char *)ip, sizeof(*ip));
 
 	assert((packet && packet_len > 0) || (!packet && packet_len == 0));
 
@@ -286,7 +286,7 @@ static BOOL iface_prepfwd4(const uint16_t in_tid, const uint16_t out_tid, uint8_
 
 	/* In IPv4 one has to recalculate the checksum at every hop */
 	ip->ip_sum = htons(0);
-	ip->ip_sum = in_checksum(packet, sizeof(*ip));
+	ip->ip_sum = ipv4_checksum(packet, sizeof(*ip));
 
 	return true;
 }
@@ -976,7 +976,7 @@ static VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, con
 	pkt.icmp.icmp_code = code;
 	pkt.icmp.icmp_param = htonl(param);
 	pkt.icmp.icmp_cksum = htons(0);
-	pkt.icmp.icmp_cksum = in_checksum((unsigned char *)&pkt.icmp, sizeof(pkt.icmp) + plen);
+	pkt.icmp.icmp_cksum = ipv4_checksum((unsigned char *)&pkt.icmp, sizeof(pkt.icmp) + plen);
 
 	/* Send it off */
 	iface_send4(in_tid, out_tid, (const uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + plen, NULL, 0, true, NULL, 0);

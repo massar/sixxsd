@@ -112,7 +112,7 @@ VOID direct_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const u
 
 		/* Calculate the IP checksum */
 		pkt.ip.ip_sum = htons(0);
-		pkt.ip.ip_sum = in_checksum((unsigned char *)&pkt, sizeof(pkt.ip));
+		pkt.ip.ip_sum = ipv4_checksum((unsigned char *)&pkt, sizeof(pkt.ip));
 
 		iface_send_icmpv4_unreach(in_tid, SIXXSD_TUNNEL_NONE, (uint8_t *)&pkt, sizeof(pkt.ip) + plen, code);
 		return;
