@@ -109,6 +109,7 @@ struct sixxsd_configuration
 	SOCKET			rawsocket_proto4;			/* For sending proto4 packets */
 	SOCKET			rawsocket_proto41;			/* For sending proto41 packets */
 	SOCKET			rawsocket_icmpv4;			/* For sending ICMPv4 packets */
+	SOCKET			rawsocket_gre;				/* For sending GRE packets */
 #endif
 
 	struct sixxsd_stats	stats_total, stats_uplink;		/* Statistics Total + Uplink */

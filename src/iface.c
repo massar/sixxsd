@@ -220,15 +220,19 @@ VOID iface_send4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *h
 	switch (ip->ip_p)
 	{
 	case IPPROTO_IPV4:
-		n = sendmsg(g_conf->rawsocket_proto4_v4, &msg, MSG_NOSIGNAL);
+		n = sendmsg(g_conf->rawsocket_proto4, &msg, MSG_NOSIGNAL);
 		break;
 
 	case IPPROTO_IPV6:
-		n = sendmsg(g_conf->rawsocket_proto41_v4, &msg, MSG_NOSIGNAL);
+		n = sendmsg(g_conf->rawsocket_proto41, &msg, MSG_NOSIGNAL);
 		break;
 
 	case IPPROTO_ICMPV4:
 		n = sendmsg(g_conf->rawsocket_icmpv4, &msg, MSG_NOSIGNAL);
+		break;
+
+	case IPPROTO_GRE:
+		n = sendmsg(g_conf->rawsocket_gre, &msg, MSG_NOSIGNAL);
 		break;
 
 	default:
@@ -1263,6 +1267,12 @@ static PTR *iface_read_thread(PTR *__sock)
 		/* Just in case we mess up the socket setup table */
 		assert(sock->af == ss.ss_family);
 
+		/* Note that some sockets (proto?, ICMPv? and GRE) are RAW sockets
+		 * hence they get the full IP packet including the header
+		 *
+		 * Thus we use iface_getpayload_ipv?() to get the payload out.
+		 */
+
 		/* Pass it through the correct decoder */
 		switch (sock->af)
 		{
@@ -1271,7 +1281,6 @@ static PTR *iface_read_thread(PTR *__sock)
 			{
 			case SIXXSD_SOCK_PROTO4:
 			case SIXXSD_SOCK_PROTO41:
-				/* Raw packet includes the full IPv4 header and then payload etc */
 				payload = iface_getpayload_ipv4(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
@@ -1279,7 +1288,6 @@ static PTR *iface_read_thread(PTR *__sock)
 				break;
 
 			case SIXXSD_SOCK_ICMPV4:
-				/* Raw packet includes the full IPv4 header and then payload etc */
 				payload = iface_getpayload_ipv4(packet, len, &src, &plen, IPPROTO_ICMPV4);
 				if (payload == NULL) break;
 
@@ -1317,7 +1325,6 @@ static PTR *iface_read_thread(PTR *__sock)
 			{
 			case SIXXSD_SOCK_PROTO4:
 			case SIXXSD_SOCK_PROTO41:
-				/* Raw packet includes the full IPv6 header and then payload etc */
 				payload = iface_getpayload_ipv6(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
@@ -1516,15 +1523,15 @@ static int iface_init_tuntap(struct sixxsd_context *ctx, struct sixxsd_socket *s
 	return 200;
 }
 
-static int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af);
-static int iface_init_proto41(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af)
+static int iface_init_protoX(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af, uint16_t protocol);
+static int iface_init_protoX(struct sixxsd_context *ctx, struct sixxsd_socket *sock, unsigned int af, uint16_t protocol)
 {
 	socklen_t	on;
 
-	sock->socket = socket(af, SOCK_RAW, IPPROTO_IPV6);
+	sock->socket = socket(af, SOCK_RAW, protocol);
 	if (sock->socket == INVALID_SOCKET)
 	{
-		ctx_printef(ctx, errno, "Could not create Proto-41 socket (%u)\n", af);
+		ctx_printef(ctx, errno, "Could not create Proto-%u socket (%u)\n", protocol, af);
 		return 400;
 	}
 
@@ -1675,6 +1682,9 @@ int iface_init(struct sixxsd_context *ctx)
 		{ SIXXSD_SOCK_AYIYA,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
 		{ SIXXSD_SOCK_AYIYA,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
 		{ SIXXSD_SOCK_HB,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
+		{ SIXXSD_SOCK_HB,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
+		{ SIXXSD_SOCK_GRE,	AF_INET4,	0,		IPPROTO_GRE,	0		},
+		{ SIXXSD_SOCK_GRE,	AF_INET6,	0,		IPPROTO_GRE,	0		},
 	};
 
 	/* Should not be initialized yet */
@@ -1698,20 +1708,18 @@ int iface_init(struct sixxsd_context *ctx)
 			break;
 
 		case SIXXSD_SOCK_PROTO4:
-			ret = iface_init_proto41(ctx, s, types[i].af);
+			ret = iface_init_protoX(ctx, s, types[i].af, IPPROTO_IPV4);
 			if (ret != 200) return ret;
 #ifdef NEED_RAWSOCKETS
-			if (af == AF_INET4) g_conf->rawsocket_proto4_v4 = s->socket;
-			if (af == AF_INET6) g_conf->rawsocket_proto4_v6 = s->socket;
+			if (af == AF_INET4) g_conf->rawsocket_proto4 = s->socket;
 #endif
 			break;
 
 		case SIXXSD_SOCK_PROTO41:
-			ret = iface_init_proto41(ctx, s, types[i].af);
+			ret = iface_init_protoX(ctx, s, types[i].af, IPPROTO_IPV6);
 			if (ret != 200) return ret;
 #ifdef NEED_RAWSOCKETS
-			if (af == AF_INET4) g_conf->rawsocket_proto41_v4 = s->socket;
-			if (af == AF_INET6) g_conf->rawsocket_proto41_v6 = s->socket;
+			if (af == AF_INET4) g_conf->rawsocket_proto41 = s->socket;
 #endif
 			break;
 
@@ -1740,6 +1748,14 @@ int iface_init(struct sixxsd_context *ctx)
 		case SIXXSD_SOCK_HB:
 			ret = iface_init_udp(ctx, s, types[i].af, types[i].socktype, types[i].port);
 			if (ret != 200) return ret;
+			break;
+
+		case SIXXSD_SOCK_GRE:
+			ret = iface_init_protoX(ctx, s, types[i].af, IPPROTO_GRE);
+			if (ret != 200) return ret;
+#ifdef NEED_RAWSOCKETS
+			if (af == AF_INET4) g_conf->rawsocket_gre = s->socket;
+#endif
 			break;
 
 		default:
