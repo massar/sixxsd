@@ -314,14 +314,14 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 	tunnel_debug(in_tid, out_tid, packet, len, "IPv6 HopLimit: %u\n", ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim);
 
 	/* Just drop it */
-	if (ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim == 0)
+	if (ip6->ip6_hlim == 0)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "HopLimit == 0 -> dropping it\n");
 		return false;
 	}
 
 	/* Out of hops? */
-	if (ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim <= 1)
+	if (ip6->ip6_hlim <= 1)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len, "HopLimit <= 1\n");
 		if (!is_response) iface_send_icmpv6_ttl(in_tid, out_tid, packet, len);
@@ -330,8 +330,8 @@ static BOOL iface_prepfwd6(const uint16_t in_tid, const uint16_t out_tid, uint8_
 
 	if (decrease_ttl)
 	{
-		ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim--;
-		tunnel_debug(in_tid, out_tid, packet, len, "IPv6 HopLimit New %u\n", ip6->ip6_ctlun.ip6_un1.ip6_un1_hlim);
+		ip6->ip6_hlim--;
+		tunnel_debug(in_tid, out_tid, packet, len, "IPv6 HopLimit New %u\n", ip6->ip6_hlim);
 	}
 
 	return true;
@@ -808,6 +808,7 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	}				pkt;
 	uint32_t			plen;
 	uint16_t			t16;
+	unsigned int			hlim = 64;
 
 	tunnel_debug(in_tid, out_tid, NULL, 0, "ICMPv6 %u::%u\n", type, code);
 
@@ -900,6 +901,9 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 
 	/* IPv6 */
 	IPV6_INIT(pkt.ip, sizeof(pkt.icmp) + plen, IPPROTO_ICMPV6);
+
+	/* Custom Hop Limit */
+	pkt.ip.ip6_hlim = hlim;
 
 	/* We originate this ICMPv6 packet, either from the incoming or outgoing tunnel IP */
 	t16 = htons((in_tid != SIXXSD_TUNNEL_NONE && in_tid != SIXXSD_TUNNEL_UPLINK) ? in_tid : out_tid);
