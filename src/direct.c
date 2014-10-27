@@ -44,7 +44,7 @@ VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
         iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + len, is_response, false, true);
 }
 
-VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const uint16_t len, uint16_t protocol, uint8_t *payload, uint16_t plen)
+VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const uint16_t len, uint16_t protocol, uint8_t *payload, uint16_t plen, enum sixxsd_tunnel_type ttype)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)payload;
 	struct ip		*ip4 = (struct ip *)payload;
@@ -70,15 +70,10 @@ VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const
 
 	tun = (in_tid == SIXXSD_TUNNEL_UPLINK ? NULL : tunnel_grab(in_tid));
 
+	/* Unconfigured tunnels */
 	if (!tun || tun->state == SIXXSD_TSTATE_NONE)
 	{
 		code = ICMP_PROT_UNREACH;
-		fail = true;
-	}
-
-	else if (tun->type != SIXXSD_TTYPE_DIRECT && tun->type != SIXXSD_TTYPE_DIRECT_HB && tun->type != SIXXSD_TTYPE_GRE)
-	{
-		code = ICMP_PKT_FILTERED;
 		fail = true;
 	}
 
@@ -103,6 +98,12 @@ VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const
 	}
 
 	if (!tunnel_state_check(in_tid, SIXXSD_TUNNEL_NONE, payload, plen, false)) return;
+
+	/*
+	 * Change tunnel type based on last packet received
+	 * This thus swaps between DIRECT and GRE automatically
+	 */
+	tun->type = ttype;
 
 	/* Account the packet */
 	tunnel_account_packet_in(in_tid, plen);

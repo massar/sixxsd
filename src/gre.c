@@ -117,6 +117,6 @@ VOID gre_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const ui
 	}
 
 	/* Let the direct code handle the rest */
-	direct_in(src, packettype, packet, len, protocol, payload, plen);
+	direct_in(src, packettype, packet, len, protocol, payload, plen, SIXXSD_TTYPE_GRE);
 }
 

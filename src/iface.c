@@ -389,7 +389,6 @@ struct
 } iface_outs[SIXXSD_TTYPE_MAX][2] = {
 	{ { NULL		}, { NULL } },
 	{ { direct_out_ipv4	}, { direct_out_ipv6 } },
-	{ { direct_out_ipv4	}, { direct_out_ipv6 } },
 	{ { ayiya_out_ipv4	}, { ayiya_out_ipv6 } },
 	{ { gre_out_ipv4	}, { gre_out_ipv6 } },
 };
@@ -1284,7 +1283,7 @@ static PTR *iface_read_thread(PTR *__sock)
 				payload = iface_getpayload_ipv4(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				direct_in(&src, IPPROTO_IPV4, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
+				direct_in(&src, IPPROTO_IPV4, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen, SIXXSD_TTYPE_DIRECT);
 				break;
 
 			case SIXXSD_SOCK_ICMPV4:
@@ -1328,7 +1327,7 @@ static PTR *iface_read_thread(PTR *__sock)
 				payload = iface_getpayload_ipv6(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				direct_in(&src, IPPROTO_IPV6, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
+				direct_in(&src, IPPROTO_IPV6, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen, SIXXSD_TTYPE_DIRECT);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:

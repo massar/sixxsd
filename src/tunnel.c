@@ -12,9 +12,7 @@ const char module_tunnel[] = "tunnel";
 static const char *types[] =
 {
 	"none",
-	"proto4",
-	"proto41",
-	"heartbeat",
+	"direct",
 	"ayiya",
 	"gre",
 };
@@ -554,12 +552,31 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 		return 400;
 	}
 
-	if	(strcasecmp(args[2], "ayiya"		) == 0) tun->type = SIXXSD_TTYPE_AYIYA;
-	else if (strcasecmp(args[2], "heartbeat"	) == 0) tun->type = SIXXSD_TTYPE_DIRECT_HB;
-	else if (strcasecmp(args[2], "gre"		) == 0) tun->type = SIXXSD_TTYPE_GRE;
+	/*
+	 * Note that this just selects a default
+	 * Any tunnel can switch types based on
+	 * incoming valid packet
+	 */
+	if (	strcasecmp(args[2], "dynamic"	) == 0 ||
+		strcasecmp(args[2], "ayiya"	) == 0 ||
+		strcasecmp(args[2], "heartbeat"	) == 0)
+	{
+		/* tun->type does not matter, changes when a packet arrives */
+		tun->takebeats = 1;
+	}
 	else
 	{
-		tun->type = SIXXSD_TTYPE_DIRECT;
+		tun->takebeats = 0;
+
+		/*
+		 * Only reconfigure when not set yet
+		 * Swaps between DIRECT + GRE on incoming packet
+		 */
+		if (tun->type != SIXXSD_TTYPE_GRE)
+		{
+			/* Default to Direct (proto-4/41) */
+			tun->type = SIXXSD_TTYPE_DIRECT;
+		}
 
 		if (!inet_ptonA(args[2], &tun->ip_them, NULL))
 		{
@@ -568,7 +585,7 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 		}
 	}
 
-	if (tun->type == SIXXSD_TTYPE_DIRECT)
+	if (!tun->takebeats)
 	{
 		tun->state = strcasecmp(args[3], "disabled") == 0 ? SIXXSD_TSTATE_DISABLED : SIXXSD_TSTATE_UP;
 	}
@@ -751,6 +768,7 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	ctx_printf(ctx, "MTU                     : %u\n", tun->mtu);
 	ctx_printf(ctx, "Tunnel State            : %s\n", tunnel_state_name(tun->state));
 	ctx_printf(ctx, "Tunnel Type             : %s\n", tunnel_type_name(tun->type));
+	ctx_printf(ctx, "Dynamic Tunnel          : %s\n", yesno(tun->takebeats));
 
 	/* AYIYA details */
 	if (tun->type == SIXXSD_TTYPE_AYIYA)
@@ -765,8 +783,8 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 				ayiya_hash_name(tun->ayiya_hash_type));
 	}
 
-	/* When the last heartbeat was seen */
-	if (tun->type == SIXXSD_TTYPE_AYIYA || tun->type == SIXXSD_TTYPE_DIRECT_HB)
+	/* Tunnel controlled by heartbeats? */
+	if (tun->takebeats)
 	{
 		tunnel_ago(ctx, tun->lastbeat, "Last Heartbeat          : ");
 		ctx_printf(ctx, "Heartbeat Password      : %s\n", tun->hb_password);
@@ -1172,7 +1190,7 @@ static PTR *tunnel_beat_check(PTR UNUSED *arg)
 			if (tun->state != SIXXSD_TSTATE_UP) continue;
 
 			/* If it is not a dynamic tunnel skip it */
-			if (tun->type != SIXXSD_TTYPE_DIRECT_HB && tun->type != SIXXSD_TTYPE_AYIYA) continue;
+			if (!tun->takebeats) continue;
 
 			/* It beat recently? */
 			if ((tun->lastbeat > currtime) || ((currtime - tun->lastbeat) < MAX_CLOCK_OFF)) continue;

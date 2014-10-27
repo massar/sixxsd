@@ -107,7 +107,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 		return;
 	}
 
-	if (tun->type != SIXXSD_TTYPE_DIRECT_HB)
+	if (tun->takebeats)
 	{
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_FOR_NON_HB, src);
 		return;

@@ -19,7 +19,6 @@ enum sixxsd_tunnel_type
 {
 	SIXXSD_TTYPE_NONE	= 0,					/* Not a tunnel (aka tunnel is not used) */
 	SIXXSD_TTYPE_DIRECT,						/* Proto-41 static */
-	SIXXSD_TTYPE_DIRECT_HB,						/* Proto-41 Heartbeat */
 	SIXXSD_TTYPE_AYIYA,						/* AYIYA */
 	SIXXSD_TTYPE_GRE,						/* GRE */
 	SIXXSD_TTYPE_MAX
@@ -83,7 +82,7 @@ struct sixxsd_tunnel
 
 	/* AYIYA */
 	uint16_t			ayiya_port_us, ayiya_port_them;	/* Our and their port number */
-	uint16_t			ayiya_protocol;			/* Which IP Protocol is used (TCP/UDP/SCTP) */
+	uint8_t				ayiya_protocol;			/* Which IP Protocol is used (TCP/UDP/SCTP) */
 	uint8_t				ayiya_socktype;			/* Which Socket Type is used (STREAM/DGRAM/SEQPACKET) */
 	uint8_t				ayiya_hash_type;		/* AYIYA hash mode */
 	uint8_t				ayiya_sha1[SHA1_DIGEST_LENGTH];	/* SHA1 hash */
@@ -92,6 +91,7 @@ struct sixxsd_tunnel
 	uint8_t				hb_password[132];		/* Heartbeat password */
 
 	/* Heartbeat & AYIYA */
+	uint8_t				takebeats;			/* Accept beats? */
 	uint64_t			lastbeat;			/* Timestamp of last beat */
 
 	/* Traffic & Latency statistics */
