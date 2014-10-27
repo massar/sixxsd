@@ -33,11 +33,7 @@ VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
 	} PACKED			pkt;
 
         /* IPv6 */
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);
-        pkt.ip.ip6_ctlun.ip6_un2_vfc = (6 << 4);
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(len);
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = 64;
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = protocol;
+	IPV6_INIT(pkt.ip, len, protocol);
 
         memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
         memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));

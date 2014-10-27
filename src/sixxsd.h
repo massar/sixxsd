@@ -34,8 +34,6 @@
 #define TOFOUR_SEL_SUB_TUNID(a) ((a >> 8) & 0x3fff)
 #define TOFOUR_SEL_TUNID(a) (TOFOUR_SEL_IS_TUN(a) ? TOFOUR_SEL_TUN_TUNID(a) : TOFOUR_SEL_SUB_TUNID(a))
 
-#define IS_IPV6(ip6) ((ip6->ip6_ctlun.ip6_un2_vfc >> 4) == 6)
-
 #define IPV4_INIT(ip, len, proto) {		\
 	ip.ip_v = 4;				\
         ip.ip_hl = sizeof(ip)/4;		\
@@ -46,6 +44,17 @@
         ip.ip_ttl = 64;				\
         ip.ip_p = proto;			\
 	}
+
+#define IPV6_INIT(ip, len, proto) {				\
+	ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);		\
+	ip.ip6_ctlun.ip6_un2_vfc = (6 << 4);			\
+	ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(len);		\
+	ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = 64;			\
+	ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = proto;		\
+	}
+
+#define IPV6_VER(ip) (ip->ip6_ctlun.ip6_un2_vfc >> 4)
+#define IS_IPV6(ip6) (IPV6_VER(ip6) == 6)
 
 #include "platform.h"
 

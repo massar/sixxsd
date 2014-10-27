@@ -149,11 +149,7 @@ VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	} PACKED			pkt;
 
         /* IPv6 */
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);
-        pkt.ip.ip6_ctlun.ip6_un2_vfc = (6 << 4);
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(sizeof(pkt.udp) + sizeof(pkt.s) - sizeof(pkt.s.payload) + len);
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = 64;
-        pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = IPPROTO_UDP;
+	IPV6_INIT(pkt.ip, len, IPPROTO_UDP);
 
 	memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
 	memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));

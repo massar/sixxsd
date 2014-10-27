@@ -30,11 +30,11 @@ BOOL l3_ipv6_parse(const uint16_t in_tid, const uint16_t out_tid,
 		return false;
 	}
 
-	if ((ip->ip6_ctlun.ip6_un2_vfc >> 4) != 6)
+	if (IPV6_VER(ip) != 6)
 	{
 		tunnel_debug(in_tid, out_tid, packet, len,
 				"IPv6: Corrupt IP version %u packet found\n",
-				(ip->ip6_ctlun.ip6_un2_vfc>>4));
+				IPV6_VER(ip));
 		return false;
 	}
 

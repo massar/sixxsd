@@ -630,7 +630,7 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	/* Make sure it is actually an IPv6 packet */
 	if (!IS_IPV6(ip6))
 	{
-		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_response ? "error" : "normal", ip6->ip6_ctlun.ip6_un2_vfc >> 4);
+		tunnel_debug(in_tid, out_tid, packet, len, "iface_route6(%s) - dropping non-IPv6 packet (%u)\n", is_response ? "error" : "normal", IPV6_VER(ip6));
 		return;
 	}
 
@@ -808,7 +808,6 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	}				pkt;
 	uint32_t			plen;
 	uint16_t			t16;
-	uint8_t				hlim = 64;
 
 	tunnel_debug(in_tid, out_tid, NULL, 0, "ICMPv6 %u::%u\n", type, code);
 
@@ -900,11 +899,7 @@ VOID iface_send_icmpv6(const uint16_t in_tid, const uint16_t out_tid, const uint
 	}
 
 	/* IPv6 */
-	pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_flow = htons(0);
-	pkt.ip.ip6_ctlun.ip6_un2_vfc = (6 << 4); 
-	pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_plen = htons(sizeof(pkt.icmp) + plen);
-	pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_hlim = hlim;
-	pkt.ip.ip6_ctlun.ip6_un1.ip6_un1_nxt = IPPROTO_ICMPV6;
+	IPV6_INIT(pkt.ip, sizeof(pkt.icmp) + plen, IPPROTO_ICMPV6);
 
 	/* We originate this ICMPv6 packet, either from the incoming or outgoing tunnel IP */
 	t16 = htons((in_tid != SIXXSD_TUNNEL_NONE && in_tid != SIXXSD_TUNNEL_UPLINK) ? in_tid : out_tid);
