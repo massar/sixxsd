@@ -15,14 +15,7 @@ VOID direct_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
 	struct ip ip;
 
 	/* IP version 4 */
-	ip.ip_v = 4;
-	ip.ip_hl = sizeof(ip) / 4;
-	ip.ip_tos = 0;
-	ip.ip_len = htons(sizeof(ip) + len);
-	ip.ip_id = 0x42;
-	ip.ip_off = htons(IP_DF);
-	ip.ip_ttl = 64;
-	ip.ip_p = protocol;
+	IPV4_INIT(ip, sizeof(ip) + len, protocol);
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
 	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(ip.ip_src));
@@ -112,14 +105,7 @@ VOID direct_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const u
 		plen = len > sizeof(pkt.payload) ? sizeof(pkt.payload) : len;
 
 		/* IP version 4 */
-		pkt.ip.ip_v = 4;
-		pkt.ip.ip_hl = sizeof(pkt.ip) / 4;
-		pkt.ip.ip_tos = 0;
-		pkt.ip.ip_len = htons(sizeof(pkt.ip) + plen);
-		pkt.ip.ip_id = 0x42;
-		pkt.ip.ip_off = htons(IP_DF);
-		pkt.ip.ip_ttl = 64;
-		pkt.ip.ip_p = IPPROTO_IPV6;
+		IPV4_INIT(pkt.ip, sizeof(pkt.ip) + plen, IPPROTO_IPV6);
 
 		/* Fill in the IP header from the original packet, swapping source & dest */
 		memcpy(&pkt.ip.ip_src, ipaddress_ipv4(src),				sizeof(pkt.ip.ip_src));

@@ -36,6 +36,17 @@
 
 #define IS_IPV6(ip6) ((ip6->ip6_ctlun.ip6_un2_vfc >> 4) == 6)
 
+#define IPV4_INIT(ip, len, proto) {		\
+	ip.ip_v = 4;				\
+        ip.ip_hl = sizeof(ip)/4;		\
+        ip.ip_tos = 0;				\
+        ip.ip_len = htons(len);			\
+        ip.ip_id = 0x42;			\
+        ip.ip_off = htons(IP_DF);		\
+        ip.ip_ttl = 64;				\
+        ip.ip_p = proto;			\
+	}
+
 #include "platform.h"
 
 /* List Code */

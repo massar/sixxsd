@@ -21,14 +21,7 @@ VOID gre_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16
 	memzero(&pkt, sizeof(pkt));
 
 	/* IP version 4 */
-	pkt.ip.ip_v = 4;
-	pkt.ip.ip_hl = sizeof(pkt.ip) / 4;
-	pkt.ip.ip_tos = 0;
-	pkt.ip.ip_len = htons(sizeof(pkt) + len);
-	pkt.ip.ip_id = 0x42;
-	pkt.ip.ip_off = htons(IP_DF);
-	pkt.ip.ip_ttl = 64;
-	pkt.ip.ip_p = IPPROTO_GRE;
+	IPV4_INIT(pkt.ip, sizeof(pkt) + len, IPPROTO_GRE);
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
 	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),sizeof(pkt.ip.ip_src));
@@ -125,14 +118,7 @@ VOID gre_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const uint
 		plen = len > sizeof(pkt.payload) ? sizeof(pkt.payload) : len;
 
 		/* IP version 4 */
-		pkt.ip.ip_v = 4;
-		pkt.ip.ip_hl = sizeof(pkt.ip) / 4;
-		pkt.ip.ip_tos = 0;
-		pkt.ip.ip_len = htons(sizeof(pkt.ip) + plen);
-		pkt.ip.ip_id = 0x42;
-		pkt.ip.ip_off = htons(IP_DF);
-		pkt.ip.ip_ttl = 64;
-		pkt.ip.ip_p = IPPROTO_IPV6;
+		IPV4_INIT(pkt.ip, sizeof(pkt.ip) + plen, IPPROTO_IPV6);
 
 		/* Fill in the IP header from the original packet, swapping source & dest */
 		memcpy(&pkt.ip.ip_src, ipaddress_ipv4(src),				sizeof(pkt.ip.ip_src));

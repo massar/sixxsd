@@ -963,14 +963,7 @@ static VOID iface_send_icmpv4(const uint16_t in_tid, const uint16_t out_tid, con
 	plen = len > sizeof(pkt.payload) ? sizeof(pkt.payload) : len;
 
 	/* IP version 4 */
-	pkt.ip.ip_v = 4;
-	pkt.ip.ip_hl = sizeof(pkt.ip) / 4;
-	pkt.ip.ip_tos = 0;
-	pkt.ip.ip_len = htons(sizeof(pkt) - sizeof(pkt.payload) + plen);
-	pkt.ip.ip_id = 0x42;
-	pkt.ip.ip_off = htons(IP_DF);
-	pkt.ip.ip_ttl = 64;
-	pkt.ip.ip_p = IPPROTO_ICMPV4;
+	IPV4_INIT(pkt.ip, sizeof(pkt) - sizeof(pkt.payload) + plen, IPPROTO_ICMPV4);
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
 	memcpy(&pkt.ip.ip_src, &ip->ip_dst, sizeof(pkt.ip.ip_src));

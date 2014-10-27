@@ -119,14 +119,8 @@ VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	} PACKED			pkt;
 
 	/* IPv4 */
-	pkt.ip.ip_v = 4;
-	pkt.ip.ip_hl = sizeof(pkt.ip)/4;
-	pkt.ip.ip_tos = 0;
-	pkt.ip.ip_len = htons(sizeof(pkt) - sizeof(pkt.s.payload) + len);
-	pkt.ip.ip_id = 0x42;
-	pkt.ip.ip_off = htons(IP_DF);
-	pkt.ip.ip_ttl = 64;
-	pkt.ip.ip_p = IPPROTO_UDP;
+	IPV4_INIT(pkt.ip, sizeof(pkt) - sizeof(pkt.s.payload) + len, IPPROTO_UDP);
+
 	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(pkt.ip.ip_src));
 	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),				sizeof(pkt.ip.ip_dst));
 
