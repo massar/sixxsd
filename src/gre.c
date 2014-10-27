@@ -57,86 +57,66 @@ VOID gre_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16
         iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + len, is_response, false, true);
 }
 
-VOID gre_in(const IPADDRESS *src, uint16_t protocol, uint8_t *packet, const uint16_t len)
+VOID gre_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const uint16_t len, uint8_t *payload, uint16_t plen)
 {
-	struct ip		*ip4 = (struct ip *)packet;
-	struct ip6_hdr		*ip6 = (struct ip6_hdr *)packet;
-	struct sixxsd_tunnel	*tun;
-	uint16_t		in_tid;
-	BOOL			istunnel, fail = false;
-	uint16_t		code = 0;
+	struct grehdr		*gre;
+	uint16_t		protocol;
+	BOOL			fail = false;
 
-	/*
-	 * Fetch it. This automatically does RPF as we use the source IPv6 address for
-         * determining the associated tunnel.
-	 * It also nicely solves the problem of having to search for the IPv4 src/dst pair :)
-	 */
-	if (protocol == AF_INET6)
-	{
-		in_tid = address_find6((IPADDRESS *)&ip6->ip6_src, &istunnel);
-	}
-	else
-	{
-		in_tid = address_find4((IPADDRESS *)&ip4->ip_src, &istunnel);
-	}
+	/* Check the GRE header */
+	gre = (struct grehdr *)payload;
 
-	tun = (in_tid == SIXXSD_TUNNEL_UPLINK ? NULL : tunnel_grab(in_tid));
-
-	if (!tun || tun->state == SIXXSD_TSTATE_NONE)
+	/* RFC2303 only handles version 0 */
+	if (gre->version != 0)
 	{
-		code = ICMP_PROT_UNREACH;
 		fail = true;
 	}
 
-	else if (tun->type != SIXXSD_TTYPE_DIRECT && tun->type != SIXXSD_TTYPE_DIRECT_HB)
-	{
-		code = ICMP_PKT_FILTERED;
-		fail = true;
-	}
+	/* Which protocol is embedded? */
+	protocol = ntohs(gre->proto);
 
-	/* Verify that the sender is the real endpoint of this packet */
-	else if (memcmp(src, &tun->ip_them, sizeof(*src)) != 0)
+	switch (protocol)
 	{
-		code = ICMP_PROT_UNREACH;
+	case ETH_P_IP:
+		protocol = IPPROTO_IPV4;
+		break;
+
+	case ETH_P_IPV6:
+		protocol = IPPROTO_IPV6;
+		break;
+
+	default:
 		fail = true;
 	}
 
 	if (fail)
 	{
-		/* Reconstruct the original packet */
-		struct
+		/* Unknown protocol, reject it */
+		if (packettype == IPPROTO_IPV6)
 		{
-			struct ip	ip;
-			uint8_t		payload[1480];
-		}			pkt;
-		uint16_t		plen;
-
-		plen = len > sizeof(pkt.payload) ? sizeof(pkt.payload) : len;
-
-		/* IP version 4 */
-		IPV4_INIT(pkt.ip, sizeof(pkt.ip) + plen, IPPROTO_IPV6);
-
-		/* Fill in the IP header from the original packet, swapping source & dest */
-		memcpy(&pkt.ip.ip_src, ipaddress_ipv4(src),				sizeof(pkt.ip.ip_src));
-		memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(pkt.ip.ip_dst));
-
-		/* The payload */
-		memcpy(&pkt.payload, packet, plen);
-
-		/* Calculate the IP checksum */
-		pkt.ip.ip_sum = htons(0);
-		pkt.ip.ip_sum = ipv4_checksum((unsigned char *)&pkt, sizeof(pkt.ip));
-
-		iface_send_icmpv4_unreach(in_tid, SIXXSD_TUNNEL_NONE, (uint8_t *)&pkt, sizeof(pkt.ip) + plen, code);
+			iface_send_icmpv6_unreach(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, packet, len, ICMP_PROT_UNREACH);
+		}
+		else
+		{
+			iface_send_icmpv4_unreach(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, packet, len, ICMP_PROT_UNREACH);
+		}
 		return;
 	}
 
-	if (!tunnel_state_check(in_tid, SIXXSD_TUNNEL_NONE, packet, len, false)) return;
+	if ((gre->chksum_present >> 7) == 1)
+	{
+		/* Checksum is present */
+		payload = &payload[8];
+		plen = len - 8;
+	}
+	else
+	{
+		/* Checksum is not present */
+		payload = &payload[4];
+		plen = len - 4;
+	}
 
-	/* Account the packet */
-	tunnel_account_packet_in(in_tid, len);
-
-	/* Forward it: it is not an error, do decrease the TTL, do check the source */
-	iface_route6(in_tid, SIXXSD_TUNNEL_NONE, packet, len, false, true, false);
+	/* Let the direct code handle the rest */
+	direct_in(src, packettype, packet, len, protocol, payload, plen);
 }
 

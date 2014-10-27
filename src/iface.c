@@ -1184,7 +1184,7 @@ static PTR *iface_read_thread(PTR *__sock);
 static PTR *iface_read_thread(PTR *__sock)
 {
 	struct sixxsd_socket	*sock = (struct sixxsd_socket *)__sock;
-	uint8_t			buffer[4096], *payload;
+	uint8_t			packet[4096], *payload;
 	uint32_t		plen;
 	struct sockaddr_storage	ss;
 	socklen_t		sslen;
@@ -1201,14 +1201,14 @@ static PTR *iface_read_thread(PTR *__sock)
 
 		if (sock->type == SIXXSD_SOCK_TUNTAP)
 		{
-			len = read(sock->socket, buffer, sizeof(buffer));
+			len = read(sock->socket, packet, sizeof(packet));
 			if (len < 0)
 			{
 				mdolog(LOG_ERR, "Could not read from socket %s\n", iface_socket_name(sock->type));
 				break;
 			}
 
-			proto = (buffer[2] << 8) + buffer[3];
+			proto = (packet[2] << 8) + packet[3];
 
 #ifndef _LINUX
 			switch (proto)
@@ -1227,7 +1227,7 @@ static PTR *iface_read_thread(PTR *__sock)
 			}
 #endif
 
-			/* Ignore the tun_pi structure (which is why there is buffer[4] below) */
+			/* Ignore the tun_pi structure (which is why there is packet[4] below) */
 			len -= 4;
 
 			/* Account this packet */
@@ -1237,11 +1237,11 @@ static PTR *iface_read_thread(PTR *__sock)
 			switch (proto)
 			{
 			case ETH_P_IP:
-				iface_route4(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
+				iface_route4(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &packet[4], len, false, false, false);
 				break;
 
 			case ETH_P_IPV6:
-				iface_route6(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &buffer[4], len, false, false, false);
+				iface_route6(SIXXSD_TUNNEL_UPLINK, SIXXSD_TUNNEL_NONE, &packet[4], len, false, false, false);
 				break;
 
 			default:
@@ -1253,7 +1253,7 @@ static PTR *iface_read_thread(PTR *__sock)
 		}
 
 		sslen = sizeof(ss);
-		len = recvfrom(sock->socket, buffer, sizeof(buffer), 0, (struct sockaddr *)&ss, &sslen);
+		len = recvfrom(sock->socket, packet, sizeof(packet), 0, (struct sockaddr *)&ss, &sslen);
 		if (len < 0)
 		{
 			mdolog(LOG_ERR, "Couldn't receive properly from socket %s\n", iface_socket_name(sock->type));
@@ -1272,15 +1272,15 @@ static PTR *iface_read_thread(PTR *__sock)
 			case SIXXSD_SOCK_PROTO4:
 			case SIXXSD_SOCK_PROTO41:
 				/* Raw packet includes the full IPv4 header and then payload etc */
-				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_IPV4);
+				payload = iface_getpayload_ipv4(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				direct_in(&src, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
+				direct_in(&src, IPPROTO_IPV4, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_ICMPV4:
 				/* Raw packet includes the full IPv4 header and then payload etc */
-				payload = iface_getpayload_ipv4(buffer, len, &src, &plen, IPPROTO_ICMPV4);
+				payload = iface_getpayload_ipv4(packet, len, &src, &plen, IPPROTO_ICMPV4);
 				if (payload == NULL) break;
 
 				icmpv4_in(&src, payload, plen);
@@ -1290,12 +1290,19 @@ static PTR *iface_read_thread(PTR *__sock)
 				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
 				port = ntohs(port);
-				ayiya_in(&src, AF_INET4, sock->socktype, sock->proto, port, sock->port, buffer, len);
+				ayiya_in(&src, sock->socktype, sock->proto, port, sock->port, packet, len);
 				break;
 
 			case SIXXSD_SOCK_HB:
 				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
-				hb_in(&src, buffer, len);
+				hb_in(&src, packet, len);
+				break;
+
+			case SIXXSD_SOCK_GRE:
+				payload = iface_getpayload_ipv4(packet, len, &src, &plen, IPPROTO_GRE);
+				if (payload == NULL) break;
+
+				gre_in(&src, IPPROTO_IPV4, packet, len, payload, plen);
 				break;
 
 			default:
@@ -1311,19 +1318,27 @@ static PTR *iface_read_thread(PTR *__sock)
 			case SIXXSD_SOCK_PROTO4:
 			case SIXXSD_SOCK_PROTO41:
 				/* Raw packet includes the full IPv6 header and then payload etc */
-				payload = iface_getpayload_ipv6(buffer, len, &src, &plen,
-					sock->type == SIXXSD_SOCK_PROTO4 ?
-						 IPPROTO_IPV4 : IPPROTO_IPV6);
+				payload = iface_getpayload_ipv6(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				direct_in(&src, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
+				direct_in(&src, IPPROTO_IPV6, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
 				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in6, sin6_port), sizeof(port));
 				port = ntohs(port);
-				ayiya_in(	(IPADDRESS *) &((struct sockaddr_in6 *)&ss)->sin6_addr,
-						AF_INET6, sock->socktype, sock->proto, port, sock->port, buffer, len);
+				ayiya_in(SS_IPV6_SRC(ss), sock->socktype, sock->proto, port, sock->port, packet, len);
+				break;
+
+			case SIXXSD_SOCK_HB:
+				hb_in(SS_IPV6_SRC(ss), packet, len);
+				break;
+
+			case SIXXSD_SOCK_GRE:
+				payload = iface_getpayload_ipv6(packet, len, &src, &plen, IPPROTO_GRE);
+				if (payload == NULL) break;
+
+				gre_in(&src, IPPROTO_IPV6, packet, len, payload, plen);
 				break;
 
 			default:

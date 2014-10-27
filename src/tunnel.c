@@ -755,8 +755,6 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	/* AYIYA details */
 	if (tun->type == SIXXSD_TTYPE_AYIYA)
 	{
-		ctx_printf(ctx, "AYIYA AF                : %u (%s)\n", tun->ayiya_af,
-				af_name(tun->ayiya_af));
 		ctx_printf(ctx, "AYIYA Socket Type       : %u (%s)\n", tun->ayiya_socktype,
 				sock_name(tun->ayiya_socktype));
 		ctx_printf(ctx, "AYIYA Protocol          : %u (%s)\n", tun->ayiya_protocol,

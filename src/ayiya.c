@@ -179,7 +179,7 @@ VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
  * packet     = buffer containing the packet
  * length     = length of the packet
 */
-VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
+VOID ayiya_in(const IPADDRESS *src, const uint8_t socktype, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
 {
 	SHA_CTX			sha1;
 	struct pseudo_ayh	*s = (struct pseudo_ayh *)packet;
@@ -298,7 +298,6 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t af, const uint8_t socktype, co
 	/* Update the interface */
 	tun->state		= SIXXSD_TSTATE_UP;
 	tun->lastbeat		= currtime;
-	tun->ayiya_af		= af;
 	tun->ayiya_socktype	= socktype;
 	tun->ayiya_protocol	= protocol;
 	tun->ayiya_port_us	= dport;

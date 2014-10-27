@@ -1386,11 +1386,11 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 VOID sock_cleanss(struct sockaddr_storage *ss)
 {
 	if (	ss->ss_family == AF_INET6 &&
-		ipaddress_is_ipv4((const IPADDRESS *)&((struct sockaddr_in6 *)ss)->sin6_addr))
+		ipaddress_is_ipv4(SS_IPV6_SRC(ss)))
 	{
 		/* Move the IPv4 address into the correct place */
 		memmove(	&((struct sockaddr_in *)ss)->sin_addr,
-				(char *)(&((struct sockaddr_in6 *)ss)->sin6_addr)+12, 4);
+				((char *)SS_IPV6_SRC(ss)) + 12, 4);
 
 		/* It's IPv4 now */
 		ss->ss_family = AF_INET4;

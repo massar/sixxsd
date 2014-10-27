@@ -83,9 +83,8 @@ struct sixxsd_tunnel
 
 	/* AYIYA */
 	uint16_t			ayiya_port_us, ayiya_port_them;	/* Our and their port number */
-	uint8_t				ayiya_af;			/* Which Address Family? */
+	uint16_t			ayiya_protocol;			/* Which IP Protocol is used (TCP/UDP/SCTP) */
 	uint8_t				ayiya_socktype;			/* Which Socket Type is used (STREAM/DGRAM/SEQPACKET) */
-	uint8_t				ayiya_protocol;			/* Which IP Protocol is used (TCP/UDP/SCTP) */
 	uint8_t				ayiya_hash_type;		/* AYIYA hash mode */
 	uint8_t				ayiya_sha1[SHA1_DIGEST_LENGTH];	/* SHA1 hash */
 

@@ -17,6 +17,7 @@ enum sixxsd_sockets
 	SIXXSD_SOCK_ICMPV4,						/* In for ICMPv4 packets */
 	SIXXSD_SOCK_AYIYA,						/* In for AYIYA packets */
 	SIXXSD_SOCK_HB,							/* In for Heartbeat control packets */
+	SIXXSD_SOCK_GRE,						/* In for GRE packets */
 	SIXXSD_SOCK_MAX
 };
 

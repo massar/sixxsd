@@ -55,6 +55,7 @@
 
 #define IPV6_VER(ip) (ip->ip6_ctlun.ip6_un2_vfc >> 4)
 #define IS_IPV6(ip6) (IPV6_VER(ip6) == 6)
+#define SS_IPV6_SRC(ss) ((IPADDRESS *)&((struct sockaddr_in6 *)&ss)->sin6_addr)
 
 #include "platform.h"
 
