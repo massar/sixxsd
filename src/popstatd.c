@@ -391,8 +391,8 @@ void disconnect_client(int *sockfd)
 }
 
 /* Interface is sixxs<x> for v3, but T<x> for v4 and up */
-void create_rrd(const char *type, const char *interface);
-void create_rrd(const char *type, const char *interface)
+void create_rrd(const char *type, const char *iface);
+void create_rrd(const char *type, const char *iface)
 {
 	char		filename[_MAX_PATH];
 	int		r;
@@ -447,7 +447,7 @@ void create_rrd(const char *type, const char *interface)
 	/* Make sure the dirs are there */
 	create_dirs();
 
-	r = snprintf(filename, sizeof(filename), "%s/%s/%s/%s.rrd", g_rrdpath, g_pop_name, type, interface);
+	r = snprintf(filename, sizeof(filename), "%s/%s/%s/%s.rrd", g_rrdpath, g_pop_name, type, iface);
 	if (!snprintfok(r, sizeof(filename)))
 	{
 		mdolog(LOG_DEBUG, "[%s] Could not construct RRD filename, too long\n", g_pop_name);
@@ -493,8 +493,8 @@ void create_rrd(const char *type, const char *interface)
 	}
 }
 
-void update_interface(const char *type, const char *interface, const char *values);
-void update_interface(const char *type, const char *interface, const char *values)
+void update_interface(const char *type, const char *iface, const char *values);
+void update_interface(const char *type, const char *iface, const char *values)
 {
 	char		filename[_MAX_PATH];
 	const char	*args[4];
@@ -507,7 +507,7 @@ void update_interface(const char *type, const char *interface, const char *value
 	args[2] = values;
 	args[3] = NULL;
 
-	r = snprintf(filename, sizeof(filename), "%s/%s/%s/%s.rrd", g_rrdpath, g_pop_name, type, interface);
+	r = snprintf(filename, sizeof(filename), "%s/%s/%s/%s.rrd", g_rrdpath, g_pop_name, type, iface);
 	if (!snprintfok(r, sizeof(filename)))
 	{
 		mdolog(LOG_DEBUG, "[%s] Could not construct Interface RRD filename, too long\n", g_pop_name);
@@ -517,13 +517,13 @@ void update_interface(const char *type, const char *interface, const char *value
 #ifdef DEBUG
 	if (1)
 	{
-		mdolog(LOG_DEBUG, "Update %s %s %s %s", g_pop_name, type, interface, values);
+		mdolog(LOG_DEBUG, "Update %s %s %s %s", g_pop_name, type, iface, values);
 		return;
 	}
 #endif
 
 	/* Does the RRD exist? */
-	if (stat(filename, &stats) != 0) create_rrd(type, interface);
+	if (stat(filename, &stats) != 0) create_rrd(type, iface);
 
 	mdolog(LOG_DEBUG, "[%s] Updating RRD %s with %s\n", g_pop_name, filename, values);
 
@@ -551,8 +551,8 @@ void update_interface(const char *type, const char *interface, const char *value
 	}
 }
 
-void update_interface_traffic(char *interface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt);
-void update_interface_traffic(char *interface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt)
+void update_interface_traffic(char *iface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt);
+void update_interface_traffic(char *iface, uint64_t inoct, uint64_t outoct, uint64_t inpkt, uint64_t outpkt)
 {
 	char	values[_MAX_PATH];
 	int	r;
@@ -567,43 +567,31 @@ void update_interface_traffic(char *interface, uint64_t inoct, uint64_t outoct, 
 		return;
 	}
 
-	update_interface("traffic", interface, values);
+	update_interface("traffic", iface, values);
 }
 
-void update_latency(char *fname, float latency, float loss);
-void update_latency(char *fname, float latency, float loss)
-{
-	char	values[_MAX_PATH];
-	int	r;
-
-	r = snprintf(values, sizeof(values), "N:%2.2f:%2.2f", latency, loss);
-	if (!snprintfok(r, sizeof(values)))
-	{
-		mdolog(LOG_DEBUG, "[%s] Could not construct Interface Latency, too long\n", g_pop_name);
-		return;
-	}
-
-	update_interface("latency", fname, values);
-}
-
-void update_tunnel_latency(char *tunnel, float loss, float min, float avg, float max, MYSQL **db_);
-void update_tunnel_latency(char *tunnel, float loss, float min, float avg, float max, MYSQL **db_)
+void update_tunnel_latency(char *iface, float loss, float min, float avg, float max, MYSQL **db_);
+void update_tunnel_latency(char *iface, float loss, float min, float avg, float max, MYSQL **db_)
 {
 	unsigned int	tid, j;
 	char		q[256];
 	MYSQL		*db;
 	MYSQL_RES	*res;
 	MYSQL_ROW	row;
-	double		oldmin, oldmax;
+	double		oldmin, oldmax, oldavg, oldlos;
 	bool		ret;
+	char		values[_MAX_PATH];
 	int		r;
 
 	/* Get the tunnel_id which is passed in as T<xxx> */
-	tid = atoi(&tunnel[1]);
+	tid = atoi(&iface[1]);
 
 	/* Get the current min/max */
 	r = snprintf(q, sizeof(q),
-		"SELECT tunnel_latency_min, tunnel_latency_max "
+		"SELECT tunnel_latency_min, "
+		"tunnel_latency_max, "
+		"tunnel_latency_avg, "
+		"tunnel_latency_loss "
 		"FROM tunnels "
 		"WHERE tunnel_id = %u", tid);
 	if (!snprintfok(r, sizeof(q)))
@@ -623,52 +611,85 @@ void update_tunnel_latency(char *tunnel, float loss, float min, float avg, float
 	res = mysql_store_result(db);
 	j = mysql_num_rows(res);
 	row = mysql_fetch_row(res);
-	if (j == 1&& row)
+	if (row == NULL || j != 1)
 	{
-		oldmin = atof(row[0]);
-		oldmax = atof(row[1]);
-
+		mdolog(LOG_WARNING, "[%s] Could not fetch old stats for %s (%u rows)\n", g_pop_name, iface, j);
 		db_suckrows(res);
+		return;
+	}
 
-		if (min > oldmin) min = oldmin;
-		if (max < oldmax) max = oldmax;
+	oldmin = atof(row[0]);
+	oldmax = atof(row[1]);
+	oldavg = atof(row[2]);
+	oldlos = atof(row[3]);
 
-		snprintf(q, sizeof(q),
-			"UPDATE tunnels SET "
-			"tunnel_latency_loss = %f, "
-			"tunnel_latency_min = %f, "
-			"tunnel_latency_avg = %f, "
-			"tunnel_latency_max = %f",
-			loss, min, avg, max);
+	db_suckrows(res);
 
-		if (loss < 100)
-		{
-			j = strlen(q);
-			snprintf(&q[j], sizeof(q)-j, ", tunnel_lastalive = now()");
-		}
+	if (oldmin == min &&
+	    oldmax == max &&
+	    oldavg == avg &&
+	    oldlos == loss)
+	{
+		/*
+		 * All the same, don't update
+		 *
+		 * Does mean that lastalive does not get updated either
+		 * but there will be a miniscule latency difference
+		 * thus actually active tunnels will always be updated.
+		 *
+		 * This primarily avoids updating tunnels
+		 * that do not have any new latency.
+		 *
+		 * Note that we thus do not update latency RRDs
+		 * for tunnels that are not active either which
+		 * in all saves quite some overhead.
+		 */
+		return;
+	}
 
+	if (min > oldmin) min = oldmin;
+	if (max < oldmax) max = oldmax;
+
+	snprintf(q, sizeof(q),
+		"UPDATE tunnels SET "
+		"tunnel_latency_loss = %f, "
+		"tunnel_latency_min = %f, "
+		"tunnel_latency_avg = %f, "
+		"tunnel_latency_max = %f",
+		loss, min, avg, max);
+
+	if (loss < 100)
+	{
 		j = strlen(q);
-		snprintf(&q[j], sizeof(q)-j, " WHERE tunnel_id = %u", tid);
-
-		mdolog(LOG_DEBUG, "[%s] %s\n", g_pop_name, q);
-
-		ret = db_query(db_, q);
-		db = *db_;
-
-		if (!ret)
-		{
-			mdolog(LOG_WARNING, "[%s] Tunnel ID %u not found\n", g_pop_name, tid);
-			return;
-		}
-
-		res = mysql_use_result(db);
-		db_suckrows(res);
+		snprintf(&q[j], sizeof(q)-j, ", tunnel_lastalive = now()");
 	}
-	else
+
+	j = strlen(q);
+	snprintf(&q[j], sizeof(q)-j, " WHERE tunnel_id = %u", tid);
+
+	mdolog(LOG_DEBUG, "[%s] %s\n", g_pop_name, q);
+
+	ret = db_query(db_, q);
+	db = *db_;
+
+	if (!ret)
 	{
-		mdolog(LOG_WARNING, "[%s] Could not fetch old stats for %s (%u rows)\n", g_pop_name, tunnel, j);
-		db_suckrows(res);
+		mdolog(LOG_WARNING, "[%s] Could not update T%u stats\n", g_pop_name, tid);
+		return;
 	}
+
+	res = mysql_use_result(db);
+	db_suckrows(res);
+
+	/* Please also update RRD */
+	r = snprintf(values, sizeof(values), "N:%2.2f:%2.2f", avg, loss);
+	if (!snprintfok(r, sizeof(values)))
+	{
+		mdolog(LOG_DEBUG, "[%s] Could not construct Interface Latency, too long\n", g_pop_name);
+		return;
+	}
+
+	update_interface("latency", iface, values);
 }
 
 /* Works for v2 + v3 */
@@ -676,7 +697,7 @@ void collectstats3(int sockfd);
 void collectstats3(int sockfd)
 {
 	char		rbuf[BUFFER_SIZE], line[BUFFER_SIZE];
-	char		interface[BUFFER_SIZE];
+	char		iface[BUFFER_SIZE];
 	uint64_t	filled = 0, inoct, outoct, inpkt, outpkt;
 	const char	cmd[] = "getstat\r\n";
 
@@ -724,9 +745,9 @@ void collectstats3(int sockfd)
 
 		mdolog(LOG_DEBUG, "[%s] received \"%s\"\n", g_pop_name, line);
 
-		sscanf(line, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64, interface, &inoct, &outoct, &inpkt, &outpkt);
+		sscanf(line, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64, iface, &inoct, &outoct, &inpkt, &outpkt);
 
-		update_interface_traffic(interface, inoct, outoct, inpkt, outpkt);
+		update_interface_traffic(iface, inoct, outoct, inpkt, outpkt);
 	}
 
 	/* End of stats found */
@@ -737,7 +758,7 @@ void collectstats4(int sockfd, MYSQL **db);
 void collectstats4(int sockfd, MYSQL **db)
 {
 	char		rbuf[BUFFER_SIZE], line[BUFFER_SIZE];
-	char		interface[BUFFER_SIZE];
+	char		iface[BUFFER_SIZE];
 	uint64_t	filled = 0, inoct, outoct, inpkt, outpkt;
 	unsigned int	num_sent, num_recv;
 	float		loss, min, avg, max;
@@ -806,7 +827,7 @@ void collectstats4(int sockfd, MYSQL **db)
 		{
 			if (sscanf(line, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " "
 					"%u %u %f %f %f %f",
-					interface, &inoct, &outoct, &inpkt, &outpkt,
+					iface, &inoct, &outoct, &inpkt, &outpkt,
 					&num_sent, &num_recv, &loss, &min, &avg, &max) != 11)
 			{
 				mdolog(LOG_WARNING, "[%s] \"%s\" resulted in \"%s\" which is a broken tunnel result line...\n", g_pop_name, cmd, line);
@@ -816,7 +837,7 @@ void collectstats4(int sockfd, MYSQL **db)
 		else
 		{
 			if (sscanf(line, "%s %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64,
-					interface, &inoct, &outoct, &inpkt, &outpkt) != 5)
+					iface, &inoct, &outoct, &inpkt, &outpkt) != 5)
 			{
 				mdolog(LOG_WARNING, "[%s] \"%s\" resulted in \"%s\" which is a broken uplink/total result line...\n", g_pop_name, cmd, line);
 				return;
@@ -824,16 +845,13 @@ void collectstats4(int sockfd, MYSQL **db)
 		}
 
 		/* Update the stats */
-		update_interface_traffic(interface, inoct, outoct, inpkt, outpkt);
+		update_interface_traffic(iface, inoct, outoct, inpkt, outpkt);
 
 		/* Only tunnels have latency */
 		if (line[0] == 'T')
 		{
-			/* Update the RRD */
-			update_latency(interface, avg, loss);
-
 			/* Update SQL */
-			update_tunnel_latency(interface, loss, min, avg, max, db);
+			update_tunnel_latency(iface, loss, min, avg, max, db);
 		}
 
 		/* Another line read */
