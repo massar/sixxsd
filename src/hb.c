@@ -107,18 +107,18 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 		return;
 	}
 
-	if (tun->takebeats)
+	if (!tun->takebeats)
 	{
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_FOR_NON_HB, src);
 		return;
 	}
 
-	/* Get the IPv4 endpoint or "sender" */
+	/* Get the IP endpoint or "sender" */
 	pnt = ++pnt2;
 	while (*pnt2 != '\0' && *pnt2 != ' ') pnt2++;
 	if (*pnt2 == '\0')
 	{
-		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_NO_IPV4, src);
+		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_HB_NO_SENDER, src);
 		return;
 	}
 
@@ -127,6 +127,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	/* Does the packet specify that we should use the sender address? */
 	if (strcmp(pnt, "sender") != 0)
 	{
+		/* Verify that the sender == the IP given, thus a bit extra security */
 		inet_ptonA(pnt, &ip, NULL);
 		if (memcmp(&ip, src, sizeof(ip)) != 0)
 		{
@@ -135,6 +136,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 		}
 	}
 
+	/* What sent us the packet */
 	strncpy(sender, pnt, sizeof(sender));
 	*pnt2 = ' ';
 
@@ -158,8 +160,10 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	i = currtime - datetime;
 	if (i < 0) i = -i;
 
-	/* We allow the senders clock to be off */
-	/* This also allows for some latency */
+	/*
+	 * We allow the senders clock to be off
+	 * This also allows for some latency
+	 */
 	if (i > MAX_CLOCK_OFF)
 	{
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_CLOCK_OFF, src);
@@ -194,6 +198,8 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	/* Goody, valid information, we love that, lets mark it up */
 	tun->state = SIXXSD_TSTATE_UP;
 	tun->lastbeat = currtime;
+
+	/* Their side of the tunnel, can be IPv4 or IPv6 */
 	memcpy(&tun->ip_them, src, sizeof(tun->ip_them));
 
 	return;

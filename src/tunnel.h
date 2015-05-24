@@ -51,7 +51,7 @@ enum sixxsd_tunnel_errors
 	SIXXSD_TERR_AYIYA_INVALIDFORWARD,				/* Can't forward a packet with an invalid protocol */
 	SIXXSD_TERR_HB_HASHFAIL,					/* Tunnel Hash verification failed (heartbeat) */
 	SIXXSD_TERR_HB_FOR_NON_HB,					/* Heartbeat received for non-heartbeat tunnel */
-	SIXXSD_TERR_HB_NO_IPV4,						/* No IPv4/sender found in HB packet */
+	SIXXSD_TERR_HB_NO_SENDER,					/* No sender found in HB packet */
 	SIXXSD_TERR_HB_SENDER_MISMATCH,					/* Sender mismatch */
 	SIXXSD_TERR_HB_NOTIME,						/* No time found in packet */
 	SIXXSD_TERR_ICMPV4_ERROR,					/* We received an ICMPv4 error */
@@ -88,10 +88,10 @@ struct sixxsd_tunnel
 	uint8_t				ayiya_sha1[SHA1_DIGEST_LENGTH];	/* SHA1 hash */
 
 	/* Heartbeat */
-	uint8_t				hb_password[132];		/* Heartbeat password */
+	uint8_t				hb_password[133];		/* Heartbeat password */
 
 	/* Heartbeat & AYIYA */
-	uint8_t				takebeats;			/* Accept beats? */
+	BOOL				takebeats;			/* Accept beats? */
 	uint64_t			lastbeat;			/* Timestamp of last beat */
 
 	/* Traffic & Latency statistics */

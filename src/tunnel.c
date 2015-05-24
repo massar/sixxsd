@@ -53,7 +53,7 @@ static const char *tunnel_err_names[] =
 		"AYIYA Invalid Forward",
 		"Heartbeat Hash Fail",
 		"HB-non-HB",
-		"HB Missing IPv4",
+		"HB Missing sender",
 		"HB Sender Mismatch",
 		"HB Missing Time",
 		"ICMPv4 Errors Received",
@@ -562,11 +562,11 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 		strcasecmp(args[2], "heartbeat"	) == 0)
 	{
 		/* tun->type does not matter, changes when a packet arrives */
-		tun->takebeats = 1;
+		tun->takebeats = true;
 	}
 	else
 	{
-		tun->takebeats = 0;
+		tun->takebeats = false;
 
 		/*
 		 * Only reconfigure when not set yet
