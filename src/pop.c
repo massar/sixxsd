@@ -658,7 +658,7 @@ static int pop_cmd_tunnelprefix_add(struct sixxsd_context *ctx, const unsigned i
 	/* Bring them up if possible */
 	iface_upnets();
 
-	ctx_printf(ctx, "Tunnel Prefix %s added\n", tuns->prefix_asc);
+	ctx_printf(ctx, "Tunnel Prefix %s:/48 configured\n", tuns->prefix_asc);
 	return 200;
 }
 
