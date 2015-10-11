@@ -90,6 +90,7 @@ static const char *iface_socket_name(enum sixxsd_sockets type)
 		"ICMPv4",
 		"AYIYA",
 		"Heartbeat",
+		"GRE",
 	};
 
 	/* Just in case we ever bring them out of sync accidentally */
@@ -449,6 +450,7 @@ static VOID iface_routetun(const uint16_t in_tid, const uint16_t out_tid, const 
 
 		/* Output the packet */
 		iface_outs[tun->type][n].func(tun, in_tid, out_tid, protocol, packet, len, is_response);
+		return;
 	}
 
 	iface_unreachtun(in_tid, out_tid, protocol, packet, len, is_response);
@@ -752,7 +754,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 	{
 		IPADDRESS s;
 
-		ipaddress_make_ipv4(&s, &ip->ip_src);
+		ipaddress_set_ipv4(&s, &ip->ip_src);
 
 		/* Do we like the source address coming from this interface? */
 		out_tid = address_find4(&s, &istunnel);
@@ -767,7 +769,7 @@ VOID iface_route4(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 				char		src[128], dst[128];
 				IPADDRESS	d;
 
-				ipaddress_make_ipv4(&d, &ip->ip_dst);
+				ipaddress_set_ipv4(&d, &ip->ip_dst);
 
 				inet_ntopA((IPADDRESS *)&ip->ip_src, src, sizeof(src));
 				inet_ntopA((IPADDRESS *)&ip->ip_dst, dst, sizeof(dst));
@@ -1195,8 +1197,6 @@ static PTR *iface_read_thread(PTR *__sock)
 	uint16_t		proto, port;
 	IPADDRESS		src;
 
-	ipaddress_make_ipv4(&src, NULL);
-
 	/* Do the loopyloop */
 	while (g_conf && g_conf->running)
 	{
@@ -1295,8 +1295,7 @@ static PTR *iface_read_thread(PTR *__sock)
 
 			case SIXXSD_SOCK_AYIYA:
 				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
-				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in, sin_port), sizeof(port));
-				port = ntohs(port);
+				port_make(&port, &ss);
 				ayiya_in(&src, sock->socktype, sock->proto, port, sock->port, packet, len);
 				break;
 
@@ -1331,8 +1330,7 @@ static PTR *iface_read_thread(PTR *__sock)
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
-				memcpy(&port, ((char *)&ss) + offsetof(struct sockaddr_in6, sin6_port), sizeof(port));
-				port = ntohs(port);
+				port_make(&port, &ss);
 				ayiya_in(SS_IPV6_SRC(ss), sock->socktype, sock->proto, port, sock->port, packet, len);
 				break;
 
@@ -1673,8 +1671,12 @@ int iface_init(struct sixxsd_context *ctx)
 	} types[] =
 	{
 		{ SIXXSD_SOCK_TUNTAP,	0,		0,		0,		0		},
+/*
+
 		{ SIXXSD_SOCK_PROTO4,	AF_INET4,	0,		IPPROTO_IPV4,	0		},
 		{ SIXXSD_SOCK_PROTO4,	AF_INET6,	0,		IPPROTO_IPV4,	0		},
+*/
+
 		{ SIXXSD_SOCK_PROTO41,	AF_INET4,	0,		IPPROTO_IPV6,	0		},
 		{ SIXXSD_SOCK_PROTO41,	AF_INET6,	0,		IPPROTO_IPV6,	0		},
 		{ SIXXSD_SOCK_ICMPV4,	AF_INET4,	0,		IPPROTO_ICMPV4,	0		},
@@ -1697,6 +1699,9 @@ int iface_init(struct sixxsd_context *ctx)
 	for (i = 0; i < lengthof(types); i++)
 	{
 		s = &g_conf->sockets[i];
+
+		ctx_printf(ctx, "Creating socket %u :: %s / %s\n",
+			i, iface_socket_name(types[i].type), af_name(types[i].af));
 
 		switch (types[i].type)
 		{
@@ -1723,6 +1728,7 @@ int iface_init(struct sixxsd_context *ctx)
 			break;
 
 		case SIXXSD_SOCK_ICMPV4:
+			ctx_printf(ctx, "Creating ICMPv4 socket\n");
 			ret = iface_init_icmpv4(ctx, s, types[i].af);
 			if (ret != 200) return ret;
 #ifdef NEED_RAWSOCKETS
@@ -1731,6 +1737,7 @@ int iface_init(struct sixxsd_context *ctx)
 			break;
 
 		case SIXXSD_SOCK_AYIYA:
+			ctx_printf(ctx, "Creating AYIYA socket\n");
 			switch (types[i].proto)
 			{
 			case IPPROTO_UDP:
@@ -1762,7 +1769,7 @@ int iface_init(struct sixxsd_context *ctx)
 			break;
 		}
 
-		ctx_printf(ctx, "Opened socket %u :: %s\n", i, iface_socket_name(types[i].type));
+		ctx_printf(ctx, "Opened socket %u :: %s / %s\n", i, iface_socket_name(types[i].type), af_name(types[i].af));
 
 		sock_setblock(s->socket);
 
@@ -1785,7 +1792,7 @@ int iface_init(struct sixxsd_context *ctx)
 	{
 		snprintf(buf, sizeof(buf), "Reader %s", iface_socket_name(types[i].type));
 		if (!thread_add(ctx, buf, iface_read_thread, (PTR *)&g_conf->sockets[i], NULL, true)) return 400;
-		ctx_printf(ctx, "Threading socket %u :: %s\n", i, iface_socket_name(types[i].type));
+		ctx_printf(ctx, "Threading socket %u :: %s / %s\n", i, iface_socket_name(types[i].type), af_name(types[i].af));
 	}
 
 	/* Start a thread which pings alive endpoints */

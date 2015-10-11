@@ -1246,15 +1246,16 @@ BOOL ipaddress_is_ipv4(const IPADDRESS *a)
 
 VOID ipaddress_set_ipv4(IPADDRESS *a, const struct in_addr *ipv4)
 {
-	if (ipv4) memcpy(ipaddress_ipv4(a), ipv4, 4);
-	else memzero(ipaddress_ipv4(a), 4);
-}
-
-VOID ipaddress_make_ipv4(IPADDRESS *a, const struct in_addr *ipv4)
-{
 	memcpy(&a->a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
 
-	ipaddress_set_ipv4(a, ipv4);
+	if (ipv4)
+	{
+		memcpy(ipaddress_ipv4(a), ipv4, 4);
+	}
+	else
+	{
+		memzero(ipaddress_ipv4(a), 4);
+	}
 }
 
 VOID ipaddress_set_ipv6(IPADDRESS *a, const struct in6_addr *ipv6)
@@ -1263,9 +1264,48 @@ VOID ipaddress_set_ipv6(IPADDRESS *a, const struct in6_addr *ipv6)
 	else memzero(ipaddress_ipv6(a), 16);
 }
 
-BOOL ipaddress_is_unspecified(const IPADDRESS *a)
+VOID ipaddress_make_sa(IPADDRESS *ip, const struct sockaddr_storage *sa)
 {
-	return (a->a64[0] == 0 && a->a64[1] == 0) ? true : false;
+	switch (sa->ss_family)
+	{
+		case AF_INET4:
+			ipaddress_set_ipv4(ip, &((struct sockaddr_in *)sa)->sin_addr);
+			break;
+
+		case AF_INET6:
+			ipaddress_set_ipv6(ip, &((struct sockaddr_in6 *)sa)->sin6_addr);
+			break;
+
+		default:
+			dolog(LOG_ERR, "common", "Unknown Address Family %u\n", sa->ss_family);
+			break;
+	}
+}
+
+VOID port_make(uint16_t *port, const struct sockaddr_storage *sa)
+{
+	uint16_t prt = 0;
+
+	switch (sa->ss_family)
+	{
+		case AF_INET4:
+			memcpy(&prt, ((char *)sa) + offsetof(struct sockaddr_in, sin_port), sizeof(prt));
+			*port = ntohs(*port);
+			break;
+		case AF_INET6:
+			memcpy(&prt, ((char *)sa) + offsetof(struct sockaddr_in6, sin6_port), sizeof(prt));
+			break;
+
+		default:
+			dolog(LOG_ERR, "common", "Unknown Address Family %u\n", sa->ss_family);
+			break;
+	}
+
+	*port = ntohs(prt);
+}
+BOOL ipaddress_is_unspecified(const IPADDRESS *ip)
+{
+	return (ip->a64[0] == 0 && ip->a64[1] == 0) ? true : false;
 }
 
 /*
@@ -1327,8 +1367,10 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 	/* Move IPv4 address to the back and set the ::ffff in front of it */
 	if (af == AF_INET4)
 	{
-		ipaddress_set_ipv4(dst, (const struct in_addr *)&dst->a8[0]);
-		memcpy(&dst->a8[0], ipv4_mapped_ipv6_prefix, sizeof(ipv4_mapped_ipv6_prefix));
+		IPADDRESS t;
+
+		ipaddress_set_ipv4(&t, (const struct in_addr *)&dst->a8[0]);
+		memcpy(dst, &t, sizeof(*dst));
 	}
 
 	/* Return an optionally given prefixlength? */
@@ -1375,26 +1417,6 @@ int inet_ptonA(const char *src, IPADDRESS *dst, unsigned int *length)
 	}
 
 	return ret;
-}
-
-/*
- * Get Socket Name for local or peer
- * Fixes up IPv4 mapped ::ffff:x.x.x.x and compatible (::x.x.x.x) IPv6 addresses so that
- * we handle them correctly as IPv4 and not IPv6, which they are not.
- * Returns the family of the thing.
- */
-VOID sock_cleanss(struct sockaddr_storage *ss)
-{
-	if (	ss->ss_family == AF_INET6 &&
-		ipaddress_is_ipv4(SS_IPV6_SRC(ss)))
-	{
-		/* Move the IPv4 address into the correct place */
-		memmove(	&((struct sockaddr_in *)ss)->sin_addr,
-				((char *)SS_IPV6_SRC(ss)) + 12, 4);
-
-		/* It's IPv4 now */
-		ss->ss_family = AF_INET4;
-	}
 }
 
 #define LISTEN_QUEUE    128

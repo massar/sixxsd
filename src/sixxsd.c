@@ -89,6 +89,7 @@ struct ctx_menu ctx_menu_main[13] =
 	{"main",	NULL,			0,0,	NULL,		NULL },
 	{"cmd",		ctx_cmd_cmd,		0,-1,	CONTEXT_SUB,	"Various Commands" },
 	{"pop",		ctx_cmd_pop,		0,-1,	CONTEXT_SUB,	"PoP Commands" },
+	{"pproxy",	ctx_cmd_pproxy,		0,-1,	CONTEXT_SUB,	"Port Proxy Commands" },
 	{"subnet",	ctx_cmd_subnet,		0,-1,	CONTEXT_SUB,	"Subnet Commands" },
 	{"tunnel",	ctx_cmd_tunnel,		0,-1,	CONTEXT_SUB,	"Tunnel Commands" },
 	{NULL,		NULL,			0,0,	NULL,		NULL },
@@ -276,30 +277,13 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 			}
 			else
 			{
-				IPADDRESS	ip;
 				unsigned int	i;
 				char		buf[1024], hst[128];
 				int		k;
 
-				switch (sa.ss_family)
-				{
-				case AF_INET4:
-					ipaddress_make_ipv4(&ip, &((struct sockaddr_in *)&sa)->sin_addr);
-					break;
+				ipaddress_make_sa(&lc->ctx.ip, &sa);
 
-				case AF_INET6:
-					ipaddress_make_ipv6(&ip, &((struct sockaddr_in6 *)&sa)->sin6_addr);
-					break;
-
-				default:
-					mdolog(LOG_ERR, "Unknown Address Family %u\n", sa.ss_family);
-					break;
-				}
-
-				/* Store the Remote IP */
-				memcpy(&lc->ctx.ip, &ip, sizeof(lc->ctx.ip));
-
-				inet_ntopA(&ip, hst, sizeof(hst));
+				inet_ntopA(&lc->ctx.ip, hst, sizeof(hst));
 
 				/* Check ACL */
 				for (i = 0; i < lengthof(g_conf->cli_acl); i++)
@@ -312,7 +296,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 					}
 
 					/* Does it match? */
-					if (memcmp(&g_conf->cli_acl[i], &ip, sizeof(ip)) != 0) continue;
+					if (memcmp(&g_conf->cli_acl[i], &lc->ctx.ip, sizeof(lc->ctx.ip)) != 0) continue;
 
 					k = snprintf(buf, sizeof(buf), "Client (%s %s)", hst, sock_name(sn->socktype));
 					if (!snprintfok(k, sizeof(buf))) snprintf(buf, sizeof(buf), "Client (long)");
@@ -630,7 +614,12 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 		if (ret != 200) break;
 
 		ret = tunnel_init(&ctx);
-		if (ret != 200) ctx_printf(&ctx, "Tunnel Beat Check startup failed\n");
+		if (ret != 200) ctx_printf(&ctx, "Tunnel startup failed\n");
+		ctx_flush(&ctx, ret);
+		if (ret != 200) break;
+
+		ret = pproxy_init(&ctx);
+		if (ret != 200) ctx_printf(&ctx, "Port Proxy startup failed\n");
 		ctx_flush(&ctx, ret);
 		if (ret != 200) break;
 

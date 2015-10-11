@@ -80,7 +80,7 @@ VOID icmpv4_in(const IPADDRESS *org, uint8_t *packet, const uint32_t len)
 	}
 
 	/* The destination of our packet is the endpoint we are looking for */
-	ipaddress_make_ipv4(&src, &ip->ip_dst);
+	ipaddress_set_ipv4(&src, &ip->ip_dst);
 
 	/* Find the IPv4 address in our tunnel table */
 	tid = tunnel_find(&src);

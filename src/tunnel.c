@@ -310,8 +310,8 @@ VOID tunnel_debug(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *
 				IPADDRESS s, d;
 
 				/* Convert the IP into an IPADDRESS we can use */
-				ipaddress_make_ipv4(&s, &ip->ip_src);
-				ipaddress_make_ipv4(&d, &ip->ip_dst);
+				ipaddress_set_ipv4(&s, &ip->ip_src);
+				ipaddress_set_ipv4(&d, &ip->ip_dst);
 
 				/* Turn it into human readable stuff */
 				inet_ntopA(&s, src, sizeof(src));
@@ -414,7 +414,7 @@ VOID tunnel_log4(const uint16_t in_tid, const uint16_t out_tid, const uint8_t *p
 {
 	IPADDRESS ip;
 
-	ipaddress_make_ipv4(&ip, src);
+	ipaddress_set_ipv4(&ip, src);
 
 	tunnel_log(in_tid, out_tid, packet, len, err, &ip);
 }
@@ -523,7 +523,7 @@ static int tunnel_cmd_set_config(struct sixxsd_context *ctx, const unsigned int 
 
 	if (tid > lengthof(g_conf->tunnels.tunnel))
 	{
-		ctx_printf(ctx, "TID 0x%x is out of range (0x%u) in line \n", tid, (unsigned int)lengthof(g_conf->tunnels.tunnel));
+		ctx_printf(ctx, "TID 0x%x is out of range (0x%u)\n", tid, (unsigned int)lengthof(g_conf->tunnels.tunnel));
 		return 400;
 	}
 
