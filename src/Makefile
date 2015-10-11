@@ -29,7 +29,7 @@ SD_OBJS		=	sixxsd.o 							\
 			hb.o								\
 			icmpv4.o							\
 			iface.o								\
-			pop.o								\
+			pop.o pproxy.o							\
 			rwl.o								\
 			subnet.o							\
 			thread.o tunnel.o

@@ -83,6 +83,7 @@ extern struct ctx_menu ctx_menu_main[13];		/* sixxsd.c */
 CONTEXT_MENU(cmd)
 CONTEXT_MENU(set)
 CONTEXT_MENU(pop)
+CONTEXT_MENU(pproxy)
 CONTEXT_MENU(subnet)
 CONTEXT_MENU(tunnel)
 

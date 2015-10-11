@@ -120,6 +120,11 @@ struct sixxsd_configuration
 	/* The Subnets */
 	struct sixxsd_subnets	subnets[16];				/* The subnets (16 /40's per PoP max) */
 	uint64_t		subnets_hi;				/* The highest in-use subnet */
+
+	/* Port Proxies (pproxy) */
+	struct sixxsd_pproxy	pproxies[SIXXSD_PPROXY_MAX];		/* The port proxies */
+	struct socketpool	pproxy_pool;				/* Socket pool */
+	uint64_t		pproxy_hi;
 };
 
 /* Our global configuration */

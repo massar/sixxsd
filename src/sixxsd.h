@@ -89,6 +89,9 @@ struct sixxsd_context;
 /* Tunnels */
 #include "tunnel.h"
 
+/* Port Proxy */
+#include "pproxy.h"
+
 /* Config */
 #include "config.h"
 
