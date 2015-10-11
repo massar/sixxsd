@@ -11,13 +11,13 @@
 # The name of the application
 SIXXSD_NAME:=SixXSd
 SIXXSD_DESC:="SixXSd - SixXS Daemon"
-SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2014 All Rights Reserved"
+SIXXSD_COPYRIGHT:="(C) Copyright SixXS 2000-2015 All Rights Reserved"
 
 # The version of SixXSd
 SIXXSD_VERSION=4.0
 
 # The version of SixXSd
-SIXXSD_RELEASE:=2015.05.24
+SIXXSD_RELEASE:=2015.10.12
 
 # Enable extra debugging operation + enables symbols (don't distribute with it enabled!)
 #SIXXSD_OPTIONS+=-DDEBUG
