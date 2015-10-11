@@ -236,14 +236,16 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t socktype, const uint8_t protoc
 	}
 
 	tun = tunnel_grab(in_tid);
-	if (!tun || tun->state == SIXXSD_TSTATE_DISABLED)
+	if (!tun || tun->state == SIXXSD_TSTATE_NONE || tun->state == SIXXSD_TSTATE_DISABLED)
 	{
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_DISABLED, src);
 		return;
 	}
 
-	if (tun->type != SIXXSD_TTYPE_AYIYA)
+	/* Not taking beats, then we have no password either */
+	if (!tun->takebeats)
 	{
+		/* No change possible */
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_AYIYA_FOR_NON_AYIYA, src);
 		return;
 	}
@@ -296,6 +298,7 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t socktype, const uint8_t protoc
 	}
 
 	/* Update the interface */
+	tun->type		= SIXXSD_TTYPE_AYIYA;
 	tun->state		= SIXXSD_TSTATE_UP;
 	tun->lastbeat		= currtime;
 	tun->ayiya_socktype	= socktype;
