@@ -101,7 +101,7 @@ VOID hb_in(const IPADDRESS *src, const uint8_t *packet, uint32_t len)
 	}
 
 	tun = tunnel_grab(in_tid);
-	if (!tun || tun->state == SIXXSD_TSTATE_DISABLED)
+	if (!tun || tun->state == SIXXSD_TSTATE_NONE || tun->state == SIXXSD_TSTATE_DISABLED)
 	{
 		tunnel_log(SIXXSD_TUNNEL_NONE, in_tid, NULL, 0, SIXXSD_TERR_TUN_DISABLED, src);
 		return;
