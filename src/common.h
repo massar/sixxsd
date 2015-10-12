@@ -77,10 +77,10 @@ VOID ipaddress_set_ipv4(IPADDRESS *a, const struct in_addr *ipv4);
 VOID ipaddress_set_ipv6(IPADDRESS *a, const struct in6_addr *ipv6);
 VOID ipaddress_make_ipv4(IPADDRESS *a, const struct in_addr *ipv4);
 #define ipaddress_make_ipv6(a,i) ipaddress_set_ipv6(a,i)
-VOID ipaddress_make_sa(IPADDRESS *ip, const struct sockaddr_storage *sa);
+VOID ipaddress_make_ss(IPADDRESS *ip, const struct sockaddr_storage *ss);
 BOOL ipaddress_is_unspecified(const IPADDRESS *ip);
 
-VOID port_make(uint16_t *port, const struct sockaddr_storage *sa);
+VOID port_make(uint16_t *port, const struct sockaddr_storage *ss);
 
 /* Misc */
 const char *inet_ntopA(const IPADDRESS *src, char *dst, socklen_t cnt);
@@ -137,6 +137,8 @@ const char *sock_name(uint8_t af);
 const char *protocol_name(uint8_t protocol);
 VOID sock_setnonblock(SOCKET sock);
 VOID sock_setblock(SOCKET sock);
+VOID sock_setpktinfo(SOCKET sock);
+ssize_t recv_from_to(int sock, void *buf, size_t len, int flags, struct sockaddr_storage *from, struct sockaddr_storage *to);
 SOCKET sock_connect(char *buf, unsigned int buflen, const char *hostname, const char *service, int family, int socktype, int protocol, const char *bind_hostname, const char *bind_service);
 SOCKET use_uri(char *buf, unsigned int buflen, BOOL doconnect, const char *uri, const char *defaultservice, struct socketpool *pool, uint32_t tag);
 int sock_printf(SOCKET sock, const char *ATTR_RESTRICT fmt, ...) ATTR_FORMAT(printf, 2, 3);

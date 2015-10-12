@@ -759,7 +759,7 @@ static int tunnel_show(struct sixxsd_context *ctx, uint16_t tid)
 	ctx_printf(ctx, "Inner Us                : %s%x::1\n", tuns->prefix_asc, tid);
 	ctx_printf(ctx, "Inner Them              : %s%x::2\n", tuns->prefix_asc, tid);
 
-	inet_ntopA(&g_conf->pops[g_conf->pop_id].ipv4, buf, sizeof(buf));
+	inet_ntopA(&tun->ip_us, buf, sizeof(buf));
 	ctx_printf(ctx, "Outer Us                : %s\n", buf);
 
 	inet_ntopA(&tun->ip_them, buf, sizeof(buf));

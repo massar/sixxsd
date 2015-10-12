@@ -18,8 +18,8 @@ VOID direct_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
 	IPV4_INIT(ip, sizeof(ip) + len, protocol);
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
-	memcpy(&ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(ip.ip_src));
-	memcpy(&ip.ip_dst, ipaddress_ipv4(&tun->ip_them),			sizeof(ip.ip_dst));
+	memcpy(&ip.ip_src, ipaddress_ipv4(&tun->ip_us),		sizeof(ip.ip_src));
+	memcpy(&ip.ip_dst, ipaddress_ipv4(&tun->ip_them),	sizeof(ip.ip_dst));
 
 	iface_send4(in_tid, out_tid, (const uint8_t *)&ip, sizeof(ip), packet, len, is_response, packet, len);
 }
@@ -35,8 +35,8 @@ VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
         /* IPv6 */
 	IPV6_INIT(pkt.ip, len, protocol);
 
-        memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
-        memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));
+        memcpy(&pkt.ip.ip6_src, &tun->ip_us,	sizeof(pkt.ip.ip6_src));
+        memcpy(&pkt.ip.ip6_dst, &tun->ip_them,	sizeof(pkt.ip.ip6_dst));
 
 	memcpy(pkt.payload, packet, len);
 
@@ -44,7 +44,7 @@ VOID direct_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uin
         iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + len, is_response, false, true);
 }
 
-VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const uint16_t len, uint16_t protocol, uint8_t *payload, uint16_t plen, enum sixxsd_tunnel_type ttype)
+VOID direct_in(const IPADDRESS *src, const IPADDRESS *dst, uint16_t packettype, uint8_t *packet, const uint16_t len, uint16_t protocol, uint8_t *payload, uint16_t plen, enum sixxsd_tunnel_type ttype)
 {
 	struct ip6_hdr		*ip6 = (struct ip6_hdr *)payload;
 	struct ip		*ip4 = (struct ip *)payload;
@@ -55,7 +55,7 @@ VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const
 	uint16_t		in_tid;
 
 	/*
-	 * Fetch it. This automatically does RPF as we use the source IPv6 address for
+	 * Fetch it. This automatically does RPF as we use the source inner IP address for
          * determining the associated tunnel.
 	 * It also nicely solves the problem of having to search for the IPv4 src/dst pair :)
 	 */
@@ -104,6 +104,9 @@ VOID direct_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const
 	 * This thus swaps between DIRECT and GRE automatically
 	 */
 	tun->type = ttype;
+
+	/* What is our side of the tunnel? */
+	memcpy(&tun->ip_us, dst, sizeof(tun->ip_us));
 
 	/* Account the packet */
 	tunnel_account_packet_in(in_tid, plen);

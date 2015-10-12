@@ -257,6 +257,7 @@ struct nd_neigh_advert
 
 #ifdef _LINUX
 #include <linux/if_tun.h>
+#include <linux/ipv6.h>
 #endif
 
 #ifdef _FREEBSD

@@ -28,7 +28,8 @@ struct sixxsd_socket
 	uint16_t		type;					/* SIXXSD_SOCK_<...> */
 	uint8_t			af;					/* Address Family that we are listening on */
 	uint8_t			socktype;				/* Socket Type (SOCK_*) "" */
-	uint16_t		proto;					/* Protocol (IPPROTO_*) "" */
+	uint8_t			proto;					/* Protocol (IPPROTO_*) "" */
+	uint8_t			getsrcdst;				/* Get destination with recvmsg()? */
 	uint16_t		port;					/* Port "" */
 };
 

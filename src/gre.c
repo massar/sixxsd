@@ -24,8 +24,8 @@ VOID gre_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16
 	IPV4_INIT(pkt.ip, sizeof(pkt) + len, IPPROTO_GRE);
 
 	/* Fill in the IP header from the original packet, swapping source & dest */
-	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),sizeof(pkt.ip.ip_src));
-	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),			sizeof(pkt.ip.ip_dst));
+	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&tun->ip_us),	sizeof(pkt.ip.ip_src));
+	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),	sizeof(pkt.ip.ip_dst));
 
 	/* GRE is mostly zeros, even the version number */
 	pkt.gre.proto = ntohs(protocol == IPPROTO_IPV4 ? ETHERTYPE_IP : ETHERTYPE_IPV6);
@@ -45,8 +45,8 @@ VOID gre_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16
         /* IPv6 */
 	IPV6_INIT(pkt.ip, len, protocol);
 
-        memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
-        memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));
+        memcpy(&pkt.ip.ip6_src, &tun->ip_us,	sizeof(pkt.ip.ip6_src));
+        memcpy(&pkt.ip.ip6_dst, &tun->ip_them,	sizeof(pkt.ip.ip6_dst));
 
 	/* GRE is mostly zeros, even the version number */
 	pkt.gre.proto = ntohs(protocol == IPPROTO_IPV4 ? ETHERTYPE_IP : ETHERTYPE_IPV6);
@@ -57,7 +57,7 @@ VOID gre_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint16
         iface_route6(in_tid, out_tid, (uint8_t *)&pkt, sizeof(pkt) - sizeof(pkt.payload) + len, is_response, false, true);
 }
 
-VOID gre_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const uint16_t len, uint8_t *payload, uint16_t plen)
+VOID gre_in(const IPADDRESS *src, const IPADDRESS *dst, uint16_t packettype, uint8_t *packet, const uint16_t len, uint8_t *payload, uint16_t plen)
 {
 	struct grehdr		*gre;
 	uint16_t		protocol;
@@ -117,6 +117,6 @@ VOID gre_in(const IPADDRESS *src, uint16_t packettype, uint8_t *packet, const ui
 	}
 
 	/* Let the direct code handle the rest */
-	direct_in(src, packettype, packet, len, protocol, payload, plen, SIXXSD_TTYPE_GRE);
+	direct_in(src, dst, packettype, packet, len, protocol, payload, plen, SIXXSD_TTYPE_GRE);
 }
 

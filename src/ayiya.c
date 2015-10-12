@@ -121,8 +121,8 @@ VOID ayiya_out_ipv4(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 	/* IPv4 */
 	IPV4_INIT(pkt.ip, sizeof(pkt) - sizeof(pkt.s.payload) + len, IPPROTO_UDP);
 
-	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&g_conf->pops[g_conf->pop_id].ipv4),	sizeof(pkt.ip.ip_src));
-	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),				sizeof(pkt.ip.ip_dst));
+	memcpy(&pkt.ip.ip_src, ipaddress_ipv4(&tun->ip_us),	sizeof(pkt.ip.ip_src));
+	memcpy(&pkt.ip.ip_dst, ipaddress_ipv4(&tun->ip_them),	sizeof(pkt.ip.ip_dst));
 
 	/* UDP */
 	pkt.udp.uh_sport = htons(tun->ayiya_port_us);
@@ -151,8 +151,8 @@ VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
         /* IPv6 */
 	IPV6_INIT(pkt.ip, len, IPPROTO_UDP);
 
-	memcpy(&pkt.ip.ip6_src, &g_conf->pops[g_conf->pop_id].ipv6,	sizeof(pkt.ip.ip6_src));
-	memcpy(&pkt.ip.ip6_dst, &tun->ip_them,				sizeof(pkt.ip.ip6_dst));
+	memcpy(&pkt.ip.ip6_src, &tun->ip_us,	sizeof(pkt.ip.ip6_src));
+	memcpy(&pkt.ip.ip6_dst, &tun->ip_them,	sizeof(pkt.ip.ip6_dst));
 
 	/* UDP */
 	pkt.udp.uh_sport = htons(tun->ayiya_port_us);
@@ -173,13 +173,14 @@ VOID ayiya_out_ipv6(struct sixxsd_tunnel *tun, const uint16_t in_tid, const uint
 /*
  * From the other side of the tunnel -> interface (kernel)
  * src        = where the packet came from
+ * dst        = where the packet went (us, the PoP)
  * protocol   = the protocol in which AYIYA was carried
  * sport      = source port
  * dport      = destination port
  * packet     = buffer containing the packet
  * length     = length of the packet
 */
-VOID ayiya_in(const IPADDRESS *src, const uint8_t socktype, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
+VOID ayiya_in(const IPADDRESS *src, const IPADDRESS *dst, const uint8_t socktype, const uint8_t protocol, const uint16_t sport, const uint16_t dport, const uint8_t *packet, const uint32_t len)
 {
 	SHA_CTX			sha1;
 	struct pseudo_ayh	*s = (struct pseudo_ayh *)packet;
@@ -305,6 +306,8 @@ VOID ayiya_in(const IPADDRESS *src, const uint8_t socktype, const uint8_t protoc
 	tun->ayiya_protocol	= protocol;
 	tun->ayiya_port_us	= dport;
 	tun->ayiya_port_them	= sport;
+
+	memcpy(&tun->ip_us, dst, sizeof(tun->ip_us));
 	memcpy(&tun->ip_them, src, sizeof(tun->ip_them));
 
 	if (s->ayh.ayh_opcode == ayiya_op_forward)

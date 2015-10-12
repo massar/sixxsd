@@ -281,7 +281,7 @@ static VOID mainloop(struct sixxsd_context *ctx, struct socketpool *pool)
 				char		buf[1024], hst[128];
 				int		k;
 
-				ipaddress_make_sa(&lc->ctx.ip, &sa);
+				ipaddress_make_ss(&lc->ctx.ip, &sa);
 
 				inet_ntopA(&lc->ctx.ip, hst, sizeof(hst));
 

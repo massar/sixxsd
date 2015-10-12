@@ -1097,7 +1097,11 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 			tun = &g_conf->tunnels.tunnel[tid];
 
 			/* Skip all tunnels that are not up */
-			if (tun->state != SIXXSD_TSTATE_UP) continue;
+			if (	tun->state != SIXXSD_TSTATE_UP ||
+				ipaddress_is_unspecified(&tun->ip_us))
+			{
+				continue;
+			}
 
 			/* Fill in the tid */
 			t16 = htons(tid);
@@ -1132,8 +1136,8 @@ static PTR *iface_pinger_thread(PTR UNUSED *arg)
 	return NULL;
 }
 
-static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype);
-static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype)
+static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRESS *src, IPADDRESS *dst, uint32_t *_plen, uint8_t ptype);
+static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRESS *src, IPADDRESS *dst, uint32_t *_plen, uint8_t ptype)
 {
 	struct ip6_hdr	*ip6 = (struct ip6_hdr *)packet;
 	uint8_t		*payload, payload_type;
@@ -1154,12 +1158,13 @@ static uint8_t *iface_getpayload_ipv6(uint8_t *packet, unsigned int len, IPADDRE
 
 	/* All looks okay */
 	ipaddress_set_ipv6(src, &ip6->ip6_src);
+	ipaddress_set_ipv6(dst, &ip6->ip6_dst);
 	*_plen = plen;
 	return payload;
 }
 
-static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype);
-static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRESS *src, uint32_t *_plen, uint8_t ptype)
+static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRESS *src, IPADDRESS *dst, uint32_t *_plen, uint8_t ptype);
+static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRESS *src, IPADDRESS *dst, uint32_t *_plen, uint8_t ptype)
 {
 	struct ip	*ip = (struct ip *)packet;
 	uint8_t		*payload, payload_type;
@@ -1180,6 +1185,7 @@ static uint8_t *iface_getpayload_ipv4(uint8_t *packet, unsigned int len, IPADDRE
 
 	/* All looks okay */
 	ipaddress_set_ipv4(src, &ip->ip_src);
+	ipaddress_set_ipv4(dst, &ip->ip_dst);
 	*_plen = plen;
 	return payload;
 }
@@ -1191,11 +1197,11 @@ static PTR *iface_read_thread(PTR *__sock)
 	struct sixxsd_socket	*sock = (struct sixxsd_socket *)__sock;
 	uint8_t			packet[4096], *payload;
 	uint32_t		plen;
-	struct sockaddr_storage	ss;
+	struct sockaddr_storage	ss, sd;
 	socklen_t		sslen;
 	int			len;
 	uint16_t		proto, port;
-	IPADDRESS		src;
+	IPADDRESS		src, dst;
 
 	/* Do the loopyloop */
 	while (g_conf && g_conf->running)
@@ -1255,8 +1261,17 @@ static PTR *iface_read_thread(PTR *__sock)
 			continue;
 		}
 
-		sslen = sizeof(ss);
-		len = recvfrom(sock->socket, packet, sizeof(packet), 0, (struct sockaddr *)&ss, &sslen);
+		/* Use the quicker recvfrom */
+		if (sock->getsrcdst == 0)
+		{
+			sslen = sizeof(ss);
+			len = recvfrom(sock->socket, packet, sizeof(packet), 0, (struct sockaddr *)&ss, &sslen);
+		}
+		else
+		{
+			len = recv_from_to(sock->socket, packet, sizeof(packet), 0, &ss, &sd);
+		}
+
 		if (len < 0)
 		{
 			mdolog(LOG_ERR, "Couldn't receive properly from socket %s\n", iface_socket_name(sock->type));
@@ -1280,35 +1295,36 @@ static PTR *iface_read_thread(PTR *__sock)
 			{
 			case SIXXSD_SOCK_PROTO4:
 			case SIXXSD_SOCK_PROTO41:
-				payload = iface_getpayload_ipv4(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
+				payload = iface_getpayload_ipv4(packet, len, &src, &dst, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				direct_in(&src, IPPROTO_IPV4, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen, SIXXSD_TTYPE_DIRECT);
+				direct_in(&src, &dst, IPPROTO_IPV4, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen, SIXXSD_TTYPE_DIRECT);
 				break;
 
 			case SIXXSD_SOCK_ICMPV4:
-				payload = iface_getpayload_ipv4(packet, len, &src, &plen, IPPROTO_ICMPV4);
+				payload = iface_getpayload_ipv4(packet, len, &src, &dst, &plen, IPPROTO_ICMPV4);
 				if (payload == NULL) break;
 
 				icmpv4_in(&src, payload, plen);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
-				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
+				ipaddress_set_ipv4(&src, SS_IPV4_SRC(&ss));
+				ipaddress_set_ipv4(&dst, SS_IPV4_SRC(&sd));
 				port_make(&port, &ss);
-				ayiya_in(&src, sock->socktype, sock->proto, port, sock->port, packet, len);
+				ayiya_in(&src, &dst, sock->socktype, sock->proto, port, sock->port, packet, len);
 				break;
 
 			case SIXXSD_SOCK_HB:
-				ipaddress_set_ipv4(&src, &((struct sockaddr_in *)&ss)->sin_addr);
+				ipaddress_set_ipv4(&src, SS_IPV4_SRC(&ss));
 				hb_in(&src, packet, len);
 				break;
 
 			case SIXXSD_SOCK_GRE:
-				payload = iface_getpayload_ipv4(packet, len, &src, &plen, IPPROTO_GRE);
+				payload = iface_getpayload_ipv4(packet, len, &src, &dst, &plen, IPPROTO_GRE);
 				if (payload == NULL) break;
 
-				gre_in(&src, IPPROTO_IPV4, packet, len, payload, plen);
+				gre_in(&src, &dst, IPPROTO_IPV4, packet, len, payload, plen);
 				break;
 
 			default:
@@ -1323,26 +1339,26 @@ static PTR *iface_read_thread(PTR *__sock)
 			{
 			case SIXXSD_SOCK_PROTO4:
 			case SIXXSD_SOCK_PROTO41:
-				payload = iface_getpayload_ipv6(packet, len, &src, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
+				payload = iface_getpayload_ipv6(packet, len, &src, &dst, &plen, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6);
 				if (payload == NULL) break;
 
-				direct_in(&src, IPPROTO_IPV6, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen, SIXXSD_TTYPE_DIRECT);
+				direct_in(&src, &dst, IPPROTO_IPV6, packet, len, sock->type == SIXXSD_SOCK_PROTO4 ? IPPROTO_IPV4 : IPPROTO_IPV6, payload, plen, SIXXSD_TTYPE_DIRECT);
 				break;
 
 			case SIXXSD_SOCK_AYIYA:
 				port_make(&port, &ss);
-				ayiya_in(SS_IPV6_SRC(ss), sock->socktype, sock->proto, port, sock->port, packet, len);
+				ayiya_in(SS_IPV6_ADDR(&ss), SS_IPV6_ADDR(&sd), sock->socktype, sock->proto, port, sock->port, packet, len);
 				break;
 
 			case SIXXSD_SOCK_HB:
-				hb_in(SS_IPV6_SRC(ss), packet, len);
+				hb_in(SS_IPV6_ADDR(&ss), packet, len);
 				break;
 
 			case SIXXSD_SOCK_GRE:
-				payload = iface_getpayload_ipv6(packet, len, &src, &plen, IPPROTO_GRE);
+				payload = iface_getpayload_ipv6(packet, len, &src, &dst, &plen, IPPROTO_GRE);
 				if (payload == NULL) break;
 
-				gre_in(&src, IPPROTO_IPV6, packet, len, payload, plen);
+				gre_in(&src, &dst, IPPROTO_IPV6, packet, len, payload, plen);
 				break;
 
 			default:
@@ -1667,25 +1683,25 @@ int iface_init(struct sixxsd_context *ctx)
 
 	struct
 	{
-		unsigned int	type,	af,		socktype,	proto,		 port;
+		unsigned int	type,	af,		socktype,	proto,		 port,		getsrcdst;
 	} types[] =
 	{
-		{ SIXXSD_SOCK_TUNTAP,	0,		0,		0,		0		},
+		{ SIXXSD_SOCK_TUNTAP,	0,		0,		0,		0,		0 },
 /*
 
-		{ SIXXSD_SOCK_PROTO4,	AF_INET4,	0,		IPPROTO_IPV4,	0		},
-		{ SIXXSD_SOCK_PROTO4,	AF_INET6,	0,		IPPROTO_IPV4,	0		},
+		{ SIXXSD_SOCK_PROTO4,	AF_INET4,	0,		IPPROTO_IPV4,	0,		0 },
+		{ SIXXSD_SOCK_PROTO4,	AF_INET6,	0,		IPPROTO_IPV4,	0,		0 },
 */
 
-		{ SIXXSD_SOCK_PROTO41,	AF_INET4,	0,		IPPROTO_IPV6,	0		},
-		{ SIXXSD_SOCK_PROTO41,	AF_INET6,	0,		IPPROTO_IPV6,	0		},
-		{ SIXXSD_SOCK_ICMPV4,	AF_INET4,	0,		IPPROTO_ICMPV4,	0		},
-		{ SIXXSD_SOCK_AYIYA,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
-		{ SIXXSD_SOCK_AYIYA,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT	},
-		{ SIXXSD_SOCK_HB,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
-		{ SIXXSD_SOCK_HB,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT	},
-		{ SIXXSD_SOCK_GRE,	AF_INET4,	0,		IPPROTO_GRE,	0		},
-		{ SIXXSD_SOCK_GRE,	AF_INET6,	0,		IPPROTO_GRE,	0		},
+		{ SIXXSD_SOCK_PROTO41,	AF_INET4,	0,		IPPROTO_IPV6,	0,		0 },
+		{ SIXXSD_SOCK_PROTO41,	AF_INET6,	0,		IPPROTO_IPV6,	0,		0 },
+		{ SIXXSD_SOCK_ICMPV4,	AF_INET4,	0,		IPPROTO_ICMPV4,	0,		0 },
+		{ SIXXSD_SOCK_AYIYA,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT,	1 },
+		{ SIXXSD_SOCK_AYIYA,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	AYIYA_PORT,	1 },
+		{ SIXXSD_SOCK_HB,	AF_INET4,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT,	0 },
+		{ SIXXSD_SOCK_HB,	AF_INET6,	SOCK_DGRAM,	IPPROTO_UDP,	HEARTBEAT_PORT,	0 },
+		{ SIXXSD_SOCK_GRE,	AF_INET4,	0,		IPPROTO_GRE,	0,		0 },
+		{ SIXXSD_SOCK_GRE,	AF_INET6,	0,		IPPROTO_GRE,	0,		0 },
 	};
 
 	/* Should not be initialized yet */
@@ -1773,11 +1789,17 @@ int iface_init(struct sixxsd_context *ctx)
 
 		sock_setblock(s->socket);
 
+		if (types[i].getsrcdst != 0)
+		{
+			sock_setpktinfo(s->socket);
+		}
+
 		s->type		= types[i].type;
 		s->af		= types[i].af;
 		s->socktype	= types[i].socktype;
 		s->proto	= types[i].proto;
 		s->port		= types[i].port;
+		s->getsrcdst	= types[i].getsrcdst;
 	}
 
 	if (g_conf->tuntap == INVALID_SOCKET)

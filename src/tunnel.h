@@ -71,6 +71,7 @@ struct sixxsd_tunerr
 
 struct sixxsd_tunnel
 {
+	IPADDRESS			ip_us;				/* IP address of the our end of the tunnel */
 	IPADDRESS			ip_them;			/* IP address of the remote end of the tunnel */
 	struct sixxsd_context		*debug_ctx;			/* Context to send debug output to */
 	uint32_t			tunnel_id;			/* The T<xxx> in the database */

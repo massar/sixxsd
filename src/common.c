@@ -66,6 +66,70 @@ VOID sock_setblock(SOCKET sock)
 #endif
 }
 
+VOID sock_setpktinfo(SOCKET sock)
+{
+	int flag = 1;
+
+	/* Want info for both IPv4 & IPv6 where possible/available */
+	setsockopt(sock, IPPROTO_IP, IP_PKTINFO, &flag, sizeof(flag));
+	setsockopt(sock, IPPROTO_IPV6, IPV6_PKTINFO, &flag, sizeof(flag));
+}
+
+ssize_t recv_from_to(int sock, void *buf, size_t len, int flags, struct sockaddr_storage *from, struct sockaddr_storage *to)
+{
+	struct iovec iov[1];
+	union {
+		char cmsg[CMSG_SPACE(sizeof(struct in_pktinfo))];
+		char cmsg6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+	} u;
+
+	struct in_pktinfo	*pkt4;
+	struct in6_pktinfo	*pkt6;
+	struct cmsghdr		*cmsgptr;
+	struct msghdr		msg;
+	ssize_t			i;
+
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+
+	memzero(&msg, sizeof(msg));
+	msg.msg_name = (struct sockaddr *)from;
+	msg.msg_namelen = sizeof(*from);
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = &u;
+	msg.msg_controllen = sizeof(u);
+
+	i = recvmsg(sock, &msg, flags);
+	if (i < 0)
+	{
+		return i;
+	}
+
+	/* Here we try to retrieve destination IP and memorize it */
+	for (cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != NULL; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr))
+	{
+		if (cmsgptr->cmsg_level == IPPROTO_IP && cmsgptr->cmsg_type == IP_PKTINFO)
+		{
+			to->ss_family = AF_INET;
+			pkt4 = (struct in_pktinfo *)CMSG_DATA(cmsgptr);
+			memcpy(&((struct sockaddr_in*)to)->sin_addr, &pkt4->ipi_addr, sizeof(pkt4->ipi_addr));
+			break;
+		}
+		else if (cmsgptr->cmsg_level == IPPROTO_IPV6 && cmsgptr->cmsg_type == IPV6_PKTINFO)
+		{
+#define pktinfo(cmsgptr) ( (struct in6_pktinfo *)(CMSG_DATA(cmsgptr)) )
+			to->ss_family = AF_INET6;
+			pkt6 = (struct in6_pktinfo *)CMSG_DATA(cmsgptr);
+			memcpy(&((struct sockaddr_in6*)to)->sin6_addr, &pkt6->ipi6_addr, sizeof(pkt6->ipi6_addr));
+#undef pktinfo
+			break;
+		}
+	}
+
+	return i;
+}
+
 static int snprintef(char *str, size_t size, int errnum, const char *ATTR_RESTRICT format, ...) ATTR_FORMAT(printf, 4, 5);
 static int snprintef(char *str, size_t size, int errnum, const char *format, ...)
 {
@@ -1260,44 +1324,44 @@ VOID ipaddress_set_ipv4(IPADDRESS *a, const struct in_addr *ipv4)
 
 VOID ipaddress_set_ipv6(IPADDRESS *a, const struct in6_addr *ipv6)
 {
-	if (ipv6) memcpy(ipaddress_ipv6(a), ipv6, 16);
-	else memzero(ipaddress_ipv6(a), 16);
+	assert(ipv6 != NULL);
+	memcpy(ipaddress_ipv6(a), ipv6, 16);
 }
 
-VOID ipaddress_make_sa(IPADDRESS *ip, const struct sockaddr_storage *sa)
+VOID ipaddress_make_ss(IPADDRESS *ip, const struct sockaddr_storage *ss)
 {
-	switch (sa->ss_family)
+	switch (ss->ss_family)
 	{
 		case AF_INET4:
-			ipaddress_set_ipv4(ip, &((struct sockaddr_in *)sa)->sin_addr);
+			ipaddress_set_ipv4(ip, SS_IPV4_SRC(ss));
 			break;
 
 		case AF_INET6:
-			ipaddress_set_ipv6(ip, &((struct sockaddr_in6 *)sa)->sin6_addr);
+			ipaddress_set_ipv6(ip, SS_IPV6_SRC(ss));
 			break;
 
 		default:
-			dolog(LOG_ERR, "common", "Unknown Address Family %u\n", sa->ss_family);
+			dolog(LOG_ERR, "common", "Unknown Address Family %u\n", ss->ss_family);
 			break;
 	}
 }
 
-VOID port_make(uint16_t *port, const struct sockaddr_storage *sa)
+VOID port_make(uint16_t *port, const struct sockaddr_storage *ss)
 {
 	uint16_t prt = 0;
 
-	switch (sa->ss_family)
+	switch (ss->ss_family)
 	{
 		case AF_INET4:
-			memcpy(&prt, ((char *)sa) + offsetof(struct sockaddr_in, sin_port), sizeof(prt));
+			memcpy(&prt, ((char *)ss) + offsetof(struct sockaddr_in, sin_port), sizeof(prt));
 			*port = ntohs(*port);
 			break;
 		case AF_INET6:
-			memcpy(&prt, ((char *)sa) + offsetof(struct sockaddr_in6, sin6_port), sizeof(prt));
+			memcpy(&prt, ((char *)ss) + offsetof(struct sockaddr_in6, sin6_port), sizeof(prt));
 			break;
 
 		default:
-			dolog(LOG_ERR, "common", "Unknown Address Family %u\n", sa->ss_family);
+			dolog(LOG_ERR, "common", "Unknown Address Family %u\n", ss->ss_family);
 			break;
 	}
 
@@ -1444,11 +1508,11 @@ VOID socketpool_exit(struct socketpool *pool)
 
 struct socketnode *socketpool_accept(struct socketpool *pool, struct socketnode *sn_a, unsigned int tag)
 {
-	struct sockaddr_storage	sa;
-	socklen_t		addrlen = sizeof(sa);
+	struct sockaddr_storage	ss;
+	socklen_t		addrlen = sizeof(ss);
 	struct socketnode	*sn;
 
-	SOCKET sock = accept(sn_a->socket, (struct sockaddr *)&sa, &addrlen);
+	SOCKET sock = accept(sn_a->socket, (struct sockaddr *)&ss, &addrlen);
 
 	/* Directly return on failures */
 	if (sock < 0)

@@ -100,7 +100,7 @@ static PTR *pproxy_thread(PTR UNUSED *arg)
 				{
 					IPADDRESS	ip;
 
-					ipaddress_make_sa(&ip, &sa);
+					ipaddress_make_ss(&ip, &sa);
 					port_make(&ppc->portnum, &sa);
 				}
 
