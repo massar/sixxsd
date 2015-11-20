@@ -4,6 +4,9 @@
  (C) Copyright SixXS 2000-2015 All Rights Reserved
 ************************************************************
  SixXS Daemon - Socket Proxy
+
+ This uses the Linux-specific TProxy module
+ https://www.kernel.org/doc/Documentation/networking/tproxy.txt
 ***********************************************************/
 
 #include "sixxsd.h"
