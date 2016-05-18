@@ -691,6 +691,13 @@ VOID iface_route6(const uint16_t in_tid, const uint16_t out_tid_, uint8_t *packe
 			}
 			return;
 		}
+
+		/* Address is a tunnel but neither <tunnel>::1 or <tunnel>::2 -> address should not be used */
+		if (istunnel && !address_is_local((IPADDRESS *)&ip6->ip6_src) && !address_is_remote((IPADDRESS *)&ip6->ip6_src))
+		{
+			iface_send_icmpv6_unreach(in_tid, out_tid, packet, len, ICMP6_DST_UNREACH_POLICY);
+			return;
+		}
 	}
 
 	/* Ignore link-local destination addresses */

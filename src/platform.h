@@ -198,6 +198,10 @@
 #endif
 #endif
 
+#ifndef ICMP6_DST_UNREACH_POLICY
+#define ICMP6_DST_UNREACH_POLICY 5
+#endif
+
 struct icmp_hdr
 {
 	uint8_t		icmp_type;
