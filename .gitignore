@@ -1,0 +1,6 @@
+# Temporary Files
+*.o
+*.d
+
+# Output Directory
+bin/

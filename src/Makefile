@@ -35,7 +35,7 @@ SD_OBJS		=	sixxsd.o 							\
 			thread.o tunnel.o
 SD_LIBS		=
 
-PS_EXE		=	../../../sbin/popstatd
+PS_EXE		=	../bin/popstatd
 ifeq ($(OS_BITS),64)
 ifeq ($(OS_NAME),Linux)
 # Only build popstat for 64bits platform as that is what our backends are
@@ -63,13 +63,16 @@ OBJS	:= $(shell echo $(SD_OBJS) $(PS_OBJS) | sed 's/ /\n/g' | sort | uniq | tr '
 all: ${BINS}
 	@echo "* All Done"
 
-${SD_EXE}: $(DEPS) $(SD_OBJS)
+../bin:
+	@mkdir -p ../bin
+
+${SD_EXE}: ../bin $(DEPS) $(SD_OBJS)
 	$(LINK) -o $@ $(SD_OBJS) $(LDFLAGS) $(LDLIBS) $(SD_LIBS)
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "SYMBOLS"),0)
 	@echo [STRIP] $@; strip $@;
 endif
 
-${PS_EXE}: $(DEPS) $(PS_OBJS)
+${PS_EXE}: ../bin $(DEPS) $(PS_OBJS)
 	$(LINK) -o $@ $(PS_OBJS) $(LDFLAGS) $(LDLIBS) $(PS_LIBS)
 ifeq ($(shell echo ${SIXXSD_OPTIONS} | grep -c "SYMBOLS"),0)
 	@echo [STRIP] $@; strip $@;
