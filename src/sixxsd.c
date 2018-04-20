@@ -548,9 +548,9 @@ int main(int argc, char *argv[], char UNUSED *envp[])
 		setsid();
 
 		/* Cleanup stdin/out/err */
-		freopen("/dev/null", "r", stdin);
-		freopen("/dev/null", "w", stdout);
-		freopen("/dev/null", "w", stderr);
+		(void)freopen("/dev/null", "r", stdin);
+		(void)freopen("/dev/null", "w", stdout);
+		(void)freopen("/dev/null", "w", stderr);
 	}
 
 	/* Handle a SIGHUP/SIGTERM/SIGINT to cleanly exit */

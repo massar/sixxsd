@@ -1338,10 +1338,11 @@ int main(int argc, char *argv[])
 
 		/* Child fork */
 		setsid();
+
 		/* Cleanup stdin/out/err */
-		freopen("/dev/null","r",stdin);
-		freopen("/dev/null","w",stdout);
-		freopen("/dev/null","w",stderr);
+		(void)freopen("/dev/null","r",stdin);
+		(void)freopen("/dev/null","w",stdout);
+		(void)freopen("/dev/null","w",stderr);
 
 		/* Ignore SIGHUP's */
 		signal(SIGHUP, SIG_IGN);
