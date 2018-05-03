@@ -11,6 +11,30 @@ sixxsd was designed and implemented by [Jeroen Massar](https://jeroen.massar.ch)
 sixxsd ran on the PoPs from 2004 till 2017, serving an active daily 50.000 tunnels spread over 50 PoPs (with some PoPs being small <100 tunnels, others having >3000 tunnels per host).
 Before sixxsd existed several bash scripts would reconfigure the kernel's gif interfaces.
 
+## Important Historic Notice
+
+*THIS CODE IS HISTORIC AND INTENDED FOR REFERENCE ONLY*
+
+sixxsd is provided for HISTORIC purposes, to show an insight into
+how SixXS handled provisioning massive amounts of tunnels on
+many PoPs around the world.
+
+SixXS shut down as IPv6 and deploying it is happening for 20+ years...
+Thus, please, finally, get *native* IPv6!!!!!
+
+If you need a tunneling solution fit for 2017 and beyond: use Wireguard!
+Do not send plaintext traffic over the Internet as is the case with
+proto-41, heartbeat and AYIYA tunnels.
+
+Please also note that because of the cleartext various attacks are actually
+possible that can affect operation of such tunnels. MD5 used by heartbeat
+is easily fakeable, AYIYA uses good old SHA1 as a hash signature.
+
+As such, we repeat again: sixxsd is intended for historic insight,
+do not operate anymore on the public Internet.
+
+## Operation
+
 In effect sixxsd is SixXS's own routing platform as the complete process of en/decapsulation of tunneled
 packets and passing it to the proper location is handled by it.
 
@@ -43,9 +67,9 @@ A short summary of features of sixxsd:
  - Per-tunnel statistics and error information
  - Per-tunnel default routed /64 towards tunnel endpoint
 
-## Operation
+## Configuration
 
-The sixxsd binary starts by reading a sixxsd.conf this instructs it which prefixes it handles and which it routes to the tunnel device.
+The sixxsd binary starts by reading a [sixxsd.conf](misc/sixxsd.conf) this instructs it which prefixes it handles and which it routes to the tunnel device.
 It uses a standard tun/tap device as provided by most Unix-alike kernels. 
 
 The SixXS backend, which can get updated by users using the webinterface, re-pushes the full configuration to the PoP.
@@ -103,11 +127,26 @@ Due to the state of IPv6 deployment, we hope that this code is not needed anymor
 If one wants to create a VPN-alike service, we heavily suggest looking at [Wireguard](https://www.wireguard.com/) and/or OpenVPN instead as these
 provide secure (read: cryptography involved) tunnels which disallow snooping along. All protocols implemented by sixxsd are insecure: no cryptography involved.
 
+See also above the historic notice.
+
 ## Security
 
 As one will notice, no TLS or even SSL is included in this code, the SixXS PoPs where reconfigured over SSH tunneled TCP connections.
 
 Any current modern tunneling solution will use proper cryptography, hence, please look at Wireguard.
+
+* proto-41, heartbeat and AYIYA are all cleartext
+* The heartbeat protocol uses good old MD5
+* The AYIYA protocol uses good old SHA-1
+
+All of these do not make a secure system.
+
+## Monitoring
+
+The [check_sixxsd.py](misc/check_sixxsd.py) script was used for monitoring sixxsd instances.
+
+This was quite useful, as we monitored active tunnels, if they dropped below a certain level we would know that something was wrong on our side.
+Figuring out then what, was the fun exercise.
 
 ## License
 
@@ -124,4 +163,3 @@ The designer and implementor of sixxsd is [Jeroen Massar](https://jeroen.massar.
 Jeroen can be reached by email: [jeroen@massar.ch](mailto:jeroen@massar.ch).
 
 The previous email SixXS addresses. (jeroen@sixxs.net and info@sixxs.net) have been deactived when the project sunset.
-
