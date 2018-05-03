@@ -150,7 +150,7 @@ Figuring out then what, was the fun exercise.
 
 ## License
 
-The license for sixxsd is the BSD 3-clause license.
+The license for sixxsd is the [LICENSE](BSD 3-clause license).
 
 In case one uses/references this, don't hesitate to give a shout out to the author, it is much appreciated.
 
